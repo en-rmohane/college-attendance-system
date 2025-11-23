@@ -144,7 +144,7 @@ def ensure_student_accounts():
 
     for student in students:
         if not student.roll or student.roll.strip() == "":
-            print(f"⚠ Skipped student with missing roll: {student.name}")
+            print(f" Skipped student with missing roll: {student.name}")
             skipped_count += 1
             continue
 
@@ -167,8 +167,8 @@ def ensure_student_accounts():
         created_count += 1
 
     db.session.commit()
-    print(f"✅ Created {created_count} new student accounts")
-    print(f"ℹ️ Skipped {skipped_count} accounts (already exists or missing roll)")
+    print(f"[OK] Created {created_count} new student accounts")
+    print(f" Skipped {skipped_count} accounts (already exists or missing roll)")
 
 
 def initialize_rgpv_scheme_complete():
@@ -294,7 +294,7 @@ def initialize_rgpv_scheme_complete():
             added_count += 1
 
     db.session.commit()
-    print(f"✅ RGPV Scheme initialized: {added_count} subjects")
+    print(f"[OK] RGPV Scheme initialized: {added_count} subjects")
 
 
 def get_current_academic_year():
@@ -339,7 +339,7 @@ def initialize_current_semester():
                 db.session.add(current_semester)
 
     db.session.commit()
-    print("✅ Current semester initialized for all branches and years")
+    print("[OK] Current semester initialized for all branches and years")
 
 
 def get_active_semester_for_branch_year(branch, year):
@@ -512,7 +512,7 @@ def auto_submit_test(attempt_id):
         attempt.total_marks_obtained = total_marks
         attempt.submitted = True
         db.session.commit()
-        print(f"✅ Test auto-submitted for attempt {attempt_id}")
+        print(f"[OK] Test auto-submitted for attempt {attempt_id}")
 
 
 def migrate_test_system():
@@ -539,10 +539,10 @@ def migrate_test_system():
                     "UPDATE tests SET available_from = start_time, available_until = end_time WHERE available_from IS NULL"))
                 conn.commit()
 
-            print("✅ Test system migrated successfully!")
+            print("[OK] Test system migrated successfully!")
 
         except Exception as e:
-            print(f"❌ Migration error: {e}")
+            print(f"[ERROR] Migration error: {e}")
 
 
 # ========== UPDATED TIMETABLE FUNCTIONS ==========
@@ -574,7 +574,7 @@ def get_professor_for_common_subject(cse_subject_id, ad_subject_id):
         return active_professor
 
     except Exception as e:
-        print(f"❌ Error getting professor for common subject: {e}")
+        print(f"[ERROR] Error getting professor for common subject: {e}")
         return None
 
 
@@ -583,7 +583,7 @@ def is_slot_available(timetable, day, period):
     try:
         return timetable['slots'][day][period]['subject'] is None
     except Exception as e:
-        print(f"❌ Error checking slot availability: {e}")
+        print(f"[ERROR] Error checking slot availability: {e}")
         return False
 
 
@@ -592,7 +592,7 @@ def is_professor_available(professor_id, day, period, faculty_daily_periods):
     try:
         return period not in faculty_daily_periods[professor_id][day]
     except Exception as e:
-        print(f"❌ Error checking professor availability: {e}")
+        print(f"[ERROR] Error checking professor availability: {e}")
         return False
 
 
@@ -604,7 +604,7 @@ def is_professor_overloaded(professor_id, faculty_daily_periods):
                 return True
         return False
     except Exception as e:
-        print(f"❌ Error checking professor overload: {e}")
+        print(f"[ERROR] Error checking professor overload: {e}")
         return False
 
 
@@ -628,9 +628,9 @@ def get_common_subjects_for_semester(semester):
 
         if cse_subject and ad_subject:
             common_subjects[name] = details
-            print(f"✅ Found common subject: {name} - CSE:{cse_subject.code}, AD:{ad_subject.code}")
+            print(f"[OK] Found common subject: {name} - CSE:{cse_subject.code}, AD:{ad_subject.code}")
         else:
-            print(f"⚠️ Missing common subject: {name} - CSE:{details['CSE']}, AD:{details['AD']} for sem {semester}")
+            print(f"[WARNING] Missing common subject: {name} - CSE:{details['CSE']}, AD:{details['AD']} for sem {semester}")
 
     return common_subjects
 
@@ -650,31 +650,31 @@ def is_slot_available_for_common(timetables, branches, year, semester, day, slot
 
         return True
     except Exception as e:
-        print(f"❌ Error checking slot availability: {e}")
+        print(f"[ERROR] Error checking slot availability: {e}")
         return False
 
 
 def allocate_common_subjects_optimized(timetables, branches, years, semesters):
     """Optimized common subject allocation with better slot distribution"""
-    print("🔄 Optimized common subjects allocation...")
+    print("[UPDATE] Optimized common subjects allocation...")
 
     for semester in semesters:
         common_subjects = get_common_subjects_for_semester(semester)
 
         if not common_subjects:
-            print(f"ℹ️ No common subjects found for semester {semester}")
+            print(f" No common subjects found for semester {semester}")
             continue
 
         # Separate theory and lab subjects
         theory_subjects = {name: details for name, details in common_subjects.items() if not details["is_lab"]}
         lab_subjects = {name: details for name, details in common_subjects.items() if details["is_lab"]}
 
-        print(f"📚 Theory subjects: {len(theory_subjects)}, Lab subjects: {len(lab_subjects)}")
+        print(f" Theory subjects: {len(theory_subjects)}, Lab subjects: {len(lab_subjects)}")
 
         # Allocate theory subjects first with distributed periods
         for common_name, details in theory_subjects.items():
             weekly_slots = details.get("weekly_slots", 3)
-            print(f"🔄 Allocating theory: {common_name} ({weekly_slots} slots)")
+            print(f"[UPDATE] Allocating theory: {common_name} ({weekly_slots} slots)")
 
             # Get subject objects
             cse_subject = Subject.query.filter_by(code=details["CSE"], semester=semester).first()
@@ -682,7 +682,7 @@ def allocate_common_subjects_optimized(timetables, branches, years, semesters):
             professor = get_professor_for_common_subject(cse_subject.id, ad_subject.id)
 
             if not cse_subject or not ad_subject or not professor:
-                print(f"❌ Missing data for {common_name}, skipping...")
+                print(f"[ERROR] Missing data for {common_name}, skipping...")
                 continue
 
             slots_assigned = 0
@@ -714,22 +714,22 @@ def allocate_common_subjects_optimized(timetables, branches, years, semesters):
                             'common_name': common_name
                         }
 
-                    print(f"  ✅ {common_name} at Day {day}, Period {period}")
+                    print(f"  [OK] {common_name} at Day {day}, Period {period}")
                     slots_assigned += 1
 
             if slots_assigned < weekly_slots:
-                print(f"⚠️ Only allocated {slots_assigned}/{weekly_slots} slots for {common_name}")
+                print(f"[WARNING] Only allocated {slots_assigned}/{weekly_slots} slots for {common_name}")
 
         # Allocate lab subjects in continuous periods
         for common_name, details in lab_subjects.items():
-            print(f"🔄 Allocating lab: {common_name}")
+            print(f"[UPDATE] Allocating lab: {common_name}")
 
             cse_subject = Subject.query.filter_by(code=details["CSE"], semester=semester).first()
             ad_subject = Subject.query.filter_by(code=details["AD"], semester=semester).first()
             professor = get_professor_for_common_subject(cse_subject.id, ad_subject.id)
 
             if not cse_subject or not ad_subject or not professor:
-                print(f"❌ Missing data for lab {common_name}, skipping...")
+                print(f"[ERROR] Missing data for lab {common_name}, skipping...")
                 continue
 
             lab_allocated = False
@@ -764,7 +764,7 @@ def allocate_common_subjects_optimized(timetables, branches, years, semesters):
                                 'common_name': common_name
                             }
 
-                        print(f"  ✅ Lab {common_name} at Day {day}, Periods {start_period}-{end_period}")
+                        print(f"  [OK] Lab {common_name} at Day {day}, Periods {start_period}-{end_period}")
                         lab_allocated = True
                         break
 
@@ -772,18 +772,18 @@ def allocate_common_subjects_optimized(timetables, branches, years, semesters):
                     break
 
             if not lab_allocated:
-                print(f"❌ Could not allocate lab {common_name}")
+                print(f"[ERROR] Could not allocate lab {common_name}")
 
 
 def generate_smart_timetable(branches, years, semesters):
     """Optimized timetable generation with better slot management"""
-    print(f"🎯 Generating optimized timetable for branches={branches}, years={years}, semesters={semesters}")
+    print(f"[SUCCESS] Generating optimized timetable for branches={branches}, years={years}, semesters={semesters}")
 
     try:
         professors = User.query.filter_by(role='professor', is_active=True).all()
 
         if not professors:
-            print("❌ No active professors found!")
+            print("[ERROR] No active professors found!")
             return {}
 
         # Initialize empty timetables with 6 periods
@@ -816,7 +816,7 @@ def generate_smart_timetable(branches, years, semesters):
                     timetables[key] = timetable
 
         # STEP 1: Allocate common subjects with optimized algorithm
-        print("🔄 Step 1: Allocating common subjects...")
+        print("[UPDATE] Step 1: Allocating common subjects...")
         allocate_common_subjects_optimized(timetables, branches, years, semesters)
 
         # STEP 2: Count available slots after common subjects
@@ -829,10 +829,10 @@ def generate_smart_timetable(branches, years, semesters):
                     if slot['subject'] is None:
                         available_slots += 1
 
-        print(f"📊 Slot usage: {available_slots}/{total_slots} slots available after common subjects")
+        print(f"[INFO] Slot usage: {available_slots}/{total_slots} slots available after common subjects")
 
         # STEP 3: Allocate remaining subjects with priority to labs
-        print("🔄 Step 2: Allocating remaining subjects...")
+        print("[UPDATE] Step 2: Allocating remaining subjects...")
 
         # Get remaining subjects (non-common subjects with professors)
         remaining_subjects = []
@@ -867,7 +867,7 @@ def generate_smart_timetable(branches, years, semesters):
                                     'semester': semester
                                 })
 
-        print(f"🔄 Found {len(remaining_subjects)} remaining subjects to allocate")
+        print(f"[UPDATE] Found {len(remaining_subjects)} remaining subjects to allocate")
 
         # Sort subjects: labs first, then by required slots
         lab_subjects = [s for s in remaining_subjects if 'Lab' in s['subject'].name or s['subject'].code.endswith('P')]
@@ -943,7 +943,7 @@ def generate_smart_timetable(branches, years, semesters):
                             faculty_daily_periods[professor.id][day].add(end_period)
                             slots_assigned += 1
                             allocated_count += 1
-                            print(f"✅ Allocated lab {subject.code} at Day {day}, Periods {start_period}-{end_period}")
+                            print(f"[OK] Allocated lab {subject.code} at Day {day}, Periods {start_period}-{end_period}")
                             break
 
                 else:
@@ -962,13 +962,13 @@ def generate_smart_timetable(branches, years, semesters):
                         faculty_daily_periods[professor.id][day].add(period)
                         slots_assigned += 1
                         allocated_count += 1
-                        print(f"✅ Allocated theory {subject.code} at Day {day}, Period {period}")
+                        print(f"[OK] Allocated theory {subject.code} at Day {day}, Period {period}")
 
-        print(f"🎯 Timetable generation completed! Allocated {allocated_count} additional subjects")
+        print(f"[SUCCESS] Timetable generation completed! Allocated {allocated_count} additional subjects")
         return timetables
 
     except Exception as e:
-        print(f"❌ Error in generate_smart_timetable: {e}")
+        print(f"[ERROR] Error in generate_smart_timetable: {e}")
         import traceback
         traceback.print_exc()
         return {}
@@ -977,7 +977,7 @@ def generate_smart_timetable(branches, years, semesters):
 def save_timetable_to_db(timetables):
     """Save generated timetable to database with error handling"""
     if not timetables:
-        print("❌ No timetables to save")
+        print("[ERROR] No timetables to save")
         return False
 
     try:
@@ -1022,11 +1022,11 @@ def save_timetable_to_db(timetables):
                         saved_count += 1
 
         db.session.commit()
-        print(f"✅ Timetable saved successfully! {saved_count} slots saved for {len(timetables)} combinations")
+        print(f"[OK] Timetable saved successfully! {saved_count} slots saved for {len(timetables)} combinations")
         return True
 
     except Exception as e:
-        print(f"❌ Error saving timetable: {e}")
+        print(f"[ERROR] Error saving timetable: {e}")
         db.session.rollback()
         return False
 
@@ -1110,7 +1110,7 @@ def ensure_admin():
         admin.set_password('admin123')
         db.session.add(admin)
         db.session.commit()
-        print("✅ Default admin created: admin@college.com / admin123")
+        print("[OK] Default admin created: admin@college.com / admin123")
 
 
 def preload_subjects():
@@ -1269,9 +1269,9 @@ def preload_subjects():
 
     if added > 0:
         db.session.commit()
-        print(f"✅ Subjects preloaded: {added} new subjects added")
+        print(f"[OK] Subjects preloaded: {added} new subjects added")
     else:
-        print(f"ℹ️ All subjects already present")
+        print(f" All subjects already present")
 
     return added
 
@@ -1286,18 +1286,18 @@ def activate_all_subjects():
             if not subject.is_active:
                 subject.is_active = True
                 activated_count += 1
-                print(f"✅ Activated: {subject.code} - {subject.name}")
+                print(f"[OK] Activated: {subject.code} - {subject.name}")
 
         if activated_count > 0:
             db.session.commit()
-            print(f"🎉 Activated {activated_count} subjects!")
+            print(f" Activated {activated_count} subjects!")
         else:
-            print("ℹ️ All subjects are already active")
+            print(" All subjects are already active")
 
         # Show final status
         active_count = Subject.query.filter_by(is_active=True).count()
         total_count = Subject.query.count()
-        print(f"📊 Subjects Status: {active_count}/{total_count} active")
+        print(f"[INFO] Subjects Status: {active_count}/{total_count} active")
 
         return activated_count
 
@@ -1310,10 +1310,10 @@ def load_students_from_files(data_dir="data"):
     total_processed = 0
 
     if not files:
-        print("ℹ️ No student files found in data directory")
+        print(" No student files found in data directory")
         return
 
-    print("🔄 Syncing students data from files...")
+    print("[UPDATE] Syncing students data from files...")
 
     for fname in files:
         path = os.path.join(data_dir, fname)
@@ -1363,21 +1363,21 @@ def load_students_from_files(data_dir="data"):
                         file_processed += 1
 
             db.session.commit()
-            print(f"📁 {fname}: Synced {file_processed} students (Year: {file_year})")
+            print(f" {fname}: Synced {file_processed} students (Year: {file_year})")
             total_processed += file_processed
 
         except Exception as e:
-            print(f"❌ Error processing {fname}: {str(e)}")
+            print(f"[ERROR] Error processing {fname}: {str(e)}")
             db.session.rollback()
 
-    print(f"✅ TOTAL STUDENTS SYNCED: {total_processed}")
+    print(f"[OK] TOTAL STUDENTS SYNCED: {total_processed}")
 
 
 def initialize_data():
     """Initialize data ONLY if database is empty"""
     with app.app_context():
         if not os.path.exists(db_path):
-            print("🆕 Creating new database file...")
+            print(" Creating new database file...")
             db.create_all()
 
         subject_count = Subject.query.count()
@@ -1385,9 +1385,9 @@ def initialize_data():
 
         try:
             db.session.execute(text("SELECT 1 FROM mid_term_marks LIMIT 1"))
-            print("✅ mid_term_marks table exists")
+            print("[OK] mid_term_marks table exists")
         except Exception as e:
-            print("🔄 Creating missing mid_term_marks table...")
+            print("[UPDATE] Creating missing mid_term_marks table...")
             db.session.execute(text('''
                 CREATE TABLE mid_term_marks (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1407,10 +1407,10 @@ def initialize_data():
                 )
             '''))
             db.session.commit()
-            print("✅ mid_term_marks table created successfully")
+            print("[OK] mid_term_marks table created successfully")
 
         if subject_count == 0 or not admin_exists:
-            print("🔄 First-time setup: Loading all data...")
+            print("[UPDATE] First-time setup: Loading all data...")
             ensure_admin()
             preload_subjects()
             load_students_from_files()
@@ -1418,11 +1418,11 @@ def initialize_data():
             initialize_current_semester()
             initialize_rgpv_scheme_complete()
             migrate_test_system()
-            print("✅ First-time setup completed")
+            print("[OK] First-time setup completed")
         else:
-            print(f"ℹ️ Database already has data: {subject_count} subjects, {Student.query.count()} students")
+            print(f" Database already has data: {subject_count} subjects, {Student.query.count()} students")
 
-            print("🔄 Activating all subjects...")
+            print("[UPDATE] Activating all subjects...")
             subjects = Subject.query.all()
             activated_count = 0
 
@@ -1430,17 +1430,17 @@ def initialize_data():
                 if not subject.is_active:
                     subject.is_active = True
                     activated_count += 1
-                    print(f"✅ Activated: {subject.code} - {subject.name}")
+                    print(f"[OK] Activated: {subject.code} - {subject.name}")
 
             if activated_count > 0:
                 db.session.commit()
-                print(f"🎉 Activated {activated_count} subjects!")
+                print(f" Activated {activated_count} subjects!")
             else:
-                print("ℹ️ All subjects are already active")
+                print(" All subjects are already active")
 
             active_count = Subject.query.filter_by(is_active=True).count()
             total_count = Subject.query.count()
-            print(f"📊 Subjects Status: {active_count}/{total_count} active")
+            print(f"[INFO] Subjects Status: {active_count}/{total_count} active")
 
             load_students_from_files()
             migrate_test_system()
@@ -2164,7 +2164,7 @@ def admin_generate_report():
 
     if request.method == 'POST':
         try:
-            # ✅ MULTIPLE SUBJECTS SUPPORT - Get list of selected subject IDs
+            # [OK] MULTIPLE SUBJECTS SUPPORT - Get list of selected subject IDs
             subject_ids = request.form.getlist('subject_ids')
 
             branch = request.form.get('branch')
@@ -2191,7 +2191,7 @@ def admin_generate_report():
                 else:
                     end_date = today
 
-            # ✅ DETERMINE SELECTED SUBJECTS
+            # [OK] DETERMINE SELECTED SUBJECTS
             selected_subjects = []
             report_title = ""
 
@@ -2230,7 +2230,7 @@ def admin_generate_report():
                 flash("No subjects found for this selection!", "danger")
                 return redirect(url_for('admin_reports'))
 
-            # ✅ Get students based on branch and year
+            # [OK] Get students based on branch and year
             student_query = Student.query.filter_by(year=year)
             if branch:
                 student_query = student_query.filter_by(branch=branch)
@@ -2249,7 +2249,7 @@ def admin_generate_report():
             thin = Side(border_style="thin", color="000000")
             border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
-            # 🔢 total columns = 3 (Sno, Enr, Name) + 3 per subject + 3 (Total LS/LA/%)
+            #  total columns = 3 (Sno, Enr, Name) + 3 per subject + 3 (Total LS/LA/%)
             total_cols = 3 + len(selected_subjects) * 3 + 3
             last_col_letter = get_column_letter(total_cols)
 
@@ -2350,7 +2350,7 @@ def admin_generate_report():
                     cell.border = border
                     cell.alignment = Alignment(horizontal='center', vertical='center')
 
-            # ✅ Column width optimization
+            # [OK] Column width optimization
             ws.column_dimensions['A'].width = 6
             ws.column_dimensions['B'].width = 18
             ws.column_dimensions['C'].width = 28
@@ -2377,7 +2377,7 @@ def admin_generate_report():
             # DB me path save karo (AttendanceReport model)
             report = AttendanceReport(
                 professor_id=None,
-                subject_id=None,  # multiple subjects → None
+                subject_id=None,  # multiple subjects  None
                 date=today,
                 report_path=filepath,
                 report_type='multiple_subjects_excel'
@@ -2385,7 +2385,7 @@ def admin_generate_report():
             db.session.add(report)
             db.session.commit()
 
-            flash(f"✅ Attendance report generated successfully for {len(selected_subjects)} subjects!", "success")
+            flash(f"[OK] Attendance report generated successfully for {len(selected_subjects)} subjects!", "success")
             return send_file(filepath, as_attachment=True, download_name=filename)
 
         except Exception as e:
@@ -2561,7 +2561,7 @@ def generate_custom_csv_report():
         db.session.add(new_report)
         db.session.commit()
 
-        flash(f'✅ CSV report generated successfully! Processed {total_students_processed} student records.', 'success')
+        flash(f'[OK] CSV report generated successfully! Processed {total_students_processed} student records.', 'success')
         return send_file(filepath, as_attachment=True, download_name=filename)
 
     except Exception as e:
@@ -2633,7 +2633,7 @@ def admin_reports():
             'date': report.date,
             'professor_name': professor.fullname if professor else 'Admin',
             'professor_email': professor.email if professor else 'admin@college.com',
-            'subject_name': subject.name if subject else ('All Subjects' if report.subject_id is None else '—'),
+            'subject_name': subject.name if subject else ('All Subjects' if report.subject_id is None else ''),
             'subject_code': subject.code if subject else ('ALL' if report.subject_id is None else ''),
             'filename': os.path.basename(report.report_path) if report.report_path else '',
             'report_path': report.report_path,
@@ -2959,22 +2959,22 @@ def fix_student_accounts():
                 student_user.set_password(student.roll)
                 db.session.add(student_user)
                 created_count += 1
-                result += f"<p>✅ Created: {student.roll} - {student.name}</p>"
+                result += f"<p>[OK] Created: {student.roll} - {student.name}</p>"
             else:
-                result += f"<p>ℹ️ Already exists: {student.roll}</p>"
+                result += f"<p> Already exists: {student.roll}</p>"
 
         except Exception as e:
             error_count += 1
-            result += f"<p>❌ Error with {student.roll}: {str(e)}</p>"
+            result += f"<p>[ERROR] Error with {student.roll}: {str(e)}</p>"
 
     if created_count > 0:
         db.session.commit()
-        result += f"<h4 style='color: green;'>✅ SUCCESS: Created {created_count} student accounts!</h4>"
+        result += f"<h4 style='color: green;'>[OK] SUCCESS: Created {created_count} student accounts!</h4>"
     else:
-        result += "<h4>ℹ️ No new accounts created (all already exist or errors)</h4>"
+        result += "<h4> No new accounts created (all already exist or errors)</h4>"
 
     if error_count > 0:
-        result += f"<h4 style='color: red;'>❌ ERRORS: {error_count} accounts failed</h4>"
+        result += f"<h4 style='color: red;'>[ERROR] ERRORS: {error_count} accounts failed</h4>"
 
     result += f"""
     <hr>
@@ -3320,7 +3320,7 @@ def enter_mid_term_marks(subject_id):
                     flash(error, 'danger')
             else:
                 db.session.commit()
-                flash(f'✅ Mid-term marks entered for {marks_entered} students! Total marks: {total_marks}', 'success')
+                flash(f'[OK] Mid-term marks entered for {marks_entered} students! Total marks: {total_marks}', 'success')
                 return redirect(url_for('prof_dashboard'))
 
         except Exception as e:
@@ -3661,7 +3661,7 @@ def upload_note():
 
     except Exception as e:
         db.session.rollback()
-        print(f"❌ ERROR in upload_note: {e}")
+        print(f"[ERROR] ERROR in upload_note: {e}")
         import traceback
         traceback.print_exc()
         flash(f'Error uploading note: {str(e)}', 'danger')
@@ -3787,7 +3787,7 @@ def create_test():
         start_time_str = request.form.get('start_time')
         instructions = request.form.get('instructions', '').strip()
 
-        # ✅ NEW: Security code fields
+        # [OK] NEW: Security code fields
         require_security_code = 'require_security_code' in request.form
         security_code = request.form.get('security_code') if require_security_code else None
 
@@ -3804,13 +3804,13 @@ def create_test():
         # Convert start time
         try:
             start_time = datetime.fromisoformat(start_time_str)
-            # ✅ AUTO CALCULATE END TIME based on duration
+            # [OK] AUTO CALCULATE END TIME based on duration
             end_time = start_time + timedelta(minutes=duration)
         except ValueError as e:
             flash(f'Invalid date format: {str(e)}', 'danger')
             return redirect(url_for('prof_tests'))
 
-        # ✅ Check if security code is unique
+        # [OK] Check if security code is unique
         if require_security_code and security_code:
             existing_test = Test.query.filter_by(security_code=security_code).first()
             if existing_test:
@@ -3830,7 +3830,7 @@ def create_test():
             end_time=end_time,
             available_from=start_time,
             available_until=end_time,
-            # ✅ NEW SECURITY FIELDS
+            # [OK] NEW SECURITY FIELDS
             security_code=security_code,
             require_security_code=require_security_code,
             security_code_verified=False,
@@ -3850,9 +3850,9 @@ def create_test():
 
         # Success message with security code if enabled
         if require_security_code and security_code:
-            flash(f'✅ Test created successfully! Security Code: {security_code}', 'success')
+            flash(f'[OK] Test created successfully! Security Code: {security_code}', 'success')
         else:
-            flash('✅ Test created successfully!', 'success')
+            flash('[OK] Test created successfully!', 'success')
 
         return redirect(url_for('manage_test_questions', test_id=test.id))
 
@@ -4060,31 +4060,31 @@ def publish_test(test_id):
         return redirect(url_for('manage_test_questions', test_id=test_id))
 
     try:
-        # ✅ CRITICAL FIX: Set all required fields for student visibility
+        # [OK] CRITICAL FIX: Set all required fields for student visibility
         test.status = 'published'
         test.is_active = True
 
-        # ✅ Ensure timing is set correctly
+        # [OK] Ensure timing is set correctly
         if not test.available_from:
             test.available_from = test.start_time
         if not test.available_until:
             test.available_until = test.end_time
 
-        # ✅ Update total marks based on actual questions
+        # [OK] Update total marks based on actual questions
         test.total_marks = test.calculated_total_marks
 
         db.session.commit()
 
-        flash('✅ Test published successfully! Students can now see it.', 'success')
+        flash('[OK] Test published successfully! Students can now see it.', 'success')
 
-        # ✅ Debug information
-        print(f"🎯 Test Published: {test.title}")
-        print(f"🎯 Status: {test.status}")
-        print(f"🎯 Available From: {test.available_from}")
-        print(f"🎯 Available Until: {test.available_until}")
-        print(f"🎯 Is Active: {test.is_active}")
-        print(f"🎯 Total Marks: {test.total_marks}")
-        print(f"🎯 Questions Count: {len(test.questions)}")
+        # [OK] Debug information
+        print(f"[SUCCESS] Test Published: {test.title}")
+        print(f"[SUCCESS] Status: {test.status}")
+        print(f"[SUCCESS] Available From: {test.available_from}")
+        print(f"[SUCCESS] Available Until: {test.available_until}")
+        print(f"[SUCCESS] Is Active: {test.is_active}")
+        print(f"[SUCCESS] Total Marks: {test.total_marks}")
+        print(f"[SUCCESS] Questions Count: {len(test.questions)}")
 
     except Exception as e:
         db.session.rollback()
@@ -4133,7 +4133,7 @@ def student_dashboard():
     # Get current semesters
     current_semesters = get_student_current_semesters(student.branch, student.year)
 
-    # ✅ FIX: current_semester_config define karo
+    # [OK] FIX: current_semester_config define karo
     current_semester_config = get_active_semester_for_branch_year(student.branch, student.year)
 
     # Get subjects
@@ -4237,7 +4237,7 @@ def student_tests():
     # Get current semesters
     current_semesters = get_student_current_semesters(student.branch, student.year)
 
-    # ✅ FIXED QUERY: Get ALL published tests for student's branch
+    # [OK] FIXED QUERY: Get ALL published tests for student's branch
     now = datetime.now()
 
     tests = Test.query.join(Subject).filter(
@@ -4249,7 +4249,7 @@ def student_tests():
     ).order_by(Test.available_from).all()
 
     # Debug output
-    print(f"🎯 Student Tests Page Query Results:")
+    print(f"[SUCCESS] Student Tests Page Query Results:")
     print(f"   Student: {student.roll}, Branch: {student.branch}")
     print(f"   Tests Found: {len(tests)}")
 
@@ -4393,9 +4393,9 @@ def start_test_smart(test_id):
     test = Test.query.get_or_404(test_id)
     now = datetime.now()
 
-    # ✅ SECURITY CHECK - Code verification required
+    # [OK] SECURITY CHECK - Code verification required
     if test.require_security_code and not test.security_code_verified:
-        flash('❌ Security code verification required. Please enter the security code first.', 'danger')
+        flash('[ERROR] Security code verification required. Please enter the security code first.', 'danger')
         return redirect(url_for('test_instructions', test_id=test_id))
 
     # Check test availability
@@ -4442,7 +4442,7 @@ def start_test_smart(test_id):
         flash('Test time has expired', 'warning')
         return redirect(url_for('student_tests'))
 
-    # ✅ RESET security code verification for next attempt
+    # [OK] RESET security code verification for next attempt
     if test.require_security_code:
         test.security_code_verified = False
         db.session.commit()
@@ -4474,31 +4474,31 @@ def submit_answer(attempt_id):
         question_id = data.get('question_id')
         selected_answer = data.get('selected_answer', '').strip().upper()
 
-        print(f"💾 SAVE ANSWER: Attempt {attempt_id}, Q{question_id} = '{selected_answer}'")
+        print(f" SAVE ANSWER: Attempt {attempt_id}, Q{question_id} = '{selected_answer}'")
 
-        # ✅ FIX: Clean the answer - take only first character
+        # [OK] FIX: Clean the answer - take only first character
         if selected_answer:
             selected_answer = selected_answer[0]  # Only take first character (A, B, C, D)
 
-        # ✅ FIX: DELETE existing answer first (PREVENT DUPLICATES)
+        # [OK] FIX: DELETE existing answer first (PREVENT DUPLICATES)
         deleted_count = StudentAnswer.query.filter_by(
             attempt_id=attempt_id,
             question_id=question_id
         ).delete()
 
         if deleted_count > 0:
-            print(f"🗑️ Deleted {deleted_count} existing answer(s) for Q{question_id}")
+            print(f" Deleted {deleted_count} existing answer(s) for Q{question_id}")
 
-        # ✅ FIX: Create new answer (only one answer per question)
+        # [OK] FIX: Create new answer (only one answer per question)
         student_answer = StudentAnswer(
             attempt_id=attempt_id,
             question_id=question_id,
             selected_answer=selected_answer
         )
         db.session.add(student_answer)
-        print(f"🆕 Created new answer for Q{question_id}")
+        print(f" Created new answer for Q{question_id}")
 
-        # ✅ FIXED: Calculate marks immediately with proper comparison
+        # [OK] FIXED: Calculate marks immediately with proper comparison
         question = Question.query.get(question_id)
         if question:
             # Clean the correct answer too
@@ -4510,25 +4510,25 @@ def submit_answer(attempt_id):
             if selected_answer and correct_answer and selected_answer == correct_answer:
                 student_answer.marks_obtained = question.marks
                 student_answer.is_correct = True
-                print(f"🎯 CORRECT: +{question.marks} marks")
+                print(f"[SUCCESS] CORRECT: +{question.marks} marks")
             else:
                 student_answer.marks_obtained = 0
                 student_answer.is_correct = False
-                print(f"❌ WRONG: 0 marks")
+                print(f"[ERROR] WRONG: 0 marks")
         else:
-            print(f"⚠️ Question {question_id} not found")
+            print(f"[WARNING] Question {question_id} not found")
 
         # Update last activity
         attempt.last_activity = datetime.now()
 
         db.session.commit()
-        print(f"✅ Answer saved successfully: {selected_answer}")
+        print(f"[OK] Answer saved successfully: {selected_answer}")
 
         return jsonify({'success': True, 'message': 'Answer saved'})
 
     except Exception as e:
         db.session.rollback()
-        print(f"❌ Error saving answer: {str(e)}")
+        print(f"[ERROR] Error saving answer: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)})
@@ -4565,7 +4565,7 @@ def track_tab_switch(attempt_id):
 @app.route('/student/test/<int:attempt_id>/submit_test', methods=['POST'])
 @login_required
 def submit_test(attempt_id):
-    print(f"🎯 SUBMIT TEST CALLED: Attempt {attempt_id}")
+    print(f"[SUCCESS] SUBMIT TEST CALLED: Attempt {attempt_id}")
 
     if current_user.role != 'student':
         return jsonify({'success': False, 'error': 'Access denied'})
@@ -4583,16 +4583,16 @@ def submit_test(attempt_id):
         return jsonify({'success': False, 'error': 'Test already submitted'})
 
     try:
-        print("🔄 SUBMIT: Starting marks calculation...")
+        print("[UPDATE] SUBMIT: Starting marks calculation...")
 
-        # ✅ FIX: Get all answers with questions
+        # [OK] FIX: Get all answers with questions
         answers = StudentAnswer.query.filter_by(attempt_id=attempt_id).all()
-        print(f"📝 SUBMIT: Found {len(answers)} answers")
+        print(f" SUBMIT: Found {len(answers)} answers")
 
         total_marks = 0
         correct_answers = 0
 
-        # ✅ DEBUG: Pehle check karo kya data sahi hai
+        # [OK] DEBUG: Pehle check karo kya data sahi hai
         print("=== DEBUG: Checking all answers ===")
         for answer in answers:
             question = Question.query.get(answer.question_id)
@@ -4607,21 +4607,21 @@ def submit_test(attempt_id):
                     marks_to_add = question.marks
                     total_marks += marks_to_add
                     correct_answers += 1
-                    print(f"  ✅ CORRECT: Adding {marks_to_add} marks")
+                    print(f"  [OK] CORRECT: Adding {marks_to_add} marks")
                 else:
-                    print(f"  ❌ WRONG: Adding 0 marks")
+                    print(f"  [ERROR] WRONG: Adding 0 marks")
             else:
-                print(f"  ⚠️ QUESTION {answer.question_id} NOT FOUND")
+                print(f"  [WARNING] QUESTION {answer.question_id} NOT FOUND")
 
-        print(f"📊 SUBMIT: Final Calculation:")
+        print(f"[INFO] SUBMIT: Final Calculation:")
         print(f"   Total Marks: {total_marks}")
         print(f"   Correct Answers: {correct_answers}/{len(answers)}")
         print(f"   Test Total Marks: {attempt.test.total_marks}")
 
-        # ✅ FIX: Double check - total_marks test ke total_marks se zyada na ho
+        # [OK] FIX: Double check - total_marks test ke total_marks se zyada na ho
         if total_marks > attempt.test.total_marks:
-            print(f"⚠️ WARNING: Calculated marks ({total_marks}) exceed test total ({attempt.test.total_marks})")
-            print(f"⚠️ This indicates duplicate answers in database")
+            print(f"[WARNING] WARNING: Calculated marks ({total_marks}) exceed test total ({attempt.test.total_marks})")
+            print(f"[WARNING] This indicates duplicate answers in database")
             # Limit to test total marks and log the issue
             total_marks = min(total_marks, attempt.test.total_marks)
 
@@ -4632,8 +4632,8 @@ def submit_test(attempt_id):
 
         db.session.commit()
 
-        print("✅ SUBMIT: Test submitted successfully!")
-        print(f"🎯 Attempt {attempt_id} now has {attempt.total_marks_obtained} marks")
+        print("[OK] SUBMIT: Test submitted successfully!")
+        print(f"[SUCCESS] Attempt {attempt_id} now has {attempt.total_marks_obtained} marks")
 
         return jsonify({
             'success': True,
@@ -4646,7 +4646,7 @@ def submit_test(attempt_id):
 
     except Exception as e:
         db.session.rollback()
-        print(f"❌ ERROR in submit_test: {str(e)}")
+        print(f"[ERROR] ERROR in submit_test: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': f'Server error: {str(e)}'})
@@ -4703,7 +4703,7 @@ def debug_student_answers(attempt_id):
         <strong>Marks Summary:</strong><br>
         Calculated from answers: {calculated_total}<br>
         Stored in attempt: {attempt.total_marks_obtained}<br>
-        Status: {'✅ MATCH' if calculated_total == attempt.total_marks_obtained else '❌ MISMATCH'}
+        Status: {'[OK] MATCH' if calculated_total == attempt.total_marks_obtained else '[ERROR] MISMATCH'}
     </div>
     """
 
@@ -4733,7 +4733,7 @@ def fix_all_attempt_marks(test_id):
 
     if fixed_count > 0:
         db.session.commit()
-        result += f"<h4 style='color: green'>✅ Fixed {fixed_count} attempts</h4>"
+        result += f"<h4 style='color: green'>[OK] Fixed {fixed_count} attempts</h4>"
     else:
         result += "<h4>No fixes needed</h4>"
 
@@ -4882,7 +4882,7 @@ def admin_timetable():
 
         allotments_count = len(allotments_info)
 
-        # ✅ FIX: Empty timetables dictionary pass karo
+        # [OK] FIX: Empty timetables dictionary pass karo
         timetables = {}
 
         return render_template('admin/timetable.html',
@@ -4890,10 +4890,10 @@ def admin_timetable():
                                subjects=subjects,
                                allotments_info=allotments_info,
                                allotments_count=allotments_count,
-                               timetables=timetables)  # ✅ Yeh line add karo
+                               timetables=timetables)  # [OK] Yeh line add karo
 
     except Exception as e:
-        print(f"❌ Error in admin_timetable: {e}")
+        print(f"[ERROR] Error in admin_timetable: {e}")
         flash('Error loading timetable page', 'danger')
         return redirect(url_for('admin_dashboard'))
 @app.route('/generate_timetable', methods=['POST'])
@@ -4912,7 +4912,7 @@ def generate_timetable():
             flash('Please select at least one branch, year and semester', 'warning')
             return redirect(url_for('admin_timetable'))
 
-        print(f"🎯 Starting timetable generation for: {branches}, {years}, {semesters}")
+        print(f"[SUCCESS] Starting timetable generation for: {branches}, {years}, {semesters}")
 
         # Use the optimized timetable generator
         timetables = generate_smart_timetable(branches, years, semesters)
@@ -4920,20 +4920,20 @@ def generate_timetable():
         if timetables:
             success = save_timetable_to_db(timetables)
             if success:
-                flash(f'✅ Custom timetable generated successfully for {len(timetables)} combinations!', 'success')
+                flash(f'[OK] Custom timetable generated successfully for {len(timetables)} combinations!', 'success')
                 return redirect(url_for('view_combined_timetable',
                                         branches=','.join(branches),
                                         years=','.join(map(str, years)),
                                         semesters=','.join(map(str, semesters))))
             else:
-                flash('❌ Failed to save timetable to database', 'danger')
+                flash('[ERROR] Failed to save timetable to database', 'danger')
                 return redirect(url_for('admin_timetable'))
         else:
-            flash('❌ Timetable generation failed. No suitable slots found. Please check subject allotments.', 'warning')
+            flash('[ERROR] Timetable generation failed. No suitable slots found. Please check subject allotments.', 'warning')
             return redirect(url_for('admin_timetable'))
 
     except Exception as e:
-        print(f"❌ ERROR in custom timetable generation: {e}")
+        print(f"[ERROR] ERROR in custom timetable generation: {e}")
         import traceback
         traceback.print_exc()
         flash(f'Error generating timetable: {str(e)}', 'danger')
@@ -5074,15 +5074,15 @@ def reset_migration():
                 # Table exists - delete the version
                 conn.execute(text("DELETE FROM alembic_version"))
                 conn.commit()
-                return "✅ Migration version reset successfully! Now run: flask db migrate"
+                return "[OK] Migration version reset successfully! Now run: flask db migrate"
             else:
                 # Table doesn't exist - create it
                 conn.execute(text("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"))
                 conn.commit()
-                return "✅ Alembic version table created! Now run: flask db migrate"
+                return "[OK] Alembic version table created! Now run: flask db migrate"
 
     except Exception as e:
-        return f"❌ Error: {str(e)}"
+        return f"[ERROR] Error: {str(e)}"
 
 
 @app.route('/student/test/<int:test_id>/verify_security_code', methods=['POST'])
@@ -5097,7 +5097,7 @@ def verify_security_code(test_id):
         data = request.get_json()
         entered_code = data.get('security_code', '').strip()
 
-        print(f"🎯 Security Code Verification: Test {test_id}, Code: {entered_code}")
+        print(f"[SUCCESS] Security Code Verification: Test {test_id}, Code: {entered_code}")
 
         # Check if security code is required
         if not test.require_security_code:
@@ -5108,14 +5108,14 @@ def verify_security_code(test_id):
             # Code verified - mark as verified
             test.security_code_verified = True
             db.session.commit()
-            print(f"✅ Security code verified for test {test_id}")
+            print(f"[OK] Security code verified for test {test_id}")
             return jsonify({'success': True, 'message': 'Code verified'})
         else:
-            print(f"❌ Invalid security code for test {test_id}")
+            print(f"[ERROR] Invalid security code for test {test_id}")
             return jsonify({'success': False, 'error': 'Invalid security code'})
 
     except Exception as e:
-        print(f"❌ Error in security verification: {str(e)}")
+        print(f"[ERROR] Error in security verification: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
 
 

@@ -131,7 +131,7 @@ class AttendanceReport(db.Model):
     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=True)
     date = db.Column(db.Date, nullable=False)
     report_path = db.Column(db.String(500), nullable=True)
-    report_type = db.Column(db.String(50), default='custom_csv')  # ✅ ADD THIS
+    report_type = db.Column(db.String(50), default='custom_csv')  # ADD THIS
     created_at = db.Column(db.DateTime, default=datetime.now)
 
 
@@ -243,7 +243,7 @@ class TimetableSlot(db.Model):
     room_number = db.Column(db.String(20), nullable=False)
     slot_type = db.Column(db.String(20), nullable=False, default='lecture')
 
-    # ✅ ADD THESE 2 LINES FOR COMMON SUBJECTS FEATURE
+    # ADD THESE 2 LINES FOR COMMON SUBJECTS FEATURE
     is_common = db.Column(db.Boolean, default=False)  # New field
     common_name = db.Column(db.String(100))  # New field
 
@@ -405,7 +405,7 @@ class StudentAnswer(db.Model):
     feedback = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
-    # ✅ FIX: ADD UNIQUE CONSTRAINT TO PREVENT DUPLICATES
+    #  FIX: ADD UNIQUE CONSTRAINT TO PREVENT DUPLICATES
     __table_args__ = (
         db.UniqueConstraint('attempt_id', 'question_id', name='unique_attempt_question'),
     )
@@ -660,8 +660,8 @@ def initialize_rgpv_scheme_complete():
 
     if added_count > 0:
         db.session.commit()
-        print(f"✅ RGPV scheme initialized: {added_count} subjects added")
+        print(f" RGPV scheme initialized: {added_count} subjects added")
     else:
-        print("ℹ️ RGPV scheme already up to date")
+        print("ℹ RGPV scheme already up to date")
 
     return added_count
