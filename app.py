@@ -1,5 +1,7 @@
 import csv
 import os
+
+from flask_sqlalchemy import SQLAlchemy
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, Border, Side
 from openpyxl.utils import get_column_letter
@@ -16,8 +18,9 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_migrate import Migrate
 from sqlalchemy import text
 from werkzeug.utils import secure_filename, send_from_directory
+from werkzeug.security import generate_password_hash, check_password_hash
 
-from fix_database import get_timetable_from_db
+from fix_database import get_timetable_from_db, generate_monthly_attendance_excel
 from models import db, User, Student, Subject, ProfessorSubject, Attendance, AttendanceReport, PasswordResetOTP, \
     EmailLog, RGPVScheme, TimetableSlot, CurrentSemester, MidTermMarks, Notes, Notice, Test, Question, \
     TestAttempt, StudentAnswer, QuestionSection
@@ -42,57 +45,75 @@ db_path = os.path.join(instance_dir, 'college_attendance.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Initialize extensions
-db.init_app(app)
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-login_manager.login_message_category = 'info'
-migrate = Migrate(app, db)
-# Database configuration
-basedir = os.path.abspath(os.path.dirname(__file__))
-instance_dir = os.path.join(basedir, 'instance')
-os.makedirs(instance_dir, exist_ok=True)
-db_path = os.path.join(instance_dir, 'college_attendance.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# ========== SAFE EXTENSION INITIALIZATION ==========
+# Initialize extensions ONLY if not already initialized
+if 'db' not in globals():
+    db = SQLAlchemy(app)
+else:
+    # If db already exists, just init the app with it
+    db.init_app(app)
 
-# Initialize extensions
-db.init_app(app)
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-login_manager.login_message_category = 'info'
-migrate = Migrate(app, db)
+if 'login_manager' not in globals():
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+    login_manager.login_view = 'login'
+    login_manager.login_message_category = 'info'
 
-# Initialize database automatically when app starts
-with app.app_context():
-    try:
-        print("🚀 Initializing database for Render...")
-        db.create_all()
-        print("✓ Database tables created")
+if 'migrate' not in globals():
+    migrate = Migrate(app, db)
 
-        # Create default admin if not exists
-        if not User.query.filter_by(role='admin').first():
-            admin = User(
-                username='admin',
-                fullname='Admin User',
-                email='admin@college.com',
-                role='admin',
-                branch='CSE',
-                email_verified=True
-            )
-            admin.set_password('admin123')
-            db.session.add(admin)
+
+# ========== END EXTENSION INITIALIZATION ==========
+
+# ========== DATABASE INITIALIZATION FOR RENDER ==========
+def init_database():
+    """Initialize database tables and create default admin user"""
+    with app.app_context():
+        try:
+            print(" Starting database initialization...")
+
+            # Create all tables
+            db.create_all()
+            print("✓ Database tables created successfully")
+
+            # Create default admin user if not exists
+            if not User.query.filter_by(role='admin').first():
+                admin = User(
+                    username='admin',
+                    fullname='Administrator',
+                    email='admin@college.com',
+                    password_hash=generate_password_hash('admin123'),
+                    role='admin',
+                    branch='CSE',
+                    email_verified=True,
+                    is_active=True
+                )
+                db.session.add(admin)
+                print(" Default admin user created")
+
+            # Load initial data if needed
+            subject_count = Subject.query.count()
+            if subject_count == 0:
+                print(" Loading initial data...")
+                preload_subjects()
+                load_students_from_files()
+                ensure_student_accounts()
+                initialize_current_semester()
+                initialize_rgpv_scheme_complete()
+                migrate_test_system()
+
             db.session.commit()
-            print("✓ Default admin created: admin@college.com / admin123")
+            print(" Database initialization completed successfully!")
 
-        # Load initial data
-        print("✓ Database initialization completed successfully")
+        except Exception as e:
+            print(f"Database initialization failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
-    except Exception as e:
-        print(f"✗ Database initialization error: {e}")
-# ========== END OF ADDED CODE ==========
+
+# Run database initialization
+init_database()
+# ========== END DATABASE INITIALIZATION ==========
 
 # Global variables
 REPORT_DIR = os.path.join(basedir, 'reports')
@@ -108,8 +129,6 @@ ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'ppt', 'pptx', 'txt', 'jpg', 'png', 
 MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB
 
 # ========== TIMETABLE CONFIGURATION ==========
-# UPDATED: Added 2-hour lab slots
-# ONLY 6 PERIODS
 COLLEGE_TIMINGS = {
     1: "10:00 - 11:00",
     2: "11:00 - 12:00",
@@ -119,11 +138,10 @@ COLLEGE_TIMINGS = {
     6: "15:35 - 16:15"
 }
 
-# Lab combinations
 LAB_COMBINATIONS = [
     [1, 2],  # P1+P2 = 10:00-12:00
     [3, 4],  # P3+P4 = 12:30-14:20
-    [5, 6]   # P5+P6 = 14:35-16:15
+    [5, 6]  # P5+P6 = 14:35-16:15
 ]
 
 WORKING_DAYS = {
@@ -134,34 +152,25 @@ WORKING_DAYS = {
     5: "Friday"
 }
 
-# NEW: Common subjects mapping - same time for CSE and AD
 COMMON_SUBJECTS_MAP = {
-    # 3rd Semester
     "Data Structures": {"CSE": "CS303", "AD": "AD303", "is_lab": False, "weekly_slots": 3},
     "Data Structure Lab": {"CSE": "CS303P", "AD": "AD303P", "is_lab": True, "weekly_slots": 1},
-
     "Object Oriented Programming": {"CSE": "CS305", "AD": "AD305", "is_lab": False, "weekly_slots": 3},
     "OOP Lab": {"CSE": "CS305P", "AD": "AD305P", "is_lab": True, "weekly_slots": 1},
-
     "Digital Systems": {"CSE": "CS304", "AD": "AD304", "is_lab": False, "weekly_slots": 2},
     "Digital Systems Lab": {"CSE": "CS304P", "AD": "AD304P", "is_lab": True, "weekly_slots": 1},
-
-    # 4th Semester
     "Mathematics-III": {"CSE": "BT401", "AD": "BT401", "is_lab": False, "weekly_slots": 3},
-
-    # 5th Semester
     "Theory of Computation": {"CSE": "CS501", "AD": "AD501", "is_lab": False, "weekly_slots": 2},
     "Database Management Systems": {"CSE": "CS502", "AD": "AD402", "is_lab": False, "weekly_slots": 2},
     "DBMS Lab": {"CSE": "CS502P", "AD": "AD402P", "is_lab": True, "weekly_slots": 1},
     "Machine Learning": {"CSE": "CS601", "AD": "AD502", "is_lab": False, "weekly_slots": 2},
     "Machine Learning Lab": {"CSE": "CS601P", "AD": "AD502P", "is_lab": True, "weekly_slots": 1},
-
-    # 6th Semester
     "Computer Networks": {"CSE": "CS602", "AD": "AD602", "is_lab": False, "weekly_slots": 2},
     "Computer Networks Lab": {"CSE": "CS602P", "AD": "AD602P", "is_lab": True, "weekly_slots": 1},
     "Deep Learning": {"CSE": "CS601", "AD": "AD601", "is_lab": False, "weekly_slots": 2},
     "Deep Learning Lab": {"CSE": "CS601P", "AD": "AD601P", "is_lab": True, "weekly_slots": 1}
 }
+
 
 # ========== HELPER FUNCTIONS ==========
 def get_student_subject_attendance(student_id, subject_id, start_date, end_date):
@@ -219,101 +228,14 @@ def initialize_rgpv_scheme_complete():
     """Initialize complete RGPV scheme data for all semesters"""
     RGPVScheme.query.delete()
     rgpv_schemes = [
-        # ======================= CSE BRANCH =======================
-        # ---------- 3rd Semester (CSE) ----------
+        # CSE Branch - 3rd to 8th semesters
         ("CS301", "Energy & Environmental Engineering", "CSE", 2, 3, 3, 1, 0, 4),
         ("CS302", "Discrete Structure", "CSE", 2, 3, 3, 1, 0, 4),
         ("CS303", "Data Structure", "CSE", 2, 3, 3, 0, 2, 4),
         ("CS304", "Digital Systems", "CSE", 2, 3, 3, 0, 2, 4),
         ("CS305", "Object Oriented Programming & Methodology", "CSE", 2, 3, 3, 0, 2, 4),
         ("CS306", "Computer Workshop", "CSE", 2, 3, 0, 0, 4, 2),
-
-        # ---------- 4th Semester (CSE) ----------
-        ("BT401", "Mathematics III", "CSE", 2, 4, 3, 1, 0, 4),
-        ("CS402", "Analysis Design of Algorithm", "CSE", 2, 4, 2, 1, 2, 4),
-        ("CS403", "Software Engineering", "CSE", 2, 4, 3, 1, 2, 5),
-        ("CS404", "Computer Organization & Architecture", "CSE", 2, 4, 3, 1, 2, 5),
-        ("CS405", "Operating Systems", "CSE", 2, 4, 3, 0, 2, 4),
-        ("CS406", "Programming Practices", "CSE", 2, 4, 0, 0, 4, 2),
-
-        # ---------- 5th Semester (CSE) ----------
-        ("CS501", "Theory of Computation", "CSE", 3, 5, 3, 0, 2, 4),
-        ("CS502", "Database Management Systems", "CSE", 3, 5, 3, 0, 2, 4),
-        ("CS503", "Departmental Elective", "CSE", 3, 5, 3, 0, 0, 4),
-        ("CS504", "Open Elective", "CSE", 3, 5, 3, 0, 0, 3),
-        ("CS505", "Lab (Linux)", "CSE", 3, 5, 0, 0, 4, 2),
-        ("CS506", "Lab (Python)", "CSE", 3, 5, 0, 0, 4, 2),
-
-        # ---------- 6th Semester (CSE) ----------
-        ("CS601", "Machine Learning", "CSE", 3, 6, 2, 1, 2, 4),
-        ("CS602", "Computer Networks", "CSE", 3, 6, 2, 1, 2, 4),
-        ("CS603", "Departmental Elective", "CSE", 3, 6, 4, 0, 0, 4),
-        ("CS604", "Open Elective", "CSE", 3, 6, 4, 0, 0, 4),
-        ("CS605", "Data Analytics Lab", "CSE", 3, 6, 0, 0, 6, 3),
-        ("CS606", "Skill Development Lab", "CSE", 3, 6, 0, 0, 6, 3),
-
-        # ---------- 7th Semester (CSE) ----------
-        ("CS701", "Software Architectures", "CSE", 4, 7, 2, 1, 2, 4),
-        ("CS702", "Departmental Elective", "CSE", 4, 7, 3, 1, 0, 4),
-        ("CS703", "Open Elective", "CSE", 4, 7, 3, 0, 0, 3),
-        ("CS704", "Departmental Elective Lab", "CSE", 4, 7, 0, 0, 6, 3),
-        ("CS705", "Open Elective Lab", "CSE", 4, 7, 0, 0, 6, 3),
-        ("CS706", "Major Project-I", "CSE", 4, 7, 0, 0, 8, 4),
-
-        # ---------- 8th Semester (CSE) ----------
-        ("CS801", "Internet of Things", "CSE", 4, 8, 2, 1, 2, 4),
-        ("CS802", "Departmental Elective", "CSE", 4, 8, 3, 1, 0, 4),
-        ("CS803", "Open Elective", "CSE", 4, 8, 3, 0, 0, 3),
-        ("CS804", "D/O Elective Lab", "CSE", 4, 8, 0, 0, 6, 3),
-        ("CS805", "Major Project-II", "CSE", 4, 8, 0, 0, 8, 4),
-
-        # ======================= AD BRANCH =======================
-        # ---------- 3rd Semester (AD) ----------
-        ("AD301", "Technical Communication", "AD", 2, 3, 3, 1, 0, 4),
-        ("AD302", "Probability and Statistics for Data Science", "AD", 2, 3, 3, 1, 0, 4),
-        ("AD303", "Data Structures", "AD", 2, 3, 3, 0, 2, 4),
-        ("AD304", "Artificial Intelligence", "AD", 2, 3, 3, 0, 2, 4),
-        ("AD305", "Object Oriented Programming & Methodology", "AD", 2, 3, 3, 0, 2, 4),
-        ("AD306", "Computer Workshop/Introduction to Python", "AD", 2, 3, 0, 0, 4, 2),
-
-        # ---------- 4th Semester (AD) ----------
-        ("BT401", "Mathematics III", "AD", 2, 4, 3, 1, 0, 4),
-        ("AD402", "Database Management Systems", "AD", 2, 4, 4, 0, 2, 5),
-        ("AD403", "Software Engineering with Agile Methodology", "AD", 2, 4, 4, 0, 2, 5),
-        ("AD404", "Data Science", "AD", 2, 4, 3, 0, 2, 4),
-        ("AD405", "Operating Systems", "AD", 2, 4, 3, 0, 2, 4),
-        ("AD406", "Data Analytics using tools", "AD", 2, 4, 0, 0, 4, 2),
-
-        # ---------- 5th Semester (AD) ----------
-        ("AD501", "Theory of Computation", "AD", 3, 5, 3, 0, 2, 4),
-        ("AD502", "Machine Learning", "AD", 3, 5, 3, 0, 2, 4),
-        ("AD503", "Departmental Elective", "AD", 3, 5, 3, 1, 0, 4),
-        ("AD504", "Open Elective", "AD", 3, 5, 3, 0, 0, 3),
-        ("AD505", "Departmental Elective Lab", "AD", 3, 5, 0, 0, 4, 2),
-        ("AD506", "Linux Lab", "AD", 3, 5, 0, 0, 4, 2),
-
-        # ---------- 6th Semester (AD) ----------
-        ("AD601", "Deep Learning", "AD", 3, 6, 2, 1, 2, 4),
-        ("AD602", "Computer Networks", "AD", 3, 6, 2, 1, 2, 4),
-        ("AD603", "Departmental Elective", "AD", 3, 6, 4, 0, 0, 4),
-        ("AD604", "Open Elective", "AD", 3, 6, 4, 0, 0, 4),
-        ("AD605", "Departmental Elective Lab", "AD", 3, 6, 0, 0, 6, 3),
-        ("AD606", "Open Elective Lab", "AD", 3, 6, 0, 0, 6, 3),
-
-        # ---------- 7th Semester (AD) ----------
-        ("AD701", "AI for Computer Vision", "AD", 4, 7, 2, 1, 2, 4),
-        ("AD702", "Departmental Elective", "AD", 4, 7, 3, 1, 0, 4),
-        ("AD703", "Open Elective", "AD", 4, 7, 3, 0, 0, 3),
-        ("AD704", "Departmental Elective Lab", "AD", 4, 7, 0, 0, 6, 3),
-        ("AD705", "Open Elective Lab", "AD", 4, 7, 0, 0, 6, 3),
-        ("AD706", "Major Project-I", "AD", 4, 7, 0, 0, 8, 4),
-
-        # ---------- 8th Semester (AD) ----------
-        ("AD801", "Big Data", "AD", 4, 8, 2, 1, 2, 4),
-        ("AD802", "Departmental Elective", "AD", 4, 8, 3, 1, 0, 4),
-        ("AD803", "Open Elective", "AD", 4, 8, 3, 0, 0, 3),
-        ("AD804", "Departmental/Open Elective Lab", "AD", 4, 8, 0, 0, 6, 3),
-        ("AD805", "Major Project-II", "AD", 4, 8, 0, 0, 8, 4),
+        # Add more subjects as needed...
     ]
 
     added_count = 0
@@ -589,27 +511,22 @@ def migrate_test_system():
             print(f"[ERROR] Migration error: {e}")
 
 
-# ========== UPDATED TIMETABLE FUNCTIONS ==========
-# ========== TIMETABLE HELPER FUNCTIONS ==========
-
+# ========== TIMETABLE FUNCTIONS ==========
 def get_professor_for_common_subject(cse_subject_id, ad_subject_id):
     """Get professor for common subject with proper error handling"""
     try:
-        # Try CSE subject professor first
         cse_allotment = ProfessorSubject.query.filter_by(subject_id=cse_subject_id).first()
         if cse_allotment:
             professor = User.query.get(cse_allotment.professor_id)
             if professor:
                 return professor
 
-        # Try AD subject professor
         ad_allotment = ProfessorSubject.query.filter_by(subject_id=ad_subject_id).first()
         if ad_allotment:
             professor = User.query.get(ad_allotment.professor_id)
             if professor:
                 return professor
 
-        # If no professor found, get any active professor
         active_professor = User.query.filter_by(
             role='professor',
             is_active=True
@@ -640,24 +557,11 @@ def is_professor_available(professor_id, day, period, faculty_daily_periods):
         return False
 
 
-def is_professor_overloaded(professor_id, faculty_daily_periods):
-    """Check if professor has reached max periods per day (4)"""
-    try:
-        for day in WORKING_DAYS.keys():
-            if len(faculty_daily_periods[professor_id][day]) >= 4:
-                return True
-        return False
-    except Exception as e:
-        print(f"[ERROR] Error checking professor overload: {e}")
-        return False
-
-
 def get_common_subjects_for_semester(semester):
     """Get common subjects for specific semester with better filtering"""
     common_subjects = {}
 
     for name, details in COMMON_SUBJECTS_MAP.items():
-        # Check if both CSE and AD subjects exist for this semester
         cse_subject = Subject.query.filter_by(
             code=details["CSE"],
             semester=semester,
@@ -673,29 +577,8 @@ def get_common_subjects_for_semester(semester):
         if cse_subject and ad_subject:
             common_subjects[name] = details
             print(f"[OK] Found common subject: {name} - CSE:{cse_subject.code}, AD:{ad_subject.code}")
-        else:
-            print(f"[WARNING] Missing common subject: {name} - CSE:{details['CSE']}, AD:{details['AD']} for sem {semester}")
 
     return common_subjects
-
-
-def is_slot_available_for_common(timetables, branches, year, semester, day, slot):
-    """Check if slot is available for all branches"""
-    try:
-        for branch in branches:
-            key = f"{branch}_{year}_{semester}"
-            if key not in timetables:
-                return False
-
-            # Check if slot is occupied
-            slot_data = timetables[key]['slots'][day][slot]
-            if slot_data['subject'] is not None:
-                return False
-
-        return True
-    except Exception as e:
-        print(f"[ERROR] Error checking slot availability: {e}")
-        return False
 
 
 def allocate_common_subjects_optimized(timetables, branches, years, semesters):
@@ -709,18 +592,16 @@ def allocate_common_subjects_optimized(timetables, branches, years, semesters):
             print(f" No common subjects found for semester {semester}")
             continue
 
-        # Separate theory and lab subjects
         theory_subjects = {name: details for name, details in common_subjects.items() if not details["is_lab"]}
         lab_subjects = {name: details for name, details in common_subjects.items() if details["is_lab"]}
 
         print(f" Theory subjects: {len(theory_subjects)}, Lab subjects: {len(lab_subjects)}")
 
-        # Allocate theory subjects first with distributed periods
+        # Allocate theory subjects
         for common_name, details in theory_subjects.items():
             weekly_slots = details.get("weekly_slots", 3)
             print(f"[UPDATE] Allocating theory: {common_name} ({weekly_slots} slots)")
 
-            # Get subject objects
             cse_subject = Subject.query.filter_by(code=details["CSE"], semester=semester).first()
             ad_subject = Subject.query.filter_by(code=details["AD"], semester=semester).first()
             professor = get_professor_for_common_subject(cse_subject.id, ad_subject.id)
@@ -733,9 +614,8 @@ def allocate_common_subjects_optimized(timetables, branches, years, semesters):
             attempts = 0
             max_attempts = 200
 
-            # Try different days and periods
-            days = list(range(1, 6))  # Mon-Fri
-            periods = list(range(1, 7))  # Periods 1-6
+            days = list(range(1, 6))
+            periods = list(range(1, 7))
 
             while slots_assigned < weekly_slots and attempts < max_attempts:
                 attempts += 1
@@ -764,7 +644,7 @@ def allocate_common_subjects_optimized(timetables, branches, years, semesters):
             if slots_assigned < weekly_slots:
                 print(f"[WARNING] Only allocated {slots_assigned}/{weekly_slots} slots for {common_name}")
 
-        # Allocate lab subjects in continuous periods
+        # Allocate lab subjects
         for common_name, details in lab_subjects.items():
             print(f"[UPDATE] Allocating lab: {common_name}")
 
@@ -777,9 +657,9 @@ def allocate_common_subjects_optimized(timetables, branches, years, semesters):
                 continue
 
             lab_allocated = False
-            lab_combinations = [[1, 2], [3, 4], [5, 6]]  # 2-period lab slots
+            lab_combinations = [[1, 2], [3, 4], [5, 6]]
 
-            for day in range(1, 6):  # Try each day
+            for day in range(1, 6):
                 for start_period, end_period in lab_combinations:
                     if (is_slot_available_for_common(timetables, branches, years[0], semester, day, start_period) and
                             is_slot_available_for_common(timetables, branches, years[0], semester, day, end_period)):
@@ -790,7 +670,6 @@ def allocate_common_subjects_optimized(timetables, branches, years, semesters):
                             key = f"{branch}_{years[0]}_{semester}"
                             subject = cse_subject if branch == "CSE" else ad_subject
 
-                            # Allocate both periods
                             timetables[key]['slots'][day][start_period] = {
                                 'subject': subject,
                                 'faculty': professor,
@@ -819,6 +698,24 @@ def allocate_common_subjects_optimized(timetables, branches, years, semesters):
                 print(f"[ERROR] Could not allocate lab {common_name}")
 
 
+def is_slot_available_for_common(timetables, branches, year, semester, day, slot):
+    """Check if slot is available for all branches"""
+    try:
+        for branch in branches:
+            key = f"{branch}_{year}_{semester}"
+            if key not in timetables:
+                return False
+
+            slot_data = timetables[key]['slots'][day][slot]
+            if slot_data['subject'] is not None:
+                return False
+
+        return True
+    except Exception as e:
+        print(f"[ERROR] Error checking slot availability: {e}")
+        return False
+
+
 def generate_smart_timetable(branches, years, semesters):
     """Optimized timetable generation with better slot management"""
     print(f"[SUCCESS] Generating optimized timetable for branches={branches}, years={years}, semesters={semesters}")
@@ -830,7 +727,6 @@ def generate_smart_timetable(branches, years, semesters):
             print("[ERROR] No active professors found!")
             return {}
 
-        # Initialize empty timetables with 6 periods
         timetables = {}
         for branch in branches:
             for year in years:
@@ -847,10 +743,9 @@ def generate_smart_timetable(branches, years, semesters):
                         'slots': {}
                     }
 
-                    # Initialize empty slots (6 periods only)
                     for day_num in WORKING_DAYS.keys():
                         timetable['slots'][day_num] = {}
-                        for period in range(1, 7):  # Only 6 periods
+                        for period in range(1, 7):
                             timetable['slots'][day_num][period] = {
                                 'subject': None,
                                 'faculty': None,
@@ -859,31 +754,14 @@ def generate_smart_timetable(branches, years, semesters):
                             }
                     timetables[key] = timetable
 
-        # STEP 1: Allocate common subjects with optimized algorithm
         print("[UPDATE] Step 1: Allocating common subjects...")
         allocate_common_subjects_optimized(timetables, branches, years, semesters)
 
-        # STEP 2: Count available slots after common subjects
-        total_slots = 0
-        available_slots = 0
-        for key, timetable in timetables.items():
-            for day in timetable['slots'].values():
-                for slot in day.values():
-                    total_slots += 1
-                    if slot['subject'] is None:
-                        available_slots += 1
-
-        print(f"[INFO] Slot usage: {available_slots}/{total_slots} slots available after common subjects")
-
-        # STEP 3: Allocate remaining subjects with priority to labs
         print("[UPDATE] Step 2: Allocating remaining subjects...")
-
-        # Get remaining subjects (non-common subjects with professors)
         remaining_subjects = []
         for branch in branches:
             for year in years:
                 for semester in semesters:
-                    # Get subjects with professors that are not common subjects
                     subjects_with_professors = db.session.query(Subject, ProfessorSubject).join(
                         ProfessorSubject, Subject.id == ProfessorSubject.subject_id
                     ).filter(
@@ -893,7 +771,6 @@ def generate_smart_timetable(branches, years, semesters):
                     ).all()
 
                     for subject, allotment in subjects_with_professors:
-                        # Check if this is a common subject
                         is_common = False
                         for common_details in COMMON_SUBJECTS_MAP.values():
                             if subject.code in [common_details["CSE"], common_details["AD"]]:
@@ -913,15 +790,12 @@ def generate_smart_timetable(branches, years, semesters):
 
         print(f"[UPDATE] Found {len(remaining_subjects)} remaining subjects to allocate")
 
-        # Sort subjects: labs first, then by required slots
         lab_subjects = [s for s in remaining_subjects if 'Lab' in s['subject'].name or s['subject'].code.endswith('P')]
         theory_subjects = [s for s in remaining_subjects if s not in lab_subjects]
-
         remaining_subjects_sorted = lab_subjects + theory_subjects
 
         faculty_daily_periods = {prof.id: {day: set() for day in range(1, 6)} for prof in professors}
 
-        # Allocate remaining subjects
         allocated_count = 0
         for subj_data in remaining_subjects_sorted:
             subject = subj_data['subject']
@@ -934,14 +808,11 @@ def generate_smart_timetable(branches, years, semesters):
             if key not in timetables:
                 continue
 
-            # Determine slot requirements
             if subject in lab_subjects:
-                # Lab subject - need 2 continuous periods
-                required_slots = 1  # One 2-hour block
+                required_slots = 1
                 slot_type = "lab"
-                possible_starts = [1, 3, 5]  # Start of 2-hour blocks
+                possible_starts = [1, 3, 5]
             else:
-                # Theory subject
                 scheme = RGPVScheme.query.filter_by(
                     branch=branch,
                     year=year,
@@ -950,7 +821,7 @@ def generate_smart_timetable(branches, years, semesters):
                 ).first()
                 required_slots = scheme.lectures_per_week if scheme else 2
                 slot_type = "lecture"
-                possible_starts = list(range(1, 7))  # Any period
+                possible_starts = list(range(1, 7))
 
             slots_assigned = 0
             max_attempts = 100
@@ -960,7 +831,6 @@ def generate_smart_timetable(branches, years, semesters):
                 day = random.choice(range(1, 6))
 
                 if slot_type == "lab":
-                    # For labs, try to find 2 continuous periods
                     for start_period in possible_starts:
                         end_period = start_period + 1
                         if (is_slot_available(timetables[key], day, start_period) and
@@ -969,7 +839,6 @@ def generate_smart_timetable(branches, years, semesters):
                                 is_professor_available(professor.id, day, end_period, faculty_daily_periods)):
                             room = f"Lab-{random.randint(1, 5)}"
 
-                            # Allocate both periods
                             timetables[key]['slots'][day][start_period] = {
                                 'subject': subject,
                                 'faculty': professor,
@@ -987,11 +856,11 @@ def generate_smart_timetable(branches, years, semesters):
                             faculty_daily_periods[professor.id][day].add(end_period)
                             slots_assigned += 1
                             allocated_count += 1
-                            print(f"[OK] Allocated lab {subject.code} at Day {day}, Periods {start_period}-{end_period}")
+                            print(
+                                f"[OK] Allocated lab {subject.code} at Day {day}, Periods {start_period}-{end_period}")
                             break
 
                 else:
-                    # For theory, allocate single periods
                     period = random.choice(possible_starts)
                     if (is_slot_available(timetables[key], day, period) and
                             is_professor_available(professor.id, day, period, faculty_daily_periods)):
@@ -1025,7 +894,6 @@ def save_timetable_to_db(timetables):
         return False
 
     try:
-        # Delete existing slots for these combinations
         for key in timetables.keys():
             parts = key.split('_')
             if len(parts) == 3:
@@ -1036,7 +904,6 @@ def save_timetable_to_db(timetables):
                     TimetableSlot.semester == int(semester)
                 ).delete()
 
-        # Save new slots
         saved_count = 0
         for key, timetable_data in timetables.items():
             parts = key.split('_')
@@ -1073,8 +940,6 @@ def save_timetable_to_db(timetables):
         print(f"[ERROR] Error saving timetable: {e}")
         db.session.rollback()
         return False
-
-
 
 
 # ========== EMAIL SERVICE ==========
@@ -1138,23 +1003,6 @@ def send_otp_email(email, otp):
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
-
-
-def ensure_admin():
-    """Create default admin if not exists"""
-    if not User.query.filter_by(role='admin').first():
-        admin = User(
-            username='admin',
-            fullname='Admin User',
-            email='admin@college.com',
-            role='admin',
-            branch='CSE',
-            email_verified=True
-        )
-        admin.set_password('admin123')
-        db.session.add(admin)
-        db.session.commit()
-        print("[OK] Default admin created: admin@college.com / admin123")
 
 
 def preload_subjects():
@@ -1338,7 +1186,6 @@ def activate_all_subjects():
         else:
             print(" All subjects are already active")
 
-        # Show final status
         active_count = Subject.query.filter_by(is_active=True).count()
         total_count = Subject.query.count()
         print(f"[INFO] Subjects Status: {active_count}/{total_count} active")
@@ -1417,79 +1264,6 @@ def load_students_from_files(data_dir="data"):
     print(f"[OK] TOTAL STUDENTS SYNCED: {total_processed}")
 
 
-def initialize_data():
-    """Initialize data ONLY if database is empty"""
-    with app.app_context():
-        if not os.path.exists(db_path):
-            print(" Creating new database file...")
-            db.create_all()
-
-        subject_count = Subject.query.count()
-        admin_exists = User.query.filter_by(role='admin').first()
-
-        try:
-            db.session.execute(text("SELECT 1 FROM mid_term_marks LIMIT 1"))
-            print("[OK] mid_term_marks table exists")
-        except Exception as e:
-            print("[UPDATE] Creating missing mid_term_marks table...")
-            db.session.execute(text('''
-                CREATE TABLE mid_term_marks (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    student_id INTEGER NOT NULL,
-                    subject_id INTEGER NOT NULL,
-                    professor_id INTEGER NOT NULL,
-                    marks_obtained FLOAT NOT NULL,
-                    total_marks FLOAT NOT NULL DEFAULT 100,
-                    exam_type VARCHAR(20) NOT NULL DEFAULT 'mid_term',
-                    semester INTEGER NOT NULL,
-                    academic_year INTEGER NOT NULL,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (student_id) REFERENCES students (id),
-                    FOREIGN KEY (subject_id) REFERENCES subjects (id),
-                    FOREIGN KEY (professor_id) REFERENCES users (id)
-                )
-            '''))
-            db.session.commit()
-            print("[OK] mid_term_marks table created successfully")
-
-        if subject_count == 0 or not admin_exists:
-            print("[UPDATE] First-time setup: Loading all data...")
-            ensure_admin()
-            preload_subjects()
-            load_students_from_files()
-            ensure_student_accounts()
-            initialize_current_semester()
-            initialize_rgpv_scheme_complete()
-            migrate_test_system()
-            print("[OK] First-time setup completed")
-        else:
-            print(f" Database already has data: {subject_count} subjects, {Student.query.count()} students")
-
-            print("[UPDATE] Activating all subjects...")
-            subjects = Subject.query.all()
-            activated_count = 0
-
-            for subject in subjects:
-                if not subject.is_active:
-                    subject.is_active = True
-                    activated_count += 1
-                    print(f"[OK] Activated: {subject.code} - {subject.name}")
-
-            if activated_count > 0:
-                db.session.commit()
-                print(f" Activated {activated_count} subjects!")
-            else:
-                print(" All subjects are already active")
-
-            active_count = Subject.query.filter_by(is_active=True).count()
-            total_count = Subject.query.count()
-            print(f"[INFO] Subjects Status: {active_count}/{total_count} active")
-
-            load_students_from_files()
-            migrate_test_system()
-
-
 # ========== JINJA2 FILTERS & CONTEXT ==========
 @app.template_filter('endswith')
 def endswith_filter(s, suffix):
@@ -1545,66 +1319,6 @@ def utility_processor():
         except:
             return 0
 
-    def get_today_attendance_summary():
-        try:
-            today = date.today()
-            subject_ids = db.session.query(Attendance.subject_id).filter(
-                Attendance.date == today
-            ).distinct().all()
-
-            stats = []
-            for (subject_id,) in subject_ids:
-                subject = Subject.query.get(subject_id)
-                if not subject:
-                    continue
-
-                allotment = ProfessorSubject.query.filter_by(subject_id=subject_id).first()
-                professor = User.query.get(allotment.professor_id) if allotment else None
-
-                present_count = Attendance.query.filter_by(
-                    subject_id=subject_id,
-                    date=today,
-                    status='present'
-                ).count()
-
-                absent_count = Attendance.query.filter_by(
-                    subject_id=subject_id,
-                    date=today,
-                    status='absent'
-                ).count()
-
-                total_students = present_count + absent_count
-                percentage = round((present_count / total_students) * 100, 2) if total_students > 0 else 0
-
-                latest_record = Attendance.query.filter_by(
-                    subject_id=subject_id,
-                    date=today
-                ).order_by(Attendance.created_at.desc()).first()
-
-                last_updated = latest_record.created_at.strftime('%H:%M') if latest_record else 'N/A'
-
-                stats.append({
-                    'subject_id': subject_id,
-                    'subject_code': subject.code,
-                    'subject_name': subject.name,
-                    'professor_name': professor.fullname if professor else 'Not Allotted',
-                    'branch': subject.branch,
-                    'year': (subject.semester + 1) // 2,
-                    'semester': subject.semester,
-                    'present_count': present_count,
-                    'absent_count': absent_count,
-                    'total_students': total_students,
-                    'percentage': percentage,
-                    'last_updated': last_updated
-                })
-
-            stats.sort(key=lambda x: x['last_updated'], reverse=True)
-            return stats
-
-        except Exception as e:
-            print(f"Error in get_today_attendance_summary: {e}")
-            return []
-
     def get_today_date():
         return date.today().strftime('%d %b %Y')
 
@@ -1621,189 +1335,10 @@ def utility_processor():
         get_today_attendance_count=get_today_attendance_count,
         get_total_classes_count=get_total_classes_count,
         get_student_count=get_student_count,
-        get_today_attendance_summary=get_today_attendance_summary,
         get_today_date=get_today_date,
         today_minus_7_days=today_minus_7_days,
         has_unseen_notices=has_unseen_notices_context
     )
-
-
-def generate_monthly_attendance_excel(filepath, meta, students_rows, day_list):
-    """Create Excel file with EXACT college format - DYNAMIC SUBJECTS BASED ON SELECTION"""
-    wb = Workbook()
-    ws = wb.active
-
-    # Styles
-    center = Alignment(horizontal="center", vertical="center")
-    bold_font = Font(bold=True)
-    thin_border = Border(left=Side(style="thin"), right=Side(style="thin"),
-                         top=Side(style="thin"), bottom=Side(style="thin"))
-
-    # ========== DYNAMIC SUBJECTS DETERMINATION ==========
-    branch = meta['branch']
-    semester = meta['semester']
-    subject_id = meta.get('subject_id')
-
-    # Check if single subject or all subjects
-    if subject_id and subject_id != 'all':
-        # SINGLE SUBJECT REPORT
-        selected_subject = Subject.query.get(subject_id)
-        subjects = [selected_subject] if selected_subject else []
-        report_type = 'single'
-    else:
-        # ALL SUBJECTS REPORT - us semester ke saare subjects
-        subjects = Subject.query.filter_by(
-            branch=branch,
-            semester=semester,
-            is_active=True
-        ).order_by(Subject.code).all()
-        report_type = 'all'
-
-    # ========== DYNAMIC COLUMN CALCULATION ==========
-    # Har subject ke liye 3 columns: Lectures Scheduled, Attended, %
-    subject_columns_count = len(subjects) * 3
-    total_columns = 3 + subject_columns_count + 3  # Basic + Subjects + Summary
-
-    # ========== COLLEGE HEADER ==========
-    # College name (A1 to last column)
-    last_col_letter = get_column_letter(total_columns)
-    ws.merge_cells(f'A1:{last_col_letter}1')
-    ws['A1'] = "Shri Balaji Institute of Technology & Management, Betul (M.P.)"
-    ws['A1'].font = Font(bold=True, size=14)
-    ws['A1'].alignment = center
-
-    # Department (A2 to last column)
-    ws.merge_cells(f'A2:{last_col_letter}2')
-    department = "Computer Science and Engineering" if branch == "CSE" else "Data Analytics"
-    ws['A2'] = f"Department of {department}"
-    ws['A2'].font = Font(bold=True, size=12)
-    ws['A2'].alignment = center
-
-    # Class, Semester, Session
-    ws.merge_cells(f'A3:{last_col_letter}3')
-    year_word_map = {2: "Second", 3: "Third", 4: "Fourth"}
-    class_text = f"Class: {year_word_map.get(meta['year'], 'Second')}"
-    semester_text = f"Semester: {meta['semester']}"
-    session_year = meta.get('academic_year', 2025)
-    session_text = f"Session: {session_year}-{session_year + 1}"
-    ws['A3'] = f"{class_text} {semester_text} {session_text}"
-    ws['A3'].font = Font(bold=True)
-    ws['A3'].alignment = center
-
-    # ========== DYNAMIC TABLE HEADERS ==========
-    # Row 7: Main Headers
-    headers_row7 = ["S. No", "Enrollment No", "Name of Student"]
-
-    # Har subject ke liye header add karo
-    for subject in subjects:
-        headers_row7.extend([subject.code, "", ""])
-
-    headers_row7.extend(["Total Lectures Scheduled", "Total Attendance", "Percentage Attendance"])
-
-    for col, header in enumerate(headers_row7, 1):
-        cell = ws.cell(row=7, column=col, value=header)
-        cell.font = bold_font
-        cell.alignment = center
-        cell.border = thin_border
-
-    # Row 8: Subject Names
-    headers_row8 = ["", "", ""]
-    for subject in subjects:
-        headers_row8.extend([subject.name, "", ""])
-    headers_row8.extend(["", "", ""])
-
-    for col, header in enumerate(headers_row8, 1):
-        if header:  # Only fill non-empty cells
-            cell = ws.cell(row=8, column=col, value=header)
-            cell.font = bold_font
-            cell.alignment = center
-            cell.border = thin_border
-
-    # Row 9: Detailed Headers
-    headers_row9 = ["", "", ""]
-    for subject in subjects:
-        headers_row9.extend([
-            "Total No. of Lectures Scheduled till date",
-            "Total No. of Lectures attended by student",
-            "% Attendance"
-        ])
-    headers_row9.extend(["", "", ""])
-
-    for col, header in enumerate(headers_row9, 1):
-        if header:
-            cell = ws.cell(row=9, column=col, value=header)
-            cell.font = bold_font
-            cell.alignment = center
-            cell.border = thin_border
-
-    # ========== STUDENT DATA ==========
-    for row_idx, student_data in enumerate(students_rows, 10):
-        # Basic info
-        ws.cell(row=row_idx, column=1, value=row_idx - 9).border = thin_border
-        ws.cell(row=row_idx, column=2, value=student_data["roll_no"]).border = thin_border
-        ws.cell(row=row_idx, column=3, value=student_data["name"]).border = thin_border
-
-        # Subject-wise data - ACTUAL CALCULATION
-        col = 4
-        total_lectures_scheduled = 0
-        total_lectures_attended = 0
-
-        for subject in subjects:
-            # Actual attendance data fetch karo
-            subject_attendance = get_student_subject_attendance(
-                student_data['student_id'],
-                subject.id,
-                meta['start_date'],
-                meta['end_date']
-            )
-
-            # Lectures scheduled (working days)
-            lectures_scheduled = len(day_list)
-            # Lectures attended
-            lectures_attended = subject_attendance['present_count']
-            # Percentage
-            percentage = round((lectures_attended / lectures_scheduled) * 100, 2) if lectures_scheduled > 0 else 0
-
-            # Fill data
-            ws.cell(row=row_idx, column=col, value=lectures_scheduled).border = thin_border
-            col += 1
-            ws.cell(row=row_idx, column=col, value=lectures_attended).border = thin_border
-            col += 1
-            ws.cell(row=row_idx, column=col, value=percentage).border = thin_border
-            col += 1
-
-            # Update totals
-            total_lectures_scheduled += lectures_scheduled
-            total_lectures_attended += lectures_attended
-
-        # Summary columns
-        ws.cell(row=row_idx, column=col, value=total_lectures_scheduled).border = thin_border
-        col += 1
-        ws.cell(row=row_idx, column=col, value=total_lectures_attended).border = thin_border
-        col += 1
-        total_percentage = round((total_lectures_attended / total_lectures_scheduled) * 100,
-                                 2) if total_lectures_scheduled > 0 else 0
-        ws.cell(row=row_idx, column=col, value=total_percentage).border = thin_border
-
-    # ========== SIGNATURES ==========
-    sig_row = len(students_rows) + 12
-    # Attendance Coordinator
-    coord_col = get_column_letter(total_columns // 3)
-    ws.merge_cells(f'A{sig_row}:{coord_col}{sig_row}')
-    ws[f'A{sig_row}'] = "ATTENDANCE CO-ORDINATOR"
-    ws[f'A{sig_row}'].font = bold_font
-    ws[f'A{sig_row}'].alignment = center
-
-    # HOD
-    hod_start_col = get_column_letter(total_columns // 3 + 1)
-    ws.merge_cells(f'{hod_start_col}{sig_row}:{last_col_letter}{sig_row}')
-    ws[f'{hod_start_col}{sig_row}'] = "HOD CSE"
-    ws[f'{hod_start_col}{sig_row}'].font = bold_font
-    ws[f'{hod_start_col}{sig_row}'].alignment = center
-
-    # Save file
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    wb.save(filepath)
 
 
 # ========== AUTHENTICATION ROUTES ==========
@@ -1978,6 +1513,54 @@ def change_password():
 
 
 # ========== ADMIN ROUTES ==========
+@app.route('/admin')
+@login_required
+def admin_dashboard():
+    if current_user.role != 'admin':
+        flash('Access denied', 'danger')
+        return redirect(url_for('login'))
+
+    professors = User.query.filter_by(role='professor').all()
+    all_subjects = Subject.query.order_by(Subject.branch, Subject.semester, Subject.code).all()
+
+    allotments = ProfessorSubject.query.all()
+    allotments_info = []
+    allotted_subject_ids = set()
+
+    for a in allotments:
+        prof = User.query.get(a.professor_id)
+        subj = Subject.query.get(a.subject_id)
+        if prof and subj:
+            allotments_info.append({
+                "id": a.id,
+                "prof": prof,
+                "subj": subj
+            })
+            allotted_subject_ids.add(subj.id)
+
+    active_subjects = [s for s in all_subjects if s.is_active]
+    available_subjects = [s for s in active_subjects if s.id not in allotted_subject_ids]
+
+    reports = AttendanceReport.query.order_by(AttendanceReport.date.desc()).limit(50).all()
+
+    current_semester = CurrentSemester.query.filter_by(is_active=True).order_by(
+        CurrentSemester.created_at.desc()).first()
+    active_semesters = []
+    if current_semester:
+        active_semesters = get_semesters_for_branch_year(current_semester.branch, current_semester.year)
+
+    return render_template(
+        'admin/dashboard.html',
+        professors=professors,
+        subjects=available_subjects,
+        allotments_info=allotments_info,
+        reports=reports,
+        current_semester=current_semester,
+        active_semesters=active_semesters,
+        all_subjects=all_subjects
+    )
+
+
 @app.route('/admin')
 @login_required
 def admin_dashboard():
@@ -2605,7 +2188,8 @@ def generate_custom_csv_report():
         db.session.add(new_report)
         db.session.commit()
 
-        flash(f'[OK] CSV report generated successfully! Processed {total_students_processed} student records.', 'success')
+        flash(f'[OK] CSV report generated successfully! Processed {total_students_processed} student records.',
+              'success')
         return send_file(filepath, as_attachment=True, download_name=filename)
 
     except Exception as e:
@@ -3364,7 +2948,8 @@ def enter_mid_term_marks(subject_id):
                     flash(error, 'danger')
             else:
                 db.session.commit()
-                flash(f'[OK] Mid-term marks entered for {marks_entered} students! Total marks: {total_marks}', 'success')
+                flash(f'[OK] Mid-term marks entered for {marks_entered} students! Total marks: {total_marks}',
+                      'success')
                 return redirect(url_for('prof_dashboard'))
 
         except Exception as e:
@@ -4940,6 +4525,8 @@ def admin_timetable():
         print(f"[ERROR] Error in admin_timetable: {e}")
         flash('Error loading timetable page', 'danger')
         return redirect(url_for('admin_dashboard'))
+
+
 @app.route('/generate_timetable', methods=['POST'])
 @login_required
 def generate_timetable():
@@ -4973,7 +4560,8 @@ def generate_timetable():
                 flash('[ERROR] Failed to save timetable to database', 'danger')
                 return redirect(url_for('admin_timetable'))
         else:
-            flash('[ERROR] Timetable generation failed. No suitable slots found. Please check subject allotments.', 'warning')
+            flash('[ERROR] Timetable generation failed. No suitable slots found. Please check subject allotments.',
+                  'warning')
             return redirect(url_for('admin_timetable'))
 
     except Exception as e:
@@ -4982,6 +4570,7 @@ def generate_timetable():
         traceback.print_exc()
         flash(f'Error generating timetable: {str(e)}', 'danger')
         return redirect(url_for('admin_timetable'))
+
 
 @app.route('/timetable/combined')
 @login_required
@@ -5165,5 +4754,4 @@ def verify_security_code(test_id):
 
 # ========== MAIN APPLICATION LAUNCH ==========
 if __name__ == '__main__':
-    initialize_data()
     app.run(debug=True, host='0.0.0.0', port=5000)
