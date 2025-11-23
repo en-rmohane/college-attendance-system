@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2>📊 Generate Monthly Attendance Report (Department Format)</h2>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="POST">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label class="form-label">Branch</label>
+                        <select name="branch" class="form-select" required>
+                            <option value="">Select Branch</option>
+                            <option value="CSE">CSE</option>
+                            <option value="AD">AD</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label">Year</label>
+                        <select name="year" class="form-select" required>
+                            <option value="">Select Year</option>
+                            <option value="2">Year 2</option>
+                            <option value="3">Year 3</option>
+                            <option value="4">Year 4</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label">Semester</label>
+                        <select name="semester" class="form-select" required>
+                            <option value="">Select Semester</option>
+                            <option value="3">Semester 3</option>
+                            <option value="4">Semester 4</option>
+                            <option value="5">Semester 5</option>
+                            <option value="6">Semester 6</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label">Subject</label>
+                        <select name="subject_id" class="form-select" required>
+                            <option value="">Select Subject</option>
+                            {% for subject in subjects %}
+                                <option value="{{ subject.id }}">
+                                    {{ subject.code }} - {{ subject.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Month & Year</label>
+                        <input type="month" name="month_year" class="form-control" required 
+                               value="{{ datetime.now().strftime('%Y-%m') }}">
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-success">
+                        📄 Generate Monthly Excel Report
+                    </button>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5>📋 Report Format Preview</h5>
+        </div>
+        <div class="card-body">
+            <p><strong>Generated report will include:</strong></p>
+            <ul>
+                <li>College header with name and department</li>
+                <li>Branch, Year, Semester, Subject details</li>
+                <li>Student list with Roll No and Name</li>
+                <li>Daily attendance columns (1, 2, 3, ... for each working day)</li>
+                <li>P/A marking for each day</li>
+                <li>Total Present, Total Lectures, Percentage</li>
+                <li>Professional Excel format with borders and styling</li>
+            </ul>
+            <p class="text-success"><strong>✅ Exact department format like your document</strong></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

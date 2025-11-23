@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>
+      <i class="bi bi-clock-history"></i>&nbsp; Attendance Reports
+    </h3>
+    <div>
+      <!-- IMPORTANT: goes to admin_generate_report -->
+      <a href="{{ url_for('admin_generate_report') }}" class="btn btn-primary me-2">
+        <i class="bi bi-file-earmark-spreadsheet"></i>&nbsp; Generate New Report
+      </a>
+      <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-speedometer2"></i>&nbsp; Dashboard
+      </a>
+    </div>
+  </div>
+
+  <!-- Search and Filters -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Search</label>
+          <input class="form-control" id="searchInput"
+                 placeholder="Search by subject, branch, filename, professor...">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">File Status</label>
+          <select id="filterType" class="form-select">
+            <option value="">All files</option>
+            <option value="hasfile">Has file</option>
+            <option value="nofile">Missing file</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Report Type</label>
+          <select id="filterReportType" class="form-select">
+            <option value="">All types</option>
+            <option value="subject">Single Subject</option>
+            <option value="all">All Subjects</option>
+            <option value="semester">Semester / Year wise</option>
+          </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button id="clearFilters" class="btn btn-outline-secondary w-100">
+            Clear Filters
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reports Table -->
+  <div class="card">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+      <h6 class="mb-0">Generated Reports ({{ reports|length }} total)</h6>
+      <small class="text-muted">Latest first</small>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width:40px">#</th>
+            <th style="width:120px">Date</th>
+            <th style="width:130px">Branch / Year / Sem</th>
+            <th>Subject</th>
+            <th style="width:90px">Code</th>
+            <th style="width:110px">File</th>
+            <th style="width:200px">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="reportsTable">
+          {% for rep in reports %}
+          {#
+             Expected fields on rep:
+             rep.id, rep.date, rep.branch, rep.year, rep.semester,
+             rep.subject_code, rep.subject_name,
+             rep.report_path (or filename derived), rep.created_at, rep.has_file
+          #}
+          <tr class="report-row
+                    {% if not rep.has_file %}table-secondary{% endif %}"
+              data-filestatus="{{ 'hasfile' if rep.has_file else 'nofile' }}"
+              data-reporttype="{% if rep.subject_code == 'ALL' or not rep.subject_id %}all{% else %}subject{% endif %}">
+            <td>{{ loop.index }}</td>
+            <td>
+              <strong>{{ rep.date.strftime('%d-%m-%Y') if rep.date else '-' }}</strong><br>
+              <small class="text-muted">{{ rep.date.strftime('%a') if rep.date else '' }}</small>
+            </td>
+            <td>
+              <small>
+                {{ rep.branch or '—' }}<br>
+                {{ 'Y' ~ rep.year if rep.year else '—' }}
+                {{ ' S' ~ rep.semester if rep.semester else '' }}
+              </small>
+            </td>
+            <td>
+              {% if rep.subject_name %}
+                {{ rep.subject_name }}
+              {% else %}
+                <span class="text-muted">Multiple Subjects / All</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if rep.subject_code %}
+                <span class="badge bg-secondary">{{ rep.subject_code }}</span>
+              {% else %}
+                <span class="badge bg-dark">ALL</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if rep.has_file %}
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-file-earmark-excel text-success me-2"></i>
+                  <div>
+                    <span class="text-success">
+                      {{ (rep.report_path.split('/')[-1])[:22] ~ ('...' if (rep.report_path|length > 25) else '') }}
+                    </span><br>
+                    <small class="text-muted">
+                      {{ rep.created_at.strftime('%d-%m-%Y %H:%M') if rep.created_at else '' }}
+                    </small>
+                  </div>
+                </div>
+              {% else %}
+                <span class="text-muted">
+                  <i class="bi bi-file-earmark-x me-1"></i>Missing
+                </span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="d-flex gap-2">
+                {% if rep.has_file %}
+                <a href="{{ url_for('download_report', report_id=rep.id) }}"
+                   class="btn btn-outline-primary btn-sm">
+                  <i class="bi bi-download"></i>&nbsp;Download
+                </a>
+                {% else %}
+                <button class="btn btn-outline-secondary btn-sm" disabled>
+                  <i class="bi bi-download"></i>&nbsp;Download
+                </button>
+                {% endif %}
+
+                <form method="post"
+                      action="{{ url_for('delete_report', report_id=rep.id) }}"
+                      onsubmit="return confirm('Delete this report permanently?');">
+                  <button type="submit" class="btn btn-danger btn-sm">
+                    <i class="bi bi-trash"></i>&nbsp;Delete
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center py-4">
+              <i class="bi bi-inbox display-1 text-muted"></i>
+              <h5 class="text-muted mt-3">No reports generated yet</h5>
+              <p class="text-muted">Generate your first attendance report to get started.</p>
+              <a href="{{ url_for('admin_generate_report') }}" class="btn btn-primary">
+                <i class="bi bi-file-earmark-spreadsheet"></i>&nbsp;Generate Report
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// Search & Filters for reports table
+document.addEventListener('DOMContentLoaded', function () {
+  const searchInput = document.getElementById('searchInput');
+  const filterType = document.getElementById('filterType');
+  const filterReportType = document.getElementById('filterReportType');
+  const clearBtn = document.getElementById('clearFilters');
+  const rows = document.querySelectorAll('.report-row');
+
+  function applyFilters() {
+    const term = (searchInput.value || '').toLowerCase();
+    const fileFilter = filterType.value;
+    const typeFilter = filterReportType.value;
+
+    rows.forEach(row => {
+      const text = row.innerText.toLowerCase();
+      const fileStatus = row.dataset.filestatus;
+      const reportType = row.dataset.reporttype;
+
+      const matchSearch = !term || text.includes(term);
+      const matchFile = !fileFilter || fileStatus === fileFilter;
+      const matchType = !typeFilter || reportType === typeFilter;
+
+      row.style.display = (matchSearch && matchFile && matchType) ? '' : 'none';
+    });
+  }
+
+  searchInput.addEventListener('input', applyFilters);
+  filterType.addEventListener('change', applyFilters);
+  filterReportType.addEventListener('change', applyFilters);
+
+  clearBtn.addEventListener('click', function () {
+    searchInput.value = '';
+    filterType.value = '';
+    filterReportType.value = '';
+    applyFilters();
+  });
+
+  applyFilters();
+});
+</script>
+{% endblock %}

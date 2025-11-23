@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Test - College Attendance System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 20px;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 25px;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .feature-icon {
+            font-size: 2rem;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        .test-features {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .end-time-display {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 5px;
+            font-weight: bold;
+            color: #0066cc;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('prof_dashboard') }}">
+                <i class="fas fa-university"></i> College Attendance System
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('prof_dashboard') }}">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a class="nav-link" href="{{ url_for('prof_tests') }}">
+                    <i class="fas fa-file-alt"></i> Tests
+                </a>
+                <a class="nav-link" href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h2><i class="fas fa-plus-circle text-primary"></i> Create New Test</h2>
+                    <a href="{{ url_for('prof_tests') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Tests
+                    </a>
+                </div>
+                <p class="text-muted">Create a new test with automatic end time calculation</p>
+            </div>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row">
+            <!-- Test Creation Form -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0"><i class="fas fa-edit"></i> Test Details</h4>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('create_test') }}">
+                            <!-- Basic Information -->
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="title" class="form-label">Test Title *</label>
+                                    <input type="text" class="form-control" id="title" name="title"
+                                           placeholder="Enter test title" required>
+                                    <div class="form-text">e.g., Mid-Term Exam, Unit Test 1, etc.</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="subject_id" class="form-label">Subject *</label>
+                                    <select class="form-control" id="subject_id" name="subject_id" required>
+                                        <option value="">Select Subject</option>
+                                        {% for subject in subjects %}
+                                            <option value="{{ subject.id }}">
+                                                {{ subject.code }} - {{ subject.name }} (Sem {{ subject.semester }})
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea class="form-control" id="description" name="description"
+                                          rows="3" placeholder="Enter test description (optional)"></textarea>
+                            </div>
+
+                            <!-- Instructions -->
+                            <div class="mb-3">
+                                <label for="instructions" class="form-label">Instructions</label>
+                                <textarea class="form-control" id="instructions" name="instructions"
+                                          rows="3" placeholder="Enter test instructions for students"></textarea>
+                                <div class="form-text">Provide clear instructions for students</div>
+                            </div>
+
+                            <!-- Test Configuration -->
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="total_marks" class="form-label">Total Marks *</label>
+                                    <input type="number" class="form-control" id="total_marks" name="total_marks"
+                                           value="100" min="1" max="500" required>
+                                </div>
+                            </div>
+
+                            <!-- Timing Configuration -->
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="start_time" class="form-label">Start Time *</label>
+                                    <input type="datetime-local" class="form-control" id="start_time"
+                                           name="start_time" required>
+                                    <div class="form-text">When the test will start</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="duration" class="form-label">Duration (minutes) *</label>
+                                    <input type="number" class="form-control" id="duration" name="duration"
+                                           value="60" min="5" max="180" required>
+                                    <div class="form-text">Test duration in minutes</div>
+                                    <div class="end-time-display" id="end_time_display">
+                                        End time will be calculated automatically
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Test Features -->
+                            <div class="mb-3">
+                                <label class="form-label">Test Features</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="auto_submit"
+                                           name="auto_submit" checked>
+                                    <label class="form-check-label" for="auto_submit">
+                                        Auto-submit when time ends
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="prevent_tab_switch"
+                                           name="prevent_tab_switch" checked>
+                                    <label class="form-check-label" for="prevent_tab_switch">
+                                        Prevent tab switching (monitor attempts)
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="reset" class="btn btn-outline-secondary me-md-2">
+                                    <i class="fas fa-redo"></i> Reset
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Create Test & Add Questions
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features & Instructions -->
+            <div class="col-lg-4">
+                <!-- Smart Features -->
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-rocket"></i> Smart Features</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="test-features">
+                            <div class="text-center mb-3">
+                                <i class="fas fa-clock feature-icon"></i>
+                                <h6>Automatic Timing</h6>
+                                <p class="small">End time calculated automatically from start time + duration</p>
+                            </div>
+                            <div class="text-center mb-3">
+                                <i class="fas fa-shield-alt feature-icon"></i>
+                                <h6>Tab Switch Detection</h6>
+                                <p class="small">Monitors student behavior during test</p>
+                            </div>
+                            <div class="text-center mb-3">
+                                <i class="fas fa-save feature-icon"></i>
+                                <h6>Auto-save Answers</h6>
+                                <p class="small">Automatically saves student progress</p>
+                            </div>
+                            <div class="text-center">
+                                <i class="fas fa-chart-bar feature-icon"></i>
+                                <h6>Instant Results</h6>
+                                <p class="small">Immediate scoring and analytics</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Instructions -->
+                <div class="card mt-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions</h5>
+                    </div>
+                    <div class="card-body">
+                        <ol class="small">
+                            <li>Fill in all required test details</li>
+                            <li>Set start time and duration</li>
+                            <li>End time will be calculated automatically</li>
+                            <li>Enable security features as needed</li>
+                            <li>After creation, you'll add questions</li>
+                            <li>Activate test when ready for students</li>
+                        </ol>
+                        <div class="alert alert-warning small">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Note:</strong> Test will be inactive by default. Activate it after adding questions.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Tips -->
+                <div class="card mt-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="fas fa-lightbulb"></i> Quick Tips</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="small">
+                            <li>Keep test duration realistic</li>
+                            <li>Set start time carefully</li>
+                            <li>Use descriptive titles</li>
+                            <li>Provide clear instructions</li>
+                            <li>Test the interface before activating</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Set default datetime values and calculate end time
+        document.addEventListener('DOMContentLoaded', function() {
+            const startTimeInput = document.getElementById('start_time');
+            const durationInput = document.getElementById('duration');
+            const endTimeDisplay = document.getElementById('end_time_display');
+
+            function calculateEndTime() {
+                const startTime = startTimeInput.value;
+                const duration = parseInt(durationInput.value) || 0;
+
+                if (startTime && duration > 0) {
+                    const start = new Date(startTime);
+                    const end = new Date(start.getTime() + duration * 60000);
+
+                    const options = {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    };
+
+                    endTimeDisplay.innerHTML = `
+                        <strong>Calculated End Time:</strong><br>
+                        ${end.toLocaleDateString('en-IN', options)}
+                    `;
+                    endTimeDisplay.style.display = 'block';
+                } else {
+                    endTimeDisplay.innerHTML = 'End time will be calculated automatically';
+                    endTimeDisplay.style.display = 'block';
+                }
+            }
+
+            // Set default start time (30 minutes from now)
+            const now = new Date();
+            const defaultStart = new Date(now.getTime() + 30 * 60000);
+            startTimeInput.value = defaultStart.toISOString().slice(0, 16);
+
+            // Add event listeners
+            startTimeInput.addEventListener('change', calculateEndTime);
+            durationInput.addEventListener('input', calculateEndTime);
+
+            // Calculate initial end time
+            calculateEndTime();
+
+            // Form validation
+            const form = document.querySelector('form');
+            form.addEventListener('submit', function(e) {
+                const startTime = new Date(startTimeInput.value);
+                const now = new Date();
+
+                if (startTime <= now) {
+                    e.preventDefault();
+                    alert('Start time must be in the future');
+                    return false;
+                }
+
+                const duration = parseInt(durationInput.value);
+                if (duration < 5) {
+                    e.preventDefault();
+                    alert('Duration must be at least 5 minutes');
+                    return false;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

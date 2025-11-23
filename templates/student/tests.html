@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-primary border-0 shadow-lg">
+                <div class="card-body py-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="text-white mb-2">
+                                <i class="bi bi-pencil-square me-3"></i>Online Tests
+                            </h2>
+                            <p class="text-white-50 mb-0 fs-5">Welcome to your test dashboard, {{ student.name }}!</p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="bg-white bg-opacity-25 rounded-3 p-3 d-inline-block">
+                                <div class="text-white fw-bold fs-6 mb-1">
+                                    <i class="bi bi-clock me-2"></i>Current Time
+                                </div>
+                                <div class="text-white fs-5 fw-bold" id="currentTime">{{ datetime.now()
+.strftime('%H:%M') }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upcoming Tests -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 text-dark fw-bold">
+                        <i class="bi bi-alarm text-warning me-2"></i>Available Tests
+                    </h5>
+                    <span class="badge bg-warning text-white fw-bold">{{ tests|length }} Tests</span>
+                </div>
+                <div class="card-body">
+                    {% if tests %}
+                    <div class="row g-4">
+                        {% for test in tests %}
+                        {% set now = datetime.now()
+ %}
+                        {% set test_attempted = test.id in attempted_test_ids %}
+                        <div class="col-xl-4 col-lg-6">
+                            <div class="card test-card border-0 shadow-sm h-100">
+                                <div class="card-header bg-transparent border-0 pb-0">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <h6 class="fw-bold text-dark mb-0">{{ test.title }}</h6>
+                                        <span class="badge 
+                                            {% if now < test.start_time %}bg-warning text-dark
+                                            {% elif now > test.end_time %}bg-secondary
+                                            {% else %}bg-success{% endif %} text-white fw-bold">
+                                            {% if now < test.start_time %}Upcoming
+                                            {% elif now > test.end_time %}Expired
+                                            {% else %}Active{% endif %}
+                                        </span>
+                                    </div>
+                                    <p class="text-muted small mb-2">
+                                        <i class="bi bi-journal me-1"></i>{{ test.subject.code }} - {{ test.subject.name }}
+                                    </p>
+                                    <p class="text-muted small mb-0">{{ test.description|truncate(80) }}</p>
+                                </div>
+                                
+                                <div class="card-body pt-0">
+                                    <!-- Test Details -->
+                                    <div class="row text-center g-2 mb-3">
+                                        <div class="col-4">
+                                            <div class="border rounded-2 p-2 bg-primary bg-opacity-10">
+                                                <div class="fw-bold text-primary fs-6">{{ test.duration_minutes }}</div>
+                                                <small class="text-dark fw-medium">Minutes</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="border rounded-2 p-2 bg-success bg-opacity-10">
+                                                <div class="fw-bold text-success fs-6">{{ test.total_marks }}</div>
+                                                <small class="text-dark fw-medium">Marks</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="border rounded-2 p-2 bg-info bg-opacity-10">
+                                                <div class="fw-bold text-info fs-6">
+                                                    {{ test.questions|length if test.questions }}
+                                                </div>
+                                                <small class="text-dark fw-medium">Questions</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Schedule -->
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <small class="text-muted">Start Time</small>
+                                            <small class="fw-bold text-dark">{{ test.start_time.strftime('%d %b, %I:%M %p') }}</small>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <small class="text-muted">End Time</small>
+                                            <small class="fw-bold text-dark">{{ test.end_time.strftime('%d %b, %I:%M %p') }}</small>
+                                        </div>
+                                    </div>
+
+                                    <!-- Professor Info -->
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <small class="text-muted">
+                                            <i class="bi bi-person me-1"></i>By {{ test.professor.fullname }}
+                                        </small>
+                                    </div>
+
+                                    <!-- Action Button -->
+                                    <div class="d-grid">
+                                        {% if test_attempted %}
+                                            <button class="btn btn-success fw-bold" disabled>
+                                                <i class="bi bi-check-circle me-1"></i>Already Attempted
+                                            </button>
+                                        {% elif now < test.start_time %}
+                                            <button class="btn btn-outline-secondary fw-bold" disabled>
+                                                <i class="bi bi-clock me-1"></i>Starts Soon
+                                            </button>
+                                        {% elif now > test.end_time %}
+                                            <button class="btn btn-outline-secondary fw-bold" disabled>
+                                                <i class="bi bi-x-circle me-1"></i>Test Expired
+                                            </button>
+                                        {% else %}
+                                            <a href="{{ url_for('test_instructions', test_id=test.id) }}" 
+                                               class="btn btn-primary fw-bold">
+                                                <i class="bi bi-play-circle me-1"></i>Start Test
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <div class="icon-shape icon-lg bg-light text-muted rounded-3 mb-3 mx-auto">
+                            <i class="bi bi-pencil-square fs-2"></i>
+                        </div>
+                        <h6 class="text-muted">No Tests Available</h6>
+                        <p class="text-muted small">There are no tests scheduled for you at the moment</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Instructions Modal -->
+    <div class="modal fade" id="instructionsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white border-0">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-info-circle me-2"></i>Test Instructions
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4" id="instructionsContent">
+                    <!-- Instructions will be loaded here -->
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary fw-bold" id="startTestBtn">Start Test</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.test-card {
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+.test-card:hover {
+    transform: translateY(-5px);
+    border-color: #e9ecef;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+}
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+</style>
+
+<script>
+// Update current time every second
+function updateCurrentTime() {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false 
+    });
+    document.getElementById('currentTime').textContent = timeString;
+}
+
+setInterval(updateCurrentTime, 1000);
+updateCurrentTime();
+
+// View instructions
+function viewInstructions(testId, instructions) {
+    document.getElementById('instructionsContent').innerHTML = instructions || 
+        '<p class="text-muted">No specific instructions provided for this test.</p>' +
+        '<div class="alert alert-warning mt-3">' +
+        '<h6><i class="bi bi-exclamation-triangle me-2"></i>Important Notes:</h6>' +
+        '<ul class="mb-0">' +
+        '<li>Do not refresh the page during the test</li>' +
+        '<li>Test will auto-submit when time expires</li>' +
+        '<li>Ensure stable internet connection</li>' +
+        '<li>All answers are saved automatically</li>' +
+        '</ul></div>';
+    
+    document.getElementById('startTestBtn').onclick = function() {
+        window.location.href = '/student/test/' + testId + '/start';
+    };
+    
+    new bootstrap.Modal(document.getElementById('instructionsModal')).show();
+}
+</script>
+{% endblock %}

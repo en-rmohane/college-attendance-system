@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-indigo border-0 shadow-lg">
+                <div class="card-body py-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="text-white mb-2">
+                                <i class="bi bi-pencil-square me-3"></i>Online Test Management
+                            </h2>
+                            <p class="text-white-50 mb-0 fs-5">Manage all tests and monitor student performance</p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="bg-white bg-opacity-25 rounded-3 p-3 d-inline-block">
+                                <div class="text-white fw-bold fs-6 mb-1">
+                                    <i class="bi bi-collection me-2"></i>Total Tests
+                                </div>
+                                <div class="text-white fs-5 fw-bold">{{ tests|length }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tests List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 text-dark fw-bold">
+                        <i class="bi bi-list-task text-indigo me-2"></i>All Tests
+                    </h5>
+                    <span class="badge bg-indigo text-white fw-bold">{{ tests|length }} Tests</span>
+                </div>
+                <div class="card-body">
+                    {% if tests %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="border-0 text-dark fw-bold">Test Details</th>
+                                    <th class="border-0 text-dark fw-bold">Professor</th>
+                                    <th class="border-0 text-center text-dark fw-bold">Schedule</th>
+                                    <th class="border-0 text-center text-dark fw-bold">Attempts</th>
+                                    <th class="border-0 text-center text-dark fw-bold">Status</th>
+                                    <th class="border-0 text-end text-dark fw-bold">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for test in tests %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="icon-shape icon-sm bg-indigo text-white rounded-2 me-3">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0 fw-bold text-dark">{{ test.title }}</h6>
+                                                <small class="text-muted">
+                                                    {{ test.subject.code }} - {{ test.subject.name }}
+                                                </small>
+                                                <div class="mt-1">
+                                                    <small class="badge bg-light text-dark border">
+                                                        <i class="bi bi-clock me-1"></i>{{ test.duration_minutes }} mins
+                                                    </small>
+                                                    <small class="badge bg-light text-dark border ms-1">
+                                                        <i class="bi bi-star me-1"></i>{{ test.total_marks }} marks
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ test.professor.fullname }}</div>
+                                        <small class="text-muted">{{ test.professor.email }}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="fw-bold text-dark">{{ test.start_time.strftime('%d %b %Y') }}</div>
+                                        <small class="text-muted">{{ test.start_time.strftime('%I:%M %p') }}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        {% set attempts_count = test.attempts|selectattr('submitted')|list|length %}
+                                        <span class="badge bg-info text-white fw-bold">
+                                            {{ attempts_count }} submitted
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        {% set now = datetime.now()
+ %}
+                                        {% if now < test.start_time %}
+                                        <span class="badge bg-warning text-dark fw-bold">Upcoming</span>
+                                        {% elif now > test.end_time %}
+                                        <span class="badge bg-secondary text-white fw-bold">Completed</span>
+                                        {% else %}
+                                        <span class="badge bg-success text-white fw-bold">Active</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group">
+                                            <a href="{{ url_for('admin_test_results', test_id=test.id) }}" 
+                                               class="btn btn-sm btn-info text-white fw-bold">
+                                                <i class="bi bi-graph-up me-1"></i>Results
+                                            </a>
+                                            <form method="POST" action="{{ url_for('admin_delete_test', test_id=test.id) }}"
+                                                  class="d-inline ms-1"
+                                                  onsubmit="return confirm('Delete this test? This action cannot be undone.');">
+                                                <button type="submit" class="btn btn-sm btn-danger text-white">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <div class="icon-shape icon-lg bg-light text-muted rounded-3 mb-3 mx-auto">
+                            <i class="bi bi-pencil-square fs-2"></i>
+                        </div>
+                        <h6 class="text-muted">No Tests Created</h6>
+                        <p class="text-muted small">Professors can create tests from their dashboard</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.bg-gradient-indigo {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+.bg-indigo {
+    background-color: #6610f2 !important;
+}
+</style>
+{% endblock %}

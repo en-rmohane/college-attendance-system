@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - {{ test.title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2c3e50;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            overflow-x: hidden;
+            padding: 20px;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header Styles */
+        .test-header {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--primary);
+        }
+
+        .timer-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .timer-warning {
+            background: linear-gradient(135deg, #f39c12, #e74c3c);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* Question Styles */
+        .question-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .question-card.active {
+            border-color: var(--primary);
+            background: #f8f9fa;
+        }
+
+        .question-card.answered {
+            border-left: 4px solid var(--success);
+        }
+
+        .question-card.marked {
+            border-left: 4px solid var(--warning);
+        }
+
+        .option-container {
+            display: block;
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .option-container:hover {
+            border-color: var(--primary);
+            background: #f8f9fa;
+        }
+
+        .option-container.selected {
+            border-color: var(--primary);
+            background: #e3f2fd;
+            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+        }
+
+        .option-letter {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 26px;
+            margin-right: 15px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .option-container.selected .option-letter {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        input[type="radio"] {
+            display: none;
+        }
+
+        /* Navigation Styles */
+        .question-nav {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .nav-btn {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .nav-btn:hover {
+            border-color: var(--primary);
+            background: #e3f2fd;
+        }
+
+        .nav-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .nav-btn.answered {
+            border-color: var(--success);
+            background: #d4edda;
+        }
+
+        .nav-btn.marked {
+            border-color: var(--warning);
+            background: #fff3cd;
+        }
+
+        /* Security Warning */
+        .security-warning {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .warning-content {
+            background: white;
+            color: #333;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            max-width: 500px;
+            animation: bounceIn 0.6s;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-btns-container {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .test-container {
+                padding: 10px;
+            }
+        }
+
+        /* Fullscreen Styles */
+        body:fullscreen {
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        body:-webkit-full-screen {
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        body:-moz-full-screen {
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .fullscreen-enabled .test-container {
+            max-width: 1400px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Security Warning Modal -->
+    <div class="security-warning" id="securityWarning">
+        <div class="warning-content">
+            <div class="mb-4">
+                <i class="fas fa-exclamation-triangle fa-3x text-danger"></i>
+            </div>
+            <h3 class="text-danger mb-3">⚠️ SECURITY WARNING</h3>
+            <p class="mb-3" id="warningMessage">You have switched tabs/windows. This is not allowed during the test.</p>
+            <div class="mb-3">
+                <strong>Remaining Warnings: <span id="remainingWarnings">1</span></strong>
+            </div>
+            <button class="btn btn-primary" onclick="hideWarning()">
+                I Understand - Continue Test
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Test Container -->
+    <div class="test-container">
+        <!-- Test Header -->
+        <div class="test-header">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h3 class="mb-1">{{ test.title }}</h3>
+                    <p class="text-muted mb-0">{{ test.description }}</p>
+                    <small class="text-muted">Subject: {{ test.subject.name }}</small>
+                </div>
+                <div class="col-md-6">
+                    <div class="timer-container" id="timerContainer">
+                        <h4 class="mb-2" id="timerDisplay">00:00:00</h4>
+                        <small>Time Remaining</small>
+                        <div class="mt-2">
+                            <span class="badge bg-light text-dark me-2">
+                                <i class="fas fa-check-circle text-success"></i>
+                                <span id="answeredCount">0</span> Answered
+                            </span>
+                            <span class="badge bg-light text-dark">
+                                <i class="fas fa-flag text-warning"></i>
+                                <span id="markedCount">0</span> Marked
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Questions Section -->
+            <div class="col-lg-8">
+                {% for question in questions %}
+                <div class="question-card {% if loop.first %}active{% endif %}"
+                     id="question-{{ question.id }}"
+                     style="display: {% if loop.first %}block{% else %}none{% endif %};">
+
+                    <!-- Question Header -->
+                    <div class="d-flex justify-content-between align-items-start mb-4">
+                        <h5 class="text-primary">Question {{ loop.index }} of {{ questions|length }}</h5>
+                        <div>
+                            <span class="badge bg-primary me-2">{{ question.marks }} Mark{{ 's' if question.marks > 1 else '' }}</span>
+                            <button class="btn btn-sm btn-outline-warning mark-btn"
+                                    data-question-id="{{ question.id }}"
+                                    onclick="toggleMark({{ question.id }})">
+                                <i class="fas fa-flag"></i> Mark for Review
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Question Text -->
+                    <div class="mb-4">
+                        <p class="lead">{{ question.question_text }}</p>
+                    </div>
+
+                    <!-- Options - Fixed click issue -->
+                    <div class="options-container">
+                        <label class="option-container" onclick="selectOption({{ question.id }}, 'A')">
+                            <input type="radio" name="question_{{ question.id }}" value="A">
+                            <span class="option-letter">A</span>
+                            <span class="option-text">{{ question.option_a }}</span>
+                        </label>
+
+                        <label class="option-container" onclick="selectOption({{ question.id }}, 'B')">
+                            <input type="radio" name="question_{{ question.id }}" value="B">
+                            <span class="option-letter">B</span>
+                            <span class="option-text">{{ question.option_b }}</span>
+                        </label>
+
+                        <label class="option-container" onclick="selectOption({{ question.id }}, 'C')">
+                            <input type="radio" name="question_{{ question.id }}" value="C">
+                            <span class="option-letter">C</span>
+                            <span class="option-text">{{ question.option_c }}</span>
+                        </label>
+
+                        <label class="option-container" onclick="selectOption({{ question.id }}, 'D')">
+                            <input type="radio" name="question_{{ question.id }}" value="D">
+                            <span class="option-letter">D</span>
+                            <span class="option-text">{{ question.option_d }}</span>
+                        </label>
+                    </div>
+
+                    <!-- Navigation Buttons -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <button class="btn btn-secondary" onclick="showPreviousQuestion()"
+                                {% if loop.first %}disabled{% endif %}>
+                            <i class="fas fa-arrow-left"></i> Previous
+                        </button>
+                        <button class="btn btn-primary" onclick="showNextQuestion()"
+                                {% if loop.last %}disabled{% endif %}>
+                            Next <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+
+                <!-- Final Submit Button -->
+                <div class="text-center mt-4">
+                    <button class="btn btn-success btn-lg" onclick="submitTest()">
+                        <i class="fas fa-paper-plane"></i> Submit Test
+                    </button>
+                    <p class="text-muted mt-2">
+                        <i class="fas fa-sync-alt"></i> Answers are auto-saved
+                    </p>
+                </div>
+            </div>
+
+            <!-- Navigation Sidebar -->
+            <div class="col-lg-4">
+                <div class="question-nav">
+                    <h6 class="text-center mb-3">Question Navigation</h6>
+                    <div class="nav-btns-container">
+                        {% for question in questions %}
+                        <div class="nav-btn {% if loop.first %}active{% endif %}"
+                             id="nav-{{ question.id }}"
+                             onclick="showQuestion({{ question.id }})">
+                            {{ loop.index }}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mt-4 text-center">
+                        <div class="mb-3">
+                            <span class="badge bg-success me-2"><i class="fas fa-circle"></i> Answered</span>
+                            <span class="badge bg-warning"><i class="fas fa-circle"></i> Marked</span>
+                        </div>
+                        <small class="text-muted">
+                            Click on question numbers to navigate
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables to track test state
+        let currentQuestionId = {{ questions[0].id if questions else 0 }};
+        let remainingSeconds = {{ remaining_seconds }};
+        let tabSwitchCount = 0;
+        const maxTabSwitches = 1; // 1 warning, 2nd time auto submit
+        let answers = {};
+        let markedQuestions = new Set();
+        let isSubmitting = false;
+        let isFullScreen = false;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            enterFullscreen(); // Enable full screen on page load
+            startTimer();
+            loadSavedAnswers();
+            setupTabSwitchDetection();
+
+            // Prevent right click and F12 for security
+            document.addEventListener('contextmenu', e => e.preventDefault());
+            document.addEventListener('keydown', e => {
+                if (e.ctrlKey || e.key === 'F12') {
+                    e.preventDefault();
+                    showWarning('Keyboard shortcuts disabled!');
+                }
+            });
+        });
+
+        // ================= FULL SCREEN FUNCTIONS =================
+        function enterFullscreen() {
+            const elem = document.documentElement;
+
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().then(() => {
+                    isFullScreen = true;
+                    console.log("✅ Full screen enabled");
+                }).catch(err => {
+                    console.log("❌ Full screen error:", err);
+                    // Continue without fullscreen
+                });
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+                isFullScreen = true;
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+                isFullScreen = true;
+            } else {
+                console.log("ℹ️ Full screen not supported");
+                // Continue without fullscreen
+            }
+        }
+
+        function exitFullscreen() {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+            isFullScreen = false;
+        }
+
+        // ================= TIMER FUNCTIONS =================
+        function startTimer() {
+            updateTimerDisplay(); // Show immediately
+
+            const timer = setInterval(() => {
+                remainingSeconds--;
+                updateTimerDisplay();
+
+                if (remainingSeconds <= 0) {
+                    clearInterval(timer);
+                    forceAutoSubmit("⏰ Time is over! Test submitted automatically.");
+                }
+
+                if (remainingSeconds === 300) { // 5 minutes warning
+                    document.getElementById('timerContainer').classList.add('timer-warning');
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const hours = Math.floor(remainingSeconds / 3600);
+            const minutes = Math.floor((remainingSeconds % 3600) / 60);
+            const seconds = remainingSeconds % 60;
+
+            document.getElementById('timerDisplay').textContent =
+                `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        // ================= QUESTION NAVIGATION =================
+        function showQuestion(questionId) {
+            // Hide all questions
+            document.querySelectorAll('.question-card').forEach(card => {
+                card.style.display = 'none';
+                card.classList.remove('active');
+            });
+
+            // Show selected question
+            const questionCard = document.getElementById(`question-${questionId}`);
+            questionCard.style.display = 'block';
+            questionCard.classList.add('active');
+
+            // Update navigation
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`nav-${questionId}`).classList.add('active');
+
+            currentQuestionId = questionId;
+        }
+
+        function showNextQuestion() {
+            const questions = {{ questions|map(attribute='id')|list|tojson }};
+            const currentIndex = questions.indexOf(currentQuestionId);
+            if (currentIndex < questions.length - 1) {
+                showQuestion(questions[currentIndex + 1]);
+            }
+        }
+
+        function showPreviousQuestion() {
+            const questions = {{ questions|map(attribute='id')|list|tojson }};
+            const currentIndex = questions.indexOf(currentQuestionId);
+            if (currentIndex > 0) {
+                showQuestion(questions[currentIndex - 1]);
+            }
+        }
+
+        // ================= ANSWER SELECTION =================
+        // test_page_smart.html mein yeh function fix karo
+function selectOption(questionId, option) {
+    // Remove selection from all options for this question
+    document.querySelectorAll(`input[name="question_${questionId}"]`).forEach(radio => {
+        radio.parentElement.classList.remove('selected');
+    });
+
+    // Select the clicked option
+    const selectedOption = document.querySelector(`input[name="question_${questionId}"][value="${option}"]`);
+    selectedOption.parentElement.classList.add('selected');
+    selectedOption.checked = true;
+
+    // ✅ FIX: Save answer with clean value
+    saveAnswer(questionId, option); // Direct value pass karo, no processing
+}
+
+async function saveAnswer(questionId, answer) {
+    // ✅ FIX: Clean the answer before sending
+    const cleanAnswer = answer.trim().toUpperCase();
+
+    answers[questionId] = cleanAnswer;
+    updateQuestionStatus(questionId, 'answered');
+
+    try {
+        const response = await fetch('/student/test/{{ attempt.id }}/submit_answer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                question_id: questionId,
+                selected_answer: cleanAnswer // Clean value send karo
+            })
+        });
+
+        if (!response.ok) {
+            console.error('Failed to save answer');
+        }
+    } catch (error) {
+        console.error('Error saving answer:', error);
+    }
+}
+        function loadSavedAnswers() {
+            // Load previously saved answers from server
+            Object.keys(answers).forEach(questionId => {
+                const answer = answers[questionId];
+                const radio = document.querySelector(`input[name="question_${questionId}"][value="${answer}"]`);
+                if (radio) {
+                    radio.checked = true;
+                    radio.parentElement.classList.add('selected');
+                    updateQuestionStatus(parseInt(questionId), 'answered');
+                }
+            });
+        }
+
+        // ================= QUESTION STATUS =================
+        function updateQuestionStatus(questionId, status) {
+            const navBtn = document.getElementById(`nav-${questionId}`);
+            const questionCard = document.getElementById(`question-${questionId}`);
+
+            if (status === 'answered') {
+                navBtn.classList.add('answered');
+                questionCard.classList.add('answered');
+            }
+
+            updateCounters();
+        }
+
+        function toggleMark(questionId) {
+            if (markedQuestions.has(questionId)) {
+                markedQuestions.delete(questionId);
+                document.getElementById(`nav-${questionId}`).classList.remove('marked');
+                document.getElementById(`question-${questionId}`).classList.remove('marked');
+            } else {
+                markedQuestions.add(questionId);
+                document.getElementById(`nav-${questionId}`).classList.add('marked');
+                document.getElementById(`question-${questionId}`).classList.add('marked');
+            }
+            updateCounters();
+        }
+
+        function updateCounters() {
+            const answeredCount = Object.keys(answers).length;
+            const markedCount = markedQuestions.size;
+
+            document.getElementById('answeredCount').textContent = answeredCount;
+            document.getElementById('markedCount').textContent = markedCount;
+        }
+
+        // ================= SECURITY FUNCTIONS =================
+        function setupTabSwitchDetection() {
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    handleSecurityViolation();
+                }
+            });
+
+            window.addEventListener('blur', () => {
+                handleSecurityViolation();
+            });
+        }
+
+        function handleSecurityViolation() {
+            // If already submitting, do nothing
+            if (isSubmitting) return;
+
+            tabSwitchCount++;
+            if (tabSwitchCount > maxTabSwitches) {
+                // 2nd time tab switch - auto submit with proper message
+                showFinalWarning("🚫 Test Auto-Submitted! You switched tabs multiple times.");
+            } else {
+                // 1st time tab switch - warning only
+                showWarning("⚠️ Warning! Don't switch tabs. Next violation will auto-submit.");
+            }
+        }
+
+        function showWarning(message) {
+            document.getElementById('warningMessage').textContent = message;
+            document.getElementById('remainingWarnings').textContent = (maxTabSwitches - tabSwitchCount + 1);
+            document.getElementById('securityWarning').style.display = 'flex';
+
+            // Auto hide warning after 5 seconds
+            setTimeout(() => {
+                if (document.getElementById('securityWarning').style.display === 'flex') {
+                    hideWarning();
+                }
+            }, 5000);
+        }
+
+        function showFinalWarning(message) {
+            document.getElementById('warningMessage').textContent = message;
+            document.getElementById('remainingWarnings').textContent = '0';
+            document.getElementById('securityWarning').style.display = 'flex';
+
+            // Hide "I Understand" button in final warning
+            const understandBtn = document.querySelector('#securityWarning .btn');
+            if (understandBtn) {
+                understandBtn.style.display = 'none';
+            }
+
+            // Show countdown for final submit
+            let countdown = 3;
+            const countdownInterval = setInterval(() => {
+                document.getElementById('warningMessage').textContent =
+                    `${message}\n\nAuto-submitting in ${countdown} seconds...`;
+                countdown--;
+
+                if (countdown < 0) {
+                    clearInterval(countdownInterval);
+                    forceAutoSubmit(message);
+                }
+            }, 1000);
+        }
+
+        function hideWarning() {
+            document.getElementById('securityWarning').style.display = 'none';
+            // Re-enable full screen
+            if (!isFullScreen) {
+                enterFullscreen();
+            }
+        }
+
+        // ================= SUBMIT FUNCTIONS =================
+        async function submitTest() {
+            if (isSubmitting) return;
+
+            if (confirm('Are you sure you want to submit the test?')) {
+                isSubmitting = true;
+                // Submit while in full screen
+                await finalSubmit("✅ Test Submitted Successfully!");
+            }
+        }
+
+        async function finalSubmit(successMessage) {
+            try {
+                console.log("🔄 Submitting test...");
+
+                const response = await fetch('/student/test/{{ attempt.id }}/submit_test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({})
+                });
+
+                console.log("📡 Response status:", response.status);
+
+                const result = await response.json();
+                console.log("📦 Response data:", result);
+
+                if (result.success) {
+                    // Show success message first in full screen
+                    alert(successMessage);
+
+                    // Then exit full screen
+                    exitFullscreen();
+
+                    // Redirect to tests page
+                    window.location.href = '/student/tests';
+                } else {
+                    alert('❌ Error: ' + (result.error || 'Unknown error occurred'));
+                    isSubmitting = false;
+                }
+            } catch (error) {
+                console.error('🚨 Submit error:', error);
+                alert('❌ Network error. Please check your connection and try again.');
+                isSubmitting = false;
+            }
+        }
+
+        function forceAutoSubmit(reason) {
+            if (isSubmitting) return;
+            isSubmitting = true;
+
+            // Hide warning modal
+            document.getElementById('securityWarning').style.display = 'none';
+
+            console.log("🔄 Force auto-submitting...");
+
+            // Auto-submit while in full screen
+            finalSubmit(reason);
+        }
+    </script>
+</body>
+</html>

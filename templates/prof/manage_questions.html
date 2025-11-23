@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Questions - College Attendance System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border: none;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 20px;
+        }
+        .question-card {
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }
+        .question-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+            transform: translateY(-2px);
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+            border: none;
+            border-radius: 8px;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            border: none;
+            border-radius: 8px;
+        }
+        .option-label {
+            font-weight: 600;
+            color: #667eea;
+        }
+        .correct-answer {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        .preview-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('prof_dashboard') }}">
+                <i class="fas fa-university"></i> College Attendance System
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('prof_dashboard') }}">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a class="nav-link" href="{{ url_for('prof_tests') }}">
+                    <i class="fas fa-file-alt"></i> Tests
+                </a>
+                <a class="nav-link" href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2><i class="fas fa-edit text-primary"></i> Manage Test Questions</h2>
+                        <h4 class="text-muted">{{ test.title }}</h4>
+                        <p class="text-muted mb-0">{{ test.description }}</p>
+                    </div>
+                    <div class="text-end">
+                        <a href="{{ url_for('prof_tests') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Tests
+                        </a>
+                        <a href="{{ url_for('preview_test', test_id=test.id) }}" class="btn preview-btn">
+                            <i class="fas fa-eye"></i> Preview Test
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row">
+            <!-- Questions List -->
+            <div class="col-lg-8">
+                <!-- Statistics -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <h4>{{ questions|length }}</h4>
+                            <small>Total Questions</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <h4>{{ questions|sum(attribute='marks') }}</h4>
+                            <small>Total Marks</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <h4>{{ test.duration_minutes }}</h4>
+                            <small>Duration (mins)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <h4>{{ test.total_marks }}</h4>
+                            <small>Max Marks</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Questions List -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-list-ol"></i> Questions List</h5>
+                        <span class="badge bg-light text-dark">{{ questions|length }} questions</span>
+                    </div>
+                    <div class="card-body">
+                        {% if questions %}
+                            {% for question in questions %}
+                            <div class="card question-card mb-3">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <h6 class="card-title">Q{{ loop.index }}. {{ question.question_text }}</h6>
+                                        <div>
+                                            <span class="badge bg-primary">{{ question.marks }} marks</span>
+                                            <span class="badge bg-secondary">Order: {{ question.question_order }}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <p class="mb-1"><span class="option-label">A:</span> {{ question.option_a }}</p>
+                                            <p class="mb-1"><span class="option-label">B:</span> {{ question.option_b }}</p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <p class="mb-1"><span class="option-label">C:</span> {{ question.option_c }}</p>
+                                            <p class="mb-1"><span class="option-label">D:</span> {{ question.option_d }}</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="correct-answer mt-2">
+                                        <strong><i class="fas fa-check-circle text-success"></i> Correct Answer:</strong>
+                                        <span class="badge bg-success">{{ question.correct_answer }}</span>
+                                    </div>
+
+                                    <div class="mt-3">
+                                        <form method="POST" action="{{ url_for('delete_question', test_id=test.id, question_id=question.id) }}"
+                                              class="d-inline" onsubmit="return confirm('Are you sure you want to delete this question?');">
+                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">No Questions Added Yet</h5>
+                                <p class="text-muted">Start by adding your first question using the form on the right.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Question Form -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-plus-circle"></i> Add New Question</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('add_question', test_id=test.id) }}">
+                            <!-- Question Text -->
+                            <div class="mb-3">
+                                <label for="question_text" class="form-label">Question Text *</label>
+                                <textarea class="form-control" id="question_text" name="question_text"
+                                          rows="3" placeholder="Enter your question here..." required></textarea>
+                            </div>
+
+                            <!-- Options -->
+                            <div class="row mb-3">
+                                <div class="col-12">
+                                    <label class="form-label">Options *</label>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <div class="input-group">
+                                        <span class="input-group-text option-label">A</span>
+                                        <input type="text" class="form-control" name="option_a"
+                                               placeholder="Option A" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <div class="input-group">
+                                        <span class="input-group-text option-label">B</span>
+                                        <input type="text" class="form-control" name="option_b"
+                                               placeholder="Option B" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <div class="input-group">
+                                        <span class="input-group-text option-label">C</span>
+                                        <input type="text" class="form-control" name="option_c"
+                                               placeholder="Option C" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <div class="input-group">
+                                        <span class="input-group-text option-label">D</span>
+                                        <input type="text" class="form-control" name="option_d"
+                                               placeholder="Option D" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Correct Answer -->
+                            <div class="mb-3">
+                                <label for="correct_answer" class="form-label">Correct Answer *</label>
+                                <select class="form-control" id="correct_answer" name="correct_answer" required>
+                                    <option value="">Select Correct Answer</option>
+                                    <option value="A">Option A</option>
+                                    <option value="B">Option B</option>
+                                    <option value="C">Option C</option>
+                                    <option value="D">Option D</option>
+                                </select>
+                            </div>
+
+                            <!-- Marks and Order -->
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="marks" class="form-label">Marks *</label>
+                                    <input type="number" class="form-control" id="marks" name="marks"
+                                           value="1" min="1" max="10" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="question_order" class="form-label">Question Order</label>
+                                    <input type="number" class="form-control" id="question_order" name="question_order"
+                                           value="{{ (questions|length + 1) if questions else 1 }}" min="1">
+                                    <div class="form-text">Display order in test</div>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-plus"></i> Add Question
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Test Actions -->
+                <div class="card mt-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-cogs"></i> Test Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('preview_test', test_id=test.id) }}" class="btn preview-btn">
+                                <i class="fas fa-eye"></i> Preview Complete Test
+                            </a>
+
+                            {% if test.is_active %}
+                                <form method="POST" action="{{ url_for('toggle_test_status', test_id=test.id) }}" class="d-grid">
+                                    <button type="submit" class="btn btn-warning">
+                                        <i class="fas fa-pause"></i> Deactivate Test
+                                    </button>
+                                </form>
+                            {% else %}
+                                <form method="POST" action="{{ url_for('toggle_test_status', test_id=test.id) }}" class="d-grid">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-play"></i> Activate Test
+                                    </button>
+                                </form>
+                            {% endif %}
+
+                            <form method="POST" action="{{ url_for('delete_test', test_id=test.id) }}"
+                                  class="d-grid" onsubmit="return confirm('Are you sure you want to delete this test? This action cannot be undone.');">
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="fas fa-trash"></i> Delete Entire Test
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Tips -->
+                <div class="card mt-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0"><i class="fas fa-lightbulb"></i> Tips</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="small mb-0">
+                            <li>Keep questions clear and concise</li>
+                            <li>Ensure only one correct answer</li>
+                            <li>Use meaningful question order</li>
+                            <li>Preview test before activating</li>
+                            <li>Set appropriate marks for each question</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-focus on question text
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('question_text').focus();
+
+            // Add confirmation for delete actions
+            const deleteForms = document.querySelectorAll('form[onsubmit]');
+            deleteForms.forEach(form => {
+                form.onsubmit = function() {
+                    return confirm('Are you sure you want to delete this? This action cannot be undone.');
+                };
+            });
+        });
+
+        // Character counter for question text
+        const questionText = document.getElementById('question_text');
+        const charCount = document.createElement('div');
+        charCount.className = 'form-text text-end';
+        charCount.textContent = '0 characters';
+        questionText.parentNode.appendChild(charCount);
+
+        questionText.addEventListener('input', function() {
+            charCount.textContent = this.value.length + ' characters';
+            if (this.value.length > 500) {
+                charCount.className = 'form-text text-end text-danger';
+            } else if (this.value.length > 300) {
+                charCount.className = 'form-text text-end text-warning';
+            } else {
+                charCount.className = 'form-text text-end text-success';
+            }
+        });
+    </script>
+</body>
+</html>

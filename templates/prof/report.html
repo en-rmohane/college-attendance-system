@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block title %}Subject Report - {{ subject.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-primary">
+            <i class="bi bi-graph-up me-2"></i>Attendance Report - {{ subject.name }}
+        </h2>
+        <div>
+            <!-- 🆕 DOWNLOAD BUTTON ADD KARO -->
+            <a href="{{ url_for('download_subject_report', subject_id=subject.id, days=days) }}"
+               class="btn btn-success me-2">
+                <i class="bi bi-download me-1"></i>Download CSV
+            </a>
+            <a href="{{ url_for('prof_dashboard') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Subject Info Card -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5 class="card-title">{{ subject.code }} - {{ subject.name }}</h5>
+            <p class="card-text mb-0">
+                <strong>Branch:</strong> {{ subject.branch }} |
+                <strong>Semester:</strong> {{ subject.semester }} |
+                <strong>Period:</strong> Last {{ days }} days
+            </p>
+        </div>
+    </div>
+
+    <!-- Days Filter -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h6 class="card-title">Filter by Days</h6>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('generate_subject_report', subject_id=subject.id, days=15) }}"
+                   class="btn btn-outline-primary {% if days == 15 %}active{% endif %}">15 Days</a>
+                <a href="{{ url_for('generate_subject_report', subject_id=subject.id, days=30) }}"
+                   class="btn btn-outline-primary {% if days == 30 %}active{% endif %}">30 Days</a>
+                <a href="{{ url_for('generate_subject_report', subject_id=subject.id, days=60) }}"
+                   class="btn btn-outline-primary {% if days == 60 %}active{% endif %}">60 Days</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rest of your existing table code remains same -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Student Attendance Summary</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Roll No</th>
+                            <th>Student Name</th>
+                            <th>Present Days</th>
+                            <th>Attendance %</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports %}
+                        <tr>
+                            <td class="fw-bold">{{ report.roll }}</td>
+                            <td>{{ report.name }}</td>
+                            <td>{{ report.present }}/{{ days }}</td>
+                            <td>
+                                <span class="badge {% if report.percent >= 75 %}bg-success{% elif report.percent >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                                    {{ report.percent }}%
+                                </span>
+                            </td>
+                            <td>
+                                {% if report.percent >= 75 %}
+                                    <span class="text-success">Good</span>
+                                {% elif report.percent >= 50 %}
+                                    <span class="text-warning">Average</span>
+                                {% else %}
+                                    <span class="text-danger">Low</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                <i class="bi bi-inbox display-4 d-block mb-2"></i>
+                                No attendance records found for the selected period.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

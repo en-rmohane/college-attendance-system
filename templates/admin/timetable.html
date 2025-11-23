@@ -1,0 +1,267 @@
+<!-- templates/admin/timetable.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+
+            <!-- ===== PAGE TITLE ===== -->
+            <h2 class="mb-4">
+                <i class="bi bi-calendar-week"></i>&nbsp;
+                Smart Timetable Generator
+            </h2>
+
+            <!-- 🚨 ALERT IF NO PROFESSORS -->
+            {% if not professors or professors|length == 0 %}
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong>No Professors Found!</strong> Please add professors first from Admin Dashboard.
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-warning btn-sm ms-2">
+                    Go to Admin Dashboard
+                </a>
+            </div>
+            {% endif %}
+
+            <!-- 🚨 ALERT IF NO SUBJECT ALLOTMENTS -->
+            {% set allotments_count = allotments_info|length if allotments_info else 0 %}
+            {% if allotments_count == 0 %}
+            <div class="alert alert-warning">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>No Subject Allotments!</strong> Please allot subjects to professors first.
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-info btn-sm ms-2">
+                    Allot Subjects
+                </a>
+            </div>
+            {% endif %}
+
+            <!-- ===== SUMMARY CARDS ===== -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card border-primary">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-1">Professors</h6>
+                            <h3>{{ professors|length if professors else 0 }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-success">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-1">Active Subjects</h6>
+                            <h3>{{ subjects|length if subjects else 0 }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-info">
+                        <div class="card-body text-center">
+                            <h6 class="text-muted mb-1">Subject Allotments</h6>
+                            <h3>{{ allotments_count }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== CUSTOM TIMETABLE GENERATION FORM ===== -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-gear-fill"></i>&nbsp; Custom Timetable Generation
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('generate_timetable') }}">
+                        <div class="row">
+                            <!-- BRANCHES -->
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Branches *</label>
+                                <div class="border p-3 rounded">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="branches" value="CSE"
+                                               id="cseCheck" checked>
+                                        <label class="form-check-label" for="cseCheck">
+                                            🖥️ Computer Science (CSE)
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="branches" value="AD"
+                                               id="adCheck" checked>
+                                        <label class="form-check-label" for="adCheck">
+                                            📊 Data Analytics (AD)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- YEARS -->
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Academic Years *</label>
+                                <div class="border p-3 rounded">
+                                    {% for year in [2, 3, 4] %}
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="years"
+                                               value="{{ year }}" id="year{{ year }}" checked>
+                                        <label class="form-check-label" for="year{{ year }}">
+                                            Year {{ year }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- SEMESTERS -->
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Semesters *</label>
+                                <div class="border p-3 rounded">
+                                    {% for sem in [3, 4, 5, 6] %}
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="semesters"
+                                               value="{{ sem }}" id="sem{{ sem }}" checked>
+                                        <label class="form-check-label" for="sem{{ sem }}">
+                                            Semester {{ sem }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- GENERATE BUTTON -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <button type="submit"
+                                        class="btn btn-warning w-100 py-3 fs-5"
+                                        {% if not professors or professors|length == 0 or allotments_count == 0 %}disabled{% endif %}>
+                                    {% if not professors or professors|length == 0 %}
+                                        ❌ ADD PROFESSORS FIRST
+                                    {% elif allotments_count == 0 %}
+                                        ❌ ALLOT SUBJECTS FIRST
+                                    {% else %}
+                                        <i class="bi bi-play-fill"></i>&nbsp; GENERATE CUSTOM TIMETABLE
+                                    {% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ===== SYSTEM DATA SUMMARY ===== -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">📊 Current System Data</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3 mb-2">
+                            <div class="border rounded p-3 {% if professors and professors|length > 0 %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
+                                <h4>{{ professors|length if professors else 0 }}</h4>
+                                <small>Professors</small>
+                                {% if not professors or professors|length == 0 %}
+                                <div class="mt-1">
+                                    <small>❌ ADD FIRST</small>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <div class="border rounded p-3 {% if allotments_count > 0 %}bg-success text-white{% else %}bg-warning text-dark{% endif %}">
+                                <h4>{{ allotments_count }}</h4>
+                                <small>Subject Allotments</small>
+                                {% if allotments_count == 0 %}
+                                <div class="mt-1">
+                                    <small>⚠️ ALLOT NEEDED</small>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <div class="border rounded p-3 bg-primary text-white">
+                                <h4>{{ subjects|length if subjects else 0 }}</h4>
+                                <small>Available Subjects</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <div class="border rounded p-3 {% if professors and professors|length > 0 and allotments_count > 0 %}bg-success text-white{% else %}bg-secondary text-white{% endif %}">
+                                <h4>
+                                    {% if professors and professors|length > 0 and allotments_count > 0 %}
+                                        ✅
+                                    {% else %}
+                                        ❌
+                                    {% endif %}
+                                </h4>
+                                <small>Ready to Generate</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== PROFESSORS & ALLOTMENTS PREVIEW ===== -->
+            {% if professors and professors|length > 0 %}
+            <div class="card mt-4 mb-5">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">👨‍🏫 Current Professors & Their Subjects</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Professor</th>
+                                    <th>Email</th>
+                                    <th>Branch</th>
+                                    <th>Allotted Subjects</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for professor in professors %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ professor.fullname }}</strong>
+                                        {% if not professor.email_verified %}
+                                        <span class="badge bg-warning ms-1">Unverified</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ professor.email }}</td>
+                                    <td>
+                                        {% if professor.branch %}
+                                        <span class="badge bg-secondary">{{ professor.branch }}</span>
+                                        {% else %}
+                                        <span class="badge bg-light text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set prof_allotments = [] %}
+                                        {% if allotments_info %}
+                                            {% for allotment in allotments_info %}
+                                                {% if allotment.prof.id == professor.id %}
+                                                    {% set _ = prof_allotments.append(allotment) %}
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+
+                                        {% if prof_allotments %}
+                                            {% for allotment in prof_allotments %}
+                                            <span class="badge bg-success me-1 mb-1">
+                                                {{ allotment.subj.code }} (Sem {{ allotment.subj.semester }})
+                                            </span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="badge bg-danger">No subjects allotted</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+{% endblock %}

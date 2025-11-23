@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - College System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0"><i class="fas fa-user me-2"></i>My Profile</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 text-center">
+                                <div class="profile-avatar bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                                     style="width: 100px; height: 100px; font-size: 2rem;">
+                                    {{ current_user.fullname[0] }}
+                                </div>
+                                <h5>{{ current_user.fullname }}</h5>
+                                <span class="badge bg-{{ 'success' if current_user.role == 'student' else 'info' }}">
+                                    {{ current_user.role|title }}
+                                </span>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong>Username:</strong></div>
+                                    <div class="col-sm-8">{{ current_user.username }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong>Email:</strong></div>
+                                    <div class="col-sm-8">{{ current_user.email }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong>Branch:</strong></div>
+                                    <div class="col-sm-8">{{ current_user.branch }}</div>
+                                </div>
+                                {% if student %}
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong>Roll No:</strong></div>
+                                    <div class="col-sm-8">{{ student.roll }}</div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong>Year:</strong></div>
+                                    <div class="col-sm-8">Year {{ student.year }}</div>
+                                </div>
+                                {% endif %}
+                                <div class="row mb-3">
+                                    <div class="col-sm-4"><strong>Account Created:</strong></div>
+                                    <div class="col-sm-8">{{ current_user.created_at.strftime('%d %b %Y') if current_user.created_at else 'N/A' }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('change_password') }}" class="btn btn-warning me-md-2">
+                                <i class="fas fa-key me-1"></i>Change Password
+                            </a>
+                            <a href="{{ url_for('student_dashboard' if current_user.role == 'student' else 'prof_dashboard') }}"
+                               class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

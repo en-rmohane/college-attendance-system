@@ -1,0 +1,282 @@
+<!-- templates/admin/semester_management.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3 class="mb-1"><i class="bi bi-calendar-event"></i> Semester Management</h3>
+                    <p class="text-muted mb-0">Manage semesters for each branch and year independently</p>
+                </div>
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+
+            <!-- Current Semester Configurations -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list-check"></i> Current Semester Configurations
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if active_semesters %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Branch</th>
+                                    <th>Year</th>
+                                    <th>Semester Type</th>
+                                    <th>Academic Year</th>
+                                    <th>Active Semesters</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for semester in active_semesters %}
+                                <tr>
+                                    <td><strong>{{ semester.branch }}</strong></td>
+                                    <td>Year {{ semester.year }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'warning' if semester.semester_type == 'odd' else 'info' }}">
+                                            {{ semester.semester_type|upper }} Semester
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">
+                                            {{ semester.academic_year }}-{{ semester.academic_year + 1 }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if semester.semester_type == 'odd' %}
+                                            {% set sem_mapping = {1: [1], 2: [3], 3: [5], 4: [7]} %}
+                                            {% for sem in sem_mapping.get(semester.year, []) %}
+                                            <span class="badge bg-success me-1">Sem {{ sem }}</span>
+                                            {% endfor %}
+                                        {% else %}
+                                            {% set sem_mapping = {1: [2], 2: [4], 3: [6], 4: [8]} %}
+                                            {% for sem in sem_mapping.get(semester.year, []) %}
+                                            <span class="badge bg-success me-1">Sem {{ sem }}</span>
+                                            {% endfor %}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">ACTIVE</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        No semester configurations found.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Semester Update Form -->
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-gear-fill"></i> Update Semester Configuration
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="branch" class="form-label">
+                                        <strong>Branch</strong>
+                                    </label>
+                                    <select class="form-control" id="branch" name="branch" required>
+                                        <option value="CSE">Computer Science (CSE)</option>
+                                        <option value="AD">Data Analytics (AD)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="year" class="form-label">
+                                        <strong>Year</strong>
+                                    </label>
+                                    <select class="form-control" id="year" name="year" required>
+                                        <option value="1">1st Year</option>
+                                        <option value="2">2nd Year</option>
+                                        <option value="3">3rd Year</option>
+                                        <option value="4">4th Year</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="semester_type" class="form-label">
+                                        <strong>Semester Type</strong>
+                                    </label>
+                                    <select class="form-control" id="semester_type" name="semester_type" required>
+                                        <option value="odd">📚 Odd Semester</option>
+                                        <option value="even">📖 Even Semester</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="academic_year" class="form-label">
+                                        <strong>Academic Year</strong>
+                                    </label>
+                                    <select class="form-control" id="academic_year" name="academic_year" required>
+                                        {% for year in range(2020, 2031) %}
+                                        <option value="{{ year }}"
+                                            {% if year == 2024 %}selected{% endif %}>
+                                            {{ year }}-{{ year+1 }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-success btn-lg w-100"
+                                        onclick="return confirm('Are you sure? This will update semester for selected branch and year.')">
+                                    <i class="bi bi-arrow-repeat"></i> Update Semester Configuration
+                                </button>
+                                <small class="form-text text-muted d-block mt-2 text-center">
+                                    This will only affect the selected branch and year
+                                </small>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Semester Mapping Info -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-diagram-3"></i> Semester Mapping Guide
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-warning">
+                                <i class="bi bi-calendar-check"></i> Odd Semester Mapping
+                            </h6>
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead class="table-warning">
+                                        <tr>
+                                            <th>Year</th>
+                                            <th>Active Semester</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>1st Year</strong></td>
+                                            <td><span class="badge bg-primary">Semester 1</span></td>
+                                            <td>First year odd semester</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>2nd Year</strong></td>
+                                            <td><span class="badge bg-primary">Semester 3</span></td>
+                                            <td>Second year odd semester</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>3rd Year</strong></td>
+                                            <td><span class="badge bg-primary">Semester 5</span></td>
+                                            <td>Third year odd semester</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>4th Year</strong></td>
+                                            <td><span class="badge bg-primary">Semester 7</span></td>
+                                            <td>Fourth year odd semester</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-info">
+                                <i class="bi bi-calendar-check"></i> Even Semester Mapping
+                            </h6>
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead class="table-info">
+                                        <tr>
+                                            <th>Year</th>
+                                            <th>Active Semester</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>1st Year</strong></td>
+                                            <td><span class="badge bg-primary">Semester 2</span></td>
+                                            <td>First year even semester</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>2nd Year</strong></td>
+                                            <td><span class="badge bg-primary">Semester 4</span></td>
+                                            <td>Second year even semester</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>3rd Year</strong></td>
+                                            <td><span class="badge bg-primary">Semester 6</span></td>
+                                            <td>Third year even semester</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>4th Year</strong></td>
+                                            <td><span class="badge bg-primary">Semester 8</span></td>
+                                            <td>Fourth year even semester</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Flexibility Information -->
+                    <div class="alert alert-success mt-4">
+                        <h6><i class="bi bi-stars"></i> Flexible Semester Management</h6>
+                        <ul class="mb-0">
+                            <li>✅ <strong>Complete Control:</strong> Set Odd/Even semester independently for each branch and year</li>
+                            <li>✅ <strong>Session Flexibility:</strong> Handle shifted sessions without issues</li>
+                            <li>✅ <strong>No Date Dependency:</strong> Manual control - no automatic month-based changes</li>
+                            <li>✅ <strong>Independent Configurations:</strong> CSE 3rd Year can have Odd while AD 3rd Year has Even</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+.card-header {
+    border-radius: 10px 10px 0 0 !important;
+}
+.badge {
+    font-size: 0.8em;
+}
+.table th {
+    border-top: none;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

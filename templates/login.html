@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - College Attendance System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card shadow border-0">
+            <div class="card-header bg-primary text-white text-center py-3">
+                <h4 class="mb-0"><i class="bi bi-box-arrow-in-right me-2"></i>Login</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('login') }}">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Email or Roll Number</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <input type="text" class="form-control" name="email" placeholder="Enter email or roll number" required>
+                        </div>
+                        <div class="form-text">
+                            <small>
+                                <i class="bi bi-info-circle me-1"></i>
+                                Admin/Professors: Use your email<br>
+                                Students: Use your roll number
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            <input type="password" class="form-control" name="password" placeholder="Enter your password" required>
+                        </div>
+                        <div class="form-text">
+                            <small>
+                                <i class="bi bi-key me-1"></i>
+                                Students: Default password is your roll number
+                            </small>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>Login
+                    </button>
+
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('forgot_password') }}" class="text-decoration-none">
+                            <i class="bi bi-key me-1"></i>Forgot Password?
+                        </a>
+                    </div>
+                </form>
+
+                <!-- Demo Credentials Section -->
+                <div class="mt-4 p-3 bg-light rounded">
+                    <h6 class="fw-semibold mb-2"><i class="bi bi-info-circle me-1"></i>Demo Credentials:</h6>
+                    <div class="small">
+                        <div class="mb-1">
+                            <strong>Admin:</strong> admin@college.com / admin123
+                        </div>
+                        <div class="mb-1">
+                            <strong>Student:</strong> Roll Number / Roll Number
+                        </div>
+                        <div>
+                            <em>Example: 2001CSE001 / 2001CSE001</em>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

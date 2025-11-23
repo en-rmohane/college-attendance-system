@@ -1,0 +1,141 @@
+<!-- templates/timetable/faculty_list.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card">
+        <div class="card-header bg-info text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="bi bi-people-fill"></i>&nbsp; Faculty Directory
+                </h4>
+                <a href="{{ url_for('admin_timetable') }}" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-arrow-left"></i> Back to Timetable
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Search and Filter -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search faculty by name, specialization...">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" id="branchFilter">
+                        <option value="">All Branches</option>
+                        <option value="CSE">CSE</option>
+                        <option value="AD">AD</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">Clear Filters</button>
+                </div>
+            </div>
+
+            <!-- Faculty List -->
+            <div class="table-responsive">
+                <table class="table table-hover" id="facultyTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Faculty Name</th>
+                            <th>Contact</th>
+                            <th>Specialization</th>
+                            <th>Branches</th>
+                            <th>Weekly Load</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for faculty in faculties %}
+                        <tr class="faculty-row" data-branches="{{ faculty.branches }}">
+                            <td>
+                                <strong>{{ faculty.name }}</strong>
+                                {% if faculty.email %}
+                                <br><small class="text-muted">{{ faculty.email }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if faculty.phone %}
+                                <small><i class="bi bi-phone"></i> {{ faculty.phone }}</small>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ faculty.specialization }}</td>
+                            <td>
+                                {% for branch in faculty.branches.split(',') %}
+                                <span class="badge bg-primary me-1">{{ branch }}</span>
+                                {% endfor %}
+                            </td>
+                            <td>
+                                <!-- Calculate weekly load would be implemented -->
+                                <span class="badge bg-success">Calculating...</span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('faculty_timetable', faculty_id=faculty.id) }}"
+                                   class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-calendar-check"></i> View Schedule
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <i class="bi bi-people display-1 text-muted"></i>
+                                <h5 class="text-muted mt-3">No Faculties Found</h5>
+                                <p class="text-muted">Add faculties to generate timetables</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const branchFilter = document.getElementById('branchFilter');
+    const facultyRows = document.querySelectorAll('.faculty-row');
+
+    function filterFaculties() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const branchValue = branchFilter.value;
+
+        facultyRows.forEach(row => {
+            const facultyName = row.cells[0].textContent.toLowerCase();
+            const specialization = row.cells[2].textContent.toLowerCase();
+            const branches = row.dataset.branches;
+
+            const matchesSearch = facultyName.includes(searchTerm) || specialization.includes(searchTerm);
+            const matchesBranch = !branchValue || branches.includes(branchValue);
+
+            row.style.display = (matchesSearch && matchesBranch) ? '' : 'none';
+        });
+    }
+
+    searchInput.addEventListener('input', filterFaculties);
+    branchFilter.addEventListener('change', filterFaculties);
+});
+
+function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('branchFilter').value = '';
+    document.querySelectorAll('.faculty-row').forEach(row => {
+        row.style.display = '';
+    });
+}
+</script>
+
+<style>
+.faculty-row:hover {
+    background-color: #f8f9fa;
+    cursor: pointer;
+}
+.badge {
+    font-size: 0.75em;
+}
+</style>
+{% endblock %}

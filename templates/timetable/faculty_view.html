@@ -1,0 +1,117 @@
+<!-- templates/timetable/faculty_view.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card">
+        <div class="card-header bg-warning text-dark">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="bi bi-person-badge"></i>&nbsp; Faculty Schedule: {{ faculty.name }}
+                </h4>
+                <a href="{{ url_for('faculty_timetable') }}" class="btn btn-outline-dark btn-sm">
+                    <i class="bi bi-arrow-left"></i> Back to List
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Faculty Info -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <p class="mb-1"><strong>Email:</strong> {{ faculty.email }}</p>
+                    <p class="mb-1"><strong>Specialization:</strong> {{ faculty.specialization }}</p>
+                    <p class="mb-0"><strong>Assigned Branches:</strong>
+                        {% for branch in faculty.branches.split(',') %}
+                        <span class="badge bg-primary me-1">{{ branch }}</span>
+                        {% endfor %}
+                    </p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Status:</strong> Active
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timetable -->
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead class="table-warning">
+                        <tr>
+                            <th>Time/Day</th>
+                            <th>09:00 - 09:55</th>
+                            <th>10:00 - 10:55</th>
+                            <th>11:00 - 11:55</th>
+                            <th>12:00 - 12:55</th>
+                            <th>13:45 - 14:40</th>
+                            <th>14:45 - 15:40</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] %}
+                        {% for day in range(1, 7) %}
+                        <tr>
+                            <td class="fw-bold table-warning">{{ days[day-1] }}</td>
+                            {% for period in range(1, 7) %}
+                            <td class="text-center">
+                                {% if day in schedule and period in schedule[day] %}
+                                {% set slot = schedule[day][period] %}
+                                <div class="bg-light p-2 rounded border-start border-3 border-primary">
+                                    <strong>{{ slot.subject.code }}</strong><br>
+                                    <small class="text-muted">{{ slot.subject.name|truncate(15) }}</small><br>
+                                    <span class="badge bg-success">{{ slot.branch }}</span><br>
+                                    <small><i class="bi bi-geo-alt"></i> {{ slot.room }}</small>
+                                </div>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Weekly Summary -->
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-graph-up"></i> Weekly Teaching Load</h6>
+                </div>
+                <div class="card-body">
+                    {% set weekly_load = {} %}
+                    {% for day in schedule.values() %}
+                        {% for period_slot in day.values() %}
+                            {% if period_slot %}
+                                {% set branch = period_slot.branch %}
+                                {% if branch not in weekly_load %}
+                                    {% set _ = weekly_load.update({branch: 0}) %}
+                                {% endif %}
+                                {% set _ = weekly_load.update({branch: weekly_load[branch] + 1}) %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+
+                    <div class="row">
+                        {% for branch, load in weekly_load.items() %}
+                        <div class="col-md-3 mb-2">
+                            <div class="text-center p-3 border rounded">
+                                <h4 class="text-primary">{{ load }}</h4>
+                                <small class="text-muted">Periods in {{ branch }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        <div class="col-md-3 mb-2">
+                            <div class="text-center p-3 border rounded bg-primary text-white">
+                                <h4>{{ weekly_load.values()|sum }}</h4>
+                                <small>Total Periods/Week</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

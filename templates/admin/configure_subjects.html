@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <h3><i class="bi bi-list-check me-2"></i> Configure Offered Subjects</h3>
+    <p class="text-muted">Select which subjects are active (offered) for this Branch & Year. Ye hi subjects allotment, student dashboard aur timetable me दिखेंगे.</p>
+
+    <!-- Step 1: Branch + Year select -->
+    <form method="GET" class="card mb-4">
+        <div class="card-body row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Branch</label>
+                <select name="branch" class="form-select" required>
+                    {% for b in branches %}
+                    <option value="{{ b }}" {% if b == selected_branch %}selected{% endif %}>{{ b }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Year</label>
+                <select name="year" class="form-select" required>
+                    <option value="">Select Year</option>
+                    {% for y in years %}
+                    <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>Year {{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="card-footer text-end">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> Load Subjects
+            </button>
+        </div>
+    </form>
+
+    {% if subjects %}
+    <!-- Step 2: Subjects list with checkboxes -->
+    <form method="POST" class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>
+                <strong>Branch:</strong> {{ selected_branch }} &nbsp; | &nbsp;
+                <strong>Year:</strong> {{ selected_year }}
+                {% if semesters %}
+                    &nbsp; | &nbsp;
+                    <strong>Semesters:</strong> {{ semesters|join(', ') }}
+                {% endif %}
+            </span>
+            <small class="text-muted">Tick the subjects which are offered / active for this batch.</small>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">Active</th>
+                            <th>Code</th>
+                            <th>Name</th>
+                            <th>Semester</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subj in subjects %}
+                        <tr>
+                            <td class="text-center">
+                                <input type="checkbox"
+                                       name="subject_ids"
+                                       value="{{ subj.id }}"
+                                       {% if subj.is_active %}checked{% endif %}>
+                            </td>
+                            <td><strong>{{ subj.code }}</strong></td>
+                            <td>{{ subj.name }}</td>
+                            <td>Sem {{ subj.semester }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <small class="text-muted">
+                Note: Unchecked subjects will be inactive – they won’t appear in Subject Allotment, Student Dashboard or Timetable generation.
+            </small>
+        </div>
+        <div class="card-footer text-end">
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-save"></i> Save Offered Subjects
+            </button>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </form>
+    {% elif selected_branch and selected_year %}
+    <div class="alert alert-warning">
+        No subjects found for branch {{ selected_branch }} and year {{ selected_year }}.
+        Check your Subject table (branch & semester mapping).
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

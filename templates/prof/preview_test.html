@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview Test - {{ test.title }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2c3e50;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            padding: 20px;
+        }
+
+        .preview-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+
+        .test-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .question-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-left: 5px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+
+        .question-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+        }
+
+        .option-container {
+            display: block;
+            padding: 12px 15px;
+            margin: 8px 0;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .option-container.correct {
+            border-color: var(--success);
+            background: #d4edda;
+        }
+
+        .option-container.incorrect {
+            border-color: var(--danger);
+            background: #f8d7da;
+        }
+
+        .option-letter {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            margin-right: 12px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .option-container.correct .option-letter {
+            background: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+
+        .option-container.incorrect .option-letter {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+        }
+
+        .stats-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+        }
+
+        .badge-custom {
+            font-size: 0.8em;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+
+        .question-meta {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid #e9ecef;
+        }
+
+        .correct-answer {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .explanation-box {
+            background: #e3f2fd;
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin-top: 15px;
+        }
+
+        @media print {
+            body {
+                background: white !important;
+                padding: 10px !important;
+            }
+            .preview-container {
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 15px !important;
+            }
+            .btn-group {
+                display: none !important;
+            }
+            .test-header {
+                background: #667eea !important;
+                -webkit-print-color-adjust: exact;
+            }
+            .question-card {
+                break-inside: avoid;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="preview-container">
+        <!-- Test Header -->
+        <div class="test-header">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="mb-2"><i class="fas fa-eye me-2"></i>{{ test.title }}</h1>
+                    <p class="lead mb-1">{{ test.description }}</p>
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        <span class="badge bg-light text-dark">
+                            <i class="fas fa-book me-1"></i>
+                            {% if test.subject %}
+                                {{ test.subject.name }}
+                            {% else %}
+                                No Subject
+                            {% endif %}
+                        </span>
+                        <span class="badge bg-light text-dark">
+                            <i class="fas fa-clock me-1"></i>{{ test.duration_minutes }} minutes
+                        </span>
+                        <span class="badge bg-light text-dark">
+                            <i class="fas fa-star me-1"></i>{{ total_marks }} marks
+                        </span>
+                        <span class="badge bg-light text-dark">
+                            <i class="fas fa-list-ol me-1"></i>{{ total_questions }} questions
+                        </span>
+                    </div>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="btn-group">
+                        <a href="{{ url_for('prof_tests') }}" class="btn btn-light">
+                            <i class="fas fa-arrow-left me-1"></i>Back to Tests
+                        </a>
+                        <button onclick="window.print()" class="btn btn-light">
+                            <i class="fas fa-print me-1"></i>Print
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Statistics -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <h4 class="text-primary">{{ total_questions }}</h4>
+                    <small class="text-muted">Total Questions</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <h4 class="text-success">{{ total_marks }}</h4>
+                    <small class="text-muted">Total Marks</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <h4 class="text-warning">{{ test.duration_minutes }}</h4>
+                    <small class="text-muted">Duration (minutes)</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <h4 class="text-info">
+                        {% if test.passing_marks %}
+                            {{ test.passing_marks }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </h4>
+                    <small class="text-muted">Passing Marks</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Questions List -->
+        <div class="questions-section">
+            <h3 class="mb-4"><i class="fas fa-list-alt me-2"></i>Test Questions</h3>
+
+            {% if questions %}
+                {% for question in questions %}
+                <div class="question-card">
+                    <!-- Question Header -->
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h5 class="text-primary mb-0">Question {{ loop.index }}</h5>
+                        <div>
+                            <span class="badge bg-primary badge-custom">
+                                {{ question.marks }} Mark{% if question.marks > 1 %}s{% endif %}
+                            </span>
+                            {% if question.difficulty %}
+                            <span class="badge
+                                {% if question.difficulty == 'easy' %}bg-success
+                                {% elif question.difficulty == 'medium' %}bg-warning
+                                {% else %}bg-danger{% endif %} badge-custom">
+                                {{ question.difficulty|title }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Question Text -->
+                    <div class="question-meta">
+                        <p class="lead mb-3">{{ question.question_text }}</p>
+
+                        {% if question.image_url %}
+                        <div class="mb-3">
+                            <img src="{{ url_for('static', filename='uploads/questions/' + question.image_url) }}"
+                                 alt="Question Image" class="img-fluid rounded" style="max-height: 300px;">
+                            <small class="text-muted d-block mt-1">Question Image</small>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Options -->
+                    <div class="options-container">
+                        <div class="option-container {% if question.correct_answer == 'A' %}correct{% endif %}">
+                            <span class="option-letter">A</span>
+                            <span class="option-text">{{ question.option_a }}</span>
+                            {% if question.correct_answer == 'A' %}
+                            <span class="badge bg-success float-end"><i class="fas fa-check"></i> Correct</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="option-container {% if question.correct_answer == 'B' %}correct{% endif %}">
+                            <span class="option-letter">B</span>
+                            <span class="option-text">{{ question.option_b }}</span>
+                            {% if question.correct_answer == 'B' %}
+                            <span class="badge bg-success float-end"><i class="fas fa-check"></i> Correct</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="option-container {% if question.correct_answer == 'C' %}correct{% endif %}">
+                            <span class="option-letter">C</span>
+                            <span class="option-text">{{ question.option_c }}</span>
+                            {% if question.correct_answer == 'C' %}
+                            <span class="badge bg-success float-end"><i class="fas fa-check"></i> Correct</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="option-container {% if question.correct_answer == 'D' %}correct{% endif %}">
+                            <span class="option-letter">D</span>
+                            <span class="option-text">{{ question.option_d }}</span>
+                            {% if question.correct_answer == 'D' %}
+                            <span class="badge bg-success float-end"><i class="fas fa-check"></i> Correct</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Correct Answer and Explanation -->
+                    <div class="correct-answer mt-3">
+                        <strong><i class="fas fa-lightbulb me-1"></i>Correct Answer: {{ question.correct_answer }}</strong>
+                    </div>
+
+                    {% if question.explanation %}
+                    <div class="explanation-box">
+                        <h6><i class="fas fa-info-circle me-1"></i>Explanation:</h6>
+                        <p class="mb-0">{{ question.explanation }}</p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Question Metadata -->
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <small class="text-muted">
+                                <i class="fas fa-fingerprint me-1"></i>ID: {{ question.id }}
+                            </small>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            {% if question.topic %}
+                            <small class="text-muted">
+                                <i class="fas fa-tag me-1"></i>Topic: {{ question.topic }}
+                            </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No Questions Found</h4>
+                    <p class="text-muted">This test doesn't have any questions yet.</p>
+                    <a href="{{ url_for('manage_test_questions', test_id=test.id) }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>Add Questions
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Test Summary -->
+        {% if questions %}
+        <div class="row mt-5">
+            <div class="col-md-6">
+                <div class="stats-card">
+                    <h5><i class="fas fa-chart-pie me-2"></i>Question Distribution</h5>
+                    <ul class="list-unstyled">
+                        <li><small>Total Questions: <strong>{{ total_questions }}</strong></small></li>
+                        <li><small>Total Marks: <strong>{{ total_marks }}</strong></small></li>
+                        <li><small>Duration: <strong>{{ test.duration_minutes }} minutes</strong></small></li>
+                        <li><small>Test Type: <strong>{{ test.test_type|title if test.test_type else 'Mixed' }}</strong></small></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="stats-card">
+                    <h5><i class="fas fa-info-circle me-2"></i>Test Information</h5>
+                    <ul class="list-unstyled">
+                        <li><small>Subject: <strong>
+                            {% if test.subject %}
+                                {{ test.subject.name }} ({{ test.subject.code }})
+                            {% else %}
+                                Not Assigned
+                            {% endif %}
+                        </strong></small></li>
+                        <li><small>Created: <strong>{{ test.created_at.strftime('%Y-%m-%d %H:%M') }}</strong></small></li>
+                        <li><small>Status: <strong>
+                            <span class="badge {% if test.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                {{ 'Active' if test.is_active else 'Inactive' }}
+                            </span>
+                        </strong></small></li>
+                        <li><small>Professor: <strong>{{ test.professor.fullname }}</strong></small></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Test Settings -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="stats-card">
+                    <h5><i class="fas fa-cog me-2"></i>Test Settings</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><small><i class="fas {% if test.auto_submit %}fa-check text-success{% else %}fa-times text-danger{% endif %} me-2"></i>Auto Submit: <strong>{{ 'Enabled' if test.auto_submit else 'Disabled' }}</strong></small></li>
+                                <li><small><i class="fas {% if test.prevent_tab_switch %}fa-check text-success{% else %}fa-times text-danger{% endif %} me-2"></i>Prevent Tab Switch: <strong>{{ 'Enabled' if test.prevent_tab_switch else 'Disabled' }}</strong></small></li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><small><i class="fas {% if test.allow_retake %}fa-check text-success{% else %}fa-times text-danger{% endif %} me-2"></i>Allow Retake: <strong>{{ 'Yes' if test.allow_retake else 'No' }}</strong></small></li>
+                                <li><small><i class="fas {% if test.require_security_code %}fa-check text-success{% else %}fa-times text-danger{% endif %} me-2"></i>Security Code: <strong>{{ 'Required' if test.require_security_code else 'Not Required' }}</strong></small></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="text-center mt-4 pt-4 border-top">
+            <div class="btn-group">
+                <a href="{{ url_for('manage_test_questions', test_id=test.id) }}" class="btn btn-primary">
+                    <i class="fas fa-edit me-1"></i>Edit Test
+                </a>
+                <a href="{{ url_for('prof_tests') }}" class="btn btn-secondary">
+                    <i class="fas fa-list me-1"></i>Back to Tests
+                </a>
+                {% if questions %}
+                <button onclick="window.print()" class="btn btn-success">
+                    <i class="fas fa-print me-1"></i>Print Preview
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Add smooth scrolling for better UX
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Test preview loaded successfully');
+            console.log('Total questions:', {{ total_questions }});
+            console.log('Total marks:', {{ total_marks }});
+
+            // Add page break for printing after every 3 questions
+            const style = document.createElement('style');
+            style.textContent = `
+                @media print {
+                    .question-card:nth-child(3n) {
+                        page-break-after: always;
+                    }
+                    .test-header {
+                        margin-bottom: 20px !important;
+                    }
+                    .stats-card {
+                        break-inside: avoid;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        });
+
+        // Enhanced print functionality
+        function enhancePrint() {
+            // Add print header
+            const originalTitle = document.title;
+            document.title = "Test Preview - " + "{{ test.title }}";
+
+            window.print();
+
+            // Restore original title
+            setTimeout(() => {
+                document.title = originalTitle;
+            }, 1000);
+        }
+
+        // Replace default print with enhanced version
+        const printButton = document.querySelector('button[onclick="window.print()"]');
+        if (printButton) {
+            printButton.setAttribute('onclick', 'enhancePrint()');
+        }
+
+        // Add keyboard shortcut for printing (Ctrl+P)
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'p') {
+                e.preventDefault();
+                enhancePrint();
+            }
+        });
+    </script>
+</body>
+</html>

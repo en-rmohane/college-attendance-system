@@ -1,0 +1,123 @@
+<!-- templates/timetable/view.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card">
+        <div class="card-header bg-{{ 'primary' if branch == 'CSE' else 'success' }} text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">
+                    <i class="bi bi-calendar-week"></i>&nbsp; Class Timetable
+                </h4>
+                <div>
+                    <a href="{{ url_for('download_timetable', branch=branch, year=year, semester=semester) }}"
+                       class="btn btn-light btn-sm me-2">
+                        <i class="bi bi-download"></i> Download Excel
+                    </a>
+                    <a href="{{ url_for('admin_timetable') }}" class="btn btn-outline-light btn-sm">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- College Header -->
+            <div class="text-center mb-4">
+                <h5>{{ timetable.college_name }}</h5>
+                <h6>{{ timetable.department }}</h6>
+                <p class="mb-1">
+                    <strong>Class:</strong> {{ timetable.class_year }} Year |
+                    <strong>Branch:</strong> {{ timetable.branch }} |
+                    <strong>Semester:</strong> {{ timetable.semester }}
+                </p>
+                <small class="text-muted">Academic Year 2024-25</small>
+            </div>
+
+            <!-- Timetable -->
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="table-{{ 'primary' if branch == 'CSE' else 'success' }}">
+                        <tr>
+                            <th>Time/Day</th>
+                            {% for period, timing in timetable.timings.items() %}
+                            <th class="text-center">
+                                <div><strong>Period {{ period }}</strong></div>
+                                <small>{{ timing }}</small>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for day_num, day_name in timetable.days.items() %}
+                        <tr>
+                            <td class="table-{{ 'primary' if branch == 'CSE' else 'success' }} fw-bold">{{ day_name }}</td>
+                            {% for period in range(1, 7) %}
+                            <td class="text-center">
+                                {% set slot = timetable.slots[day_num][period] %}
+                                {% if slot.subject %}
+                                <div class="timetable-slot">
+                                    <strong>{{ slot.subject.code }}</strong><br>
+                                    <small>{{ slot.subject.name|truncate(15) }}</small><br>
+                                    <span class="badge bg-secondary">{{ slot.faculty.name|truncate(12) }}</span><br>
+                                    <small class="text-muted">{{ slot.room }}</small>
+                                </div>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Faculty Summary -->
+            <div class="mt-4">
+                <h6><i class="bi bi-people"></i> Faculty Assignment Summary</h6>
+                <div class="row">
+                    {% set faculty_assignments = {} %}
+                    {% for day in timetable.slots.values() %}
+                        {% for slot in day.values() %}
+                            {% if slot.faculty %}
+                                {% set faculty_name = slot.faculty.name %}
+                                {% if faculty_name not in faculty_assignments %}
+                                    {% set _ = faculty_assignments.update({faculty_name: []}) %}
+                                {% endif %}
+                                {% set _ = faculty_assignments[faculty_name].append(slot.subject.code) %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+
+                    {% for faculty, subjects in faculty_assignments.items() %}
+                    <div class="col-md-6 mb-2">
+                        <div class="card">
+                            <div class="card-body py-2">
+                                <strong>{{ faculty }}</strong>
+                                <div>
+                                    {% for subject in subjects|unique %}
+                                    <span class="badge bg-primary me-1">{{ subject }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timetable-slot {
+    padding: 8px;
+    border-radius: 5px;
+    background-color: #f8f9fa;
+    border-left: 4px solid #0d6efd;
+}
+.table th {
+    vertical-align: middle;
+}
+</style>
+{% endblock %}

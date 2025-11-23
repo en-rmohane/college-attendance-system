@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - College Attendance System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .welcome-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: none;
+            height: 100%;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-card .icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+
+        .attendance-good {
+            border-left: 4px solid #28a745;
+        }
+
+        .attendance-average {
+            border-left: 4px solid #ffc107;
+        }
+
+        .attendance-low {
+            border-left: 4px solid #dc3545;
+        }
+
+        .test-card {
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .test-card:hover {
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .test-available {
+            border-left: 4px solid #28a745;
+        }
+
+        .test-upcoming {
+            border-left: 4px solid #ffc107;
+        }
+
+        .test-ended {
+            border-left: 4px solid #6c757d;
+        }
+
+        .countdown-timer {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            border-radius: 8px;
+            padding: 8px 12px;
+            text-align: center;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .countdown-ended {
+            background: linear-gradient(135deg, #6c757d, #495057);
+        }
+
+        .notice-card {
+            border-left: 4px solid #17a2b8;
+            transition: all 0.2s ease;
+        }
+
+        .notice-card.important {
+            border-left: 4px solid #dc3545;
+            background: #fff5f5;
+        }
+
+        .notice-card:hover {
+            background: #f8f9fa;
+        }
+
+        .attendance-progress {
+            height: 8px;
+            border-radius: 4px;
+        }
+
+        .btn {
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .progress-bar {
+            transition: width 0.6s ease;
+        }
+
+        .test-info {
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('student_dashboard') }}">
+                <i class="fas fa-university"></i> College Attendance System
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link active" href="{{ url_for('student_dashboard') }}">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a class="nav-link" href="{{ url_for('student_tests') }}">
+                    <i class="fas fa-file-alt"></i> Tests
+                </a>
+                <a class="nav-link" href="{{ url_for('student_notes') }}">
+                    <i class="fas fa-book"></i> Notes
+                </a>
+                <a class="nav-link" href="{{ url_for('student_notices') }}">
+                    <i class="fas fa-bullhorn"></i> Notices
+                </a>
+                <a class="nav-link" href="{{ url_for('profile') }}">
+                    <i class="fas fa-user"></i> Profile
+                </a>
+                <a class="nav-link" href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Welcome Section -->
+        <div class="welcome-section">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h2 class="mb-2">Welcome back, {{ student.name }}! 👋</h2>
+                    <p class="mb-0">
+                        <strong>{{ student.roll }}</strong> •
+                        {{ student.branch }} • Year {{ student.year }}
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="bg-white text-dark rounded p-3 d-inline-block">
+                        <h4 class="mb-0" id="currentTime">--:--:--</h4>
+                        <small class="text-muted">{{ get_today_date() }}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Left Column -->
+            <div class="col-lg-8">
+                <!-- Quick Stats -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="stat-card text-center">
+                            <div class="icon bg-primary text-white">
+                                <i class="fas fa-book"></i>
+                            </div>
+                            <h4>{{ subject_attendance|length }}</h4>
+                            <p class="text-muted mb-0">Subjects</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card text-center">
+                            <div class="icon bg-success text-white">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <h4>{{ subject_attendance|selectattr('percentage', '>=', 75)|list|length }}</h4>
+                            <p class="text-muted mb-0">Good Attendance</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card text-center">
+                            <div class="icon bg-info text-white">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <h4>{{ test_data|length }}</h4>
+                            <p class="text-muted mb-0">Total Tests</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card text-center">
+                            <div class="icon bg-warning text-white">
+                                <i class="fas fa-bullhorn"></i>
+                            </div>
+                            <h4>{{ recent_notices|length }}</h4>
+                            <p class="text-muted mb-0">New Notices</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subject-wise Attendance -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-chart-bar"></i> Subject-wise Attendance
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if subject_attendance %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Subject</th>
+                                            <th>Code</th>
+                                            <th>Classes</th>
+                                            <th>Attendance</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for subject_data in subject_attendance %}
+                                        <tr class="{{ 'attendance-good' if subject_data.percentage >= 75 else 'attendance-average' if subject_data.percentage >= 50 else 'attendance-low' }}">
+                                            <td><strong>{{ subject_data.subject.name }}</strong></td>
+                                            <td><span class="badge bg-secondary">{{ subject_data.subject.code }}</span></td>
+                                            <td>{{ subject_data.present_classes }}/{{ subject_data.total_classes }}</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="progress attendance-progress flex-grow-1 me-2">
+                                                        <div class="progress-bar {{ 'bg-success' if subject_data.percentage >= 75 else 'bg-warning' if subject_data.percentage >= 50 else 'bg-danger' }}"
+                                                             style="width: {{ subject_data.percentage }}%">
+                                                        </div>
+                                                    </div>
+                                                    <span>{{ subject_data.percentage }}%</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {% if subject_data.percentage >= 75 %}
+                                                    <span class="badge bg-success">Good</span>
+                                                {% elif subject_data.percentage >= 50 %}
+                                                    <span class="badge bg-warning">Average</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">Low</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-book fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">No Subjects Found</h5>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Tests -->
+                <div class="card">
+                    <div class="card-header bg-warning text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-clock"></i> Tests
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if test_data %}
+                            <div class="row">
+                                {% for data in test_data %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card test-card {{ 'test-available' if data.status == 'available' else 'test-upcoming' if data.status == 'upcoming' else 'test-ended' }}"
+                                         data-test-id="{{ data.test.id }}"
+                                         data-available-from="{{ data.test.available_from.isoformat() }}"
+                                         data-available-until="{{ data.test.available_until.isoformat() }}">
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ data.test.title }}</h6>
+                                            <p class="card-text small text-muted mb-2">
+                                                {{ data.test.subject.name }}
+                                            </p>
+
+                                            <div class="row test-info mb-2">
+                                                <div class="col-6">
+                                                    <i class="fas fa-clock text-muted"></i>
+                                                    {{ data.test.duration_minutes }} min
+                                                </div>
+                                                <div class="col-6">
+                                                    <i class="fas fa-star text-muted"></i>
+                                                    {{ data.test.total_marks }} marks
+                                                </div>
+                                            </div>
+
+                                            <!-- Countdown Timer -->
+                                            {% if data.status == 'upcoming' %}
+                                            <div class="countdown-timer" id="countdown-{{ data.test.id }}">
+                                                <i class="fas fa-hourglass-start"></i>
+                                                <span class="countdown-text">Starts in: </span>
+                                                <span class="countdown-value">00:00:00</span>
+                                            </div>
+                                            {% elif data.status == 'available' %}
+                                            <div class="countdown-timer countdown-ended">
+                                                <i class="fas fa-play-circle"></i>
+                                                Available Now!
+                                            </div>
+                                            {% else %}
+                                            <div class="countdown-timer countdown-ended">
+                                                <i class="fas fa-ban"></i>
+                                                Test Ended
+                                            </div>
+                                            {% endif %}
+
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="badge {{ 'bg-success' if data.status == 'available' else 'bg-warning' if data.status == 'upcoming' else 'bg-secondary' }}">
+                                                    {{ data.status|title }}
+                                                </span>
+
+                                                {% if data.status == 'available' and not data.attempted %}
+                                                    <a href="{{ url_for('test_instructions', test_id=data.test.id) }}"
+                                                       class="btn btn-success btn-sm">
+                                                        <i class="fas fa-play-circle"></i> Attempt
+                                                    </a>
+                                                {% elif data.status == 'upcoming' and not data.attempted %}
+                                                    <button class="btn btn-outline-warning btn-sm attempt-btn"
+                                                            data-test-id="{{ data.test.id }}"
+                                                            disabled>
+                                                        <i class="fas fa-clock"></i> Wait
+                                                    </button>
+                                                {% elif data.attempted %}
+                                                    <span class="badge bg-info">Attempted</span>
+                                                {% else %}
+                                                    <button class="btn btn-secondary btn-sm" disabled>
+                                                        Not Available
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">No Tests Available</h5>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="col-lg-4">
+                <!-- Recent Notices -->
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-bullhorn"></i> Recent Notices
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_notices %}
+                            {% for notice in recent_notices %}
+                            <div class="card notice-card {{ 'important' if notice.is_important }} mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        {{ notice.title }}
+                                        {% if notice.is_important %}
+                                            <span class="badge bg-danger float-end">Important</span>
+                                        {% endif %}
+                                    </h6>
+                                    <p class="card-text small">{{ notice.message[:100] }}{% if notice.message|length > 100 %}...{% endif %}</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">
+                                            {{ notice.created_at.strftime('%d %b %Y') }}
+                                        </small>
+                                        <a href="{{ url_for('student_notices') }}" class="btn btn-sm btn-outline-primary">
+                                            Read More
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-3">
+                                <p class="text-muted mb-0">No new notices</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-bolt"></i> Quick Actions
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('student_tests') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-file-alt"></i> View All Tests
+                            </a>
+                            <a href="{{ url_for('student_notes') }}" class="btn btn-outline-success">
+                                <i class="fas fa-book"></i> Study Notes
+                            </a>
+                            <a href="{{ url_for('profile') }}" class="btn btn-outline-info">
+                                <i class="fas fa-user"></i> My Profile
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Update current time
+        function updateCurrentTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+            document.getElementById('currentTime').textContent = timeString;
+        }
+
+        // Countdown timer for upcoming tests
+        function updateAllCountdowns() {
+            const upcomingTests = document.querySelectorAll('.test-card.test-upcoming');
+
+            upcomingTests.forEach(testCard => {
+                const testId = testCard.dataset.testId;
+                const availableFrom = new Date(testCard.dataset.availableFrom);
+                const now = new Date();
+                const timeLeft = availableFrom - now;
+
+                const countdownElement = document.getElementById(`countdown-${testId}`);
+                const attemptBtn = testCard.querySelector('.attempt-btn');
+
+                if (timeLeft <= 0) {
+                    // Test start ho gaya - page refresh karo
+                    countdownElement.innerHTML = '<i class="fas fa-play-circle"></i> Available Now!';
+                    countdownElement.classList.remove('countdown-timer');
+                    countdownElement.classList.add('countdown-ended');
+
+                    if (attemptBtn) {
+                        attemptBtn.disabled = false;
+                        attemptBtn.classList.remove('btn-outline-warning');
+                        attemptBtn.classList.add('btn-success');
+                        attemptBtn.innerHTML = '<i class="fas fa-play-circle"></i> Attempt';
+                        attemptBtn.onclick = function() {
+                            window.location.href = `/student/test/${testId}/instructions`;
+                        };
+                    }
+
+                    // Auto-refresh after 5 seconds
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 5000);
+
+                    return;
+                }
+
+                // Time calculate karo
+                const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+                // Display karo
+                const countdownValue = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                countdownElement.querySelector('.countdown-value').textContent = countdownValue;
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCurrentTime();
+            updateAllCountdowns();
+
+            // Update time every second
+            setInterval(updateCurrentTime, 1000);
+            // Update countdown every second
+            setInterval(updateAllCountdowns, 1000);
+        });
+    </script>
+</body>
+</html>

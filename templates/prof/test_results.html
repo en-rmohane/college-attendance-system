@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-warning border-0 shadow-lg">
+                <div class="card-body py-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="text-white mb-2">
+                                <i class="bi bi-trophy me-3"></i>Test Results
+                            </h2>
+                            <p class="text-white-50 mb-0 fs-5">{{ test.title }} - {{ test.subject.code }}</p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="bg-white bg-opacity-25 rounded-3 p-3 d-inline-block">
+                                <div class="text-white fw-bold fs-6 mb-1">Submissions</div>
+                                <div class="text-white fs-5 fw-bold">{{ attempts|length }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body py-4">
+                    <div class="text-primary fs-2 fw-bold">
+                        {{ (attempts|map(attribute='total_marks_obtained')|sum / attempts|length if attempts else 0)|round(1) }}
+                    </div>
+                    <small class="text-muted fw-bold">Average Score</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body py-4">
+                    <div class="text-success fs-2 fw-bold">
+                        {{ attempts|selectattr('total_marks_obtained', '>=', test.total_marks * 0.75)|list|length }}
+                    </div>
+                    <small class="text-muted fw-bold">Above 75%</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body py-4">
+                    <div class="text-warning fs-2 fw-bold">
+                        {{ attempts|selectattr('total_marks_obtained', '>=', test.total_marks * 0.5)|selectattr('total_marks_obtained', '<', test.total_marks * 0.75)|list|length }}
+                    </div>
+                    <small class="text-muted fw-bold">50-75%</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body py-4">
+                    <div class="text-danger fs-2 fw-bold">
+                        {{ attempts|selectattr('total_marks_obtained', '<', test.total_marks * 0.5)|list|length }}
+                    </div>
+                    <small class="text-muted fw-bold">Below 50%</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 text-dark fw-bold">
+                        <i class="bi bi-list-check text-primary me-2"></i>Student Submissions
+                    </h5>
+                    <a href="{{ url_for('prof_tests') }}" class="btn btn-outline-primary btn-sm fw-bold">
+                        <i class="bi bi-arrow-left me-1"></i>Back to Tests
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if attempts %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="border-0 text-dark fw-bold">Student</th>
+                                    <th class="border-0 text-center text-dark fw-bold">Score</th>
+                                    <th class="border-0 text-center text-dark fw-bold">Percentage</th>
+                                    <th class="border-0 text-center text-dark fw-bold">Time Taken</th>
+                                    <th class="border-0 text-center text-dark fw-bold">Submitted At</th>
+                                    <th class="border-0 text-center text-dark fw-bold">Performance</th>
+                                    <th class="border-0 text-center text-dark fw-bold">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for attempt in attempts %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="icon-shape icon-sm bg-primary text-white rounded-2 me-3">
+                                                <i class="bi bi-person"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0 fw-bold text-dark">{{ attempt.student.name }}</h6>
+                                                <small class="text-muted">{{ attempt.student.roll }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <h6 class="fw-bold text-dark mb-0">
+                                            {{ attempt.total_marks_obtained }}/{{ test.total_marks }}
+                                        </h6>
+                                    </td>
+                                    <td class="text-center">
+                                        {% set percentage = (attempt.total_marks_obtained / test.total_marks * 100)|round(1) %}
+                                        <span class="badge 
+                                            {% if percentage >= 75 %}bg-success
+                                            {% elif percentage >= 50 %}bg-warning
+                                            {% else %}bg-danger{% endif %} text-white fw-bold">
+                                            {{ percentage }}%
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        {% if attempt.end_time %}
+                                            {% set time_taken = (attempt.end_time - attempt.start_time).total_seconds() / 60 %}
+                                            <span class="fw-bold text-dark">{{ time_taken|round(1) }} mins</span>
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <small class="text-muted">
+                                            {{ attempt.end_time.strftime('%d %b, %I:%M %p') if attempt.end_time else 'N/A' }}
+                                        </small>
+                                    </td>
+                                    <td class="text-center">
+                                        {% set percentage = (attempt.total_marks_obtained / test.total_marks * 100)|round(1) %}
+                                        {% if percentage >= 75 %}
+                                        <span class="badge bg-success text-white fw-bold">Excellent</span>
+                                        {% elif percentage >= 50 %}
+                                        <span class="badge bg-warning text-dark fw-bold">Good</span>
+                                        {% else %}
+                                        <span class="badge bg-danger text-white fw-bold">Needs Improvement</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-info text-white fw-bold" 
+                                                onclick="viewStudentAnswers({{ attempt.id }})">
+                                            <i class="bi bi-eye me-1"></i>View Answers
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <div class="icon-shape icon-lg bg-light text-muted rounded-3 mb-3 mx-auto">
+                            <i class="bi bi-clipboard-x fs-2"></i>
+                        </div>
+                        <h6 class="text-muted">No Submissions Yet</h6>
+                        <p class="text-muted small">No students have submitted this test yet</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Student Answers Modal -->
+<div class="modal fade" id="answersModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-list-check me-2"></i>Student Answers
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="answersContent">
+                <!-- Answers will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.bg-gradient-warning {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+}
+</style>
+
+<script>
+function viewStudentAnswers(attemptId) {
+    fetch(`/prof/test/attempt/${attemptId}/answers`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('answersContent').innerHTML = data.html;
+                new bootstrap.Modal(document.getElementById('answersModal')).show();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+}
+</script>
+{% endblock %}

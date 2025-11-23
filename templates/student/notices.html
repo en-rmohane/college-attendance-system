@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% block title %}Notices - Student{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-primary">
+            <i class="bi bi-megaphone me-2"></i>College Notices
+        </h2>
+        <div>
+            <a href="{{ url_for('student_dashboard') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Important Notices -->
+    {% set important_notices = [] %}
+    {% for notice in notices %}
+        {% if notice.is_important %}
+            {% set _ = important_notices.append(notice) %}
+        {% endif %}
+    {% endfor %}
+
+    {% if important_notices %}
+    <div class="card border-danger shadow-sm mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>Urgent Notices
+            </h5>
+        </div>
+        <div class="card-body">
+            {% for notice in important_notices %}
+            <div class="alert alert-danger mb-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="alert-heading">
+                            <i class="bi bi-pin-angle-fill me-1"></i>{{ notice.title }}
+                        </h6>
+                        <p class="mb-1">{{ notice.message }}</p>
+                        <small class="text-white">
+                            <i class="bi bi-clock me-1"></i>
+                            {{ notice.created_at.strftime('%d %b %Y, %I:%M %p') }}
+                            {% if notice.expires_at %}
+                            | Expires: {{ notice.expires_at.strftime('%d %b %Y') }}
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- All Notices -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-bell me-2"></i>All Notices
+                <span class="badge bg-light text-dark ms-2">{{ notices|length }}</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            {% if notices %}
+            <div class="list-group list-group-flush">
+                {% for notice in notices %}
+                <div class="list-group-item {% if notice.is_important %}list-group-item-danger{% endif %}">
+                    <div class="d-flex w-100 justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">
+                                {% if notice.is_important %}
+                                <i class="bi bi-exclamation-triangle-fill text-danger me-1"></i>
+                                {% else %}
+                                <i class="bi bi-info-circle text-primary me-1"></i>
+                                {% endif %}
+                                {{ notice.title }}
+                            </h6>
+                            <p class="mb-1">{{ notice.message }}</p>
+                            <small class="text-muted">
+                                <i class="bi bi-calendar me-1"></i>
+                                {{ notice.created_at.strftime('%d %b %Y, %I:%M %p') }}
+                                {% if notice.expires_at %}
+                                | <i class="bi bi-clock-history me-1"></i>
+                                Expires: {{ notice.expires_at.strftime('%d %b %Y') }}
+                                {% endif %}
+                            </small>
+                        </div>
+                        <span class="badge {% if notice.is_important %}bg-danger{% else %}bg-secondary{% endif %} ms-2">
+                            {{ notice.target_audience|title }}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-bell-slash display-4 d-block mb-2"></i>
+                <h5>No Notices Available</h5>
+                <p>There are no notices for you at the moment.</p>
+                <p class="small">Check back later for updates from college administration.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Notice Statistics -->
+    {% if notices %}
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white text-center">
+                <div class="card-body">
+                    <h4>{{ notices|length }}</h4>
+                    <p class="mb-0">Total Notices</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-danger text-white text-center">
+                <div class="card-body">
+                    <h4>{{ important_notices|length }}</h4>
+                    <p class="mb-0">Urgent</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white text-center">
+                <div class="card-body">
+                    {% set recent_count = 0 %}
+                    {% set seven_days_ago = today_minus_7_days() %}
+                    {% for notice in notices %}
+                        {% if notice.created_at >= seven_days_ago %}
+                            {% set recent_count = recent_count + 1 %}
+                        {% endif %}
+                    {% endfor %}
+                    <h4>{{ recent_count }}</h4>
+                    <p class="mb-0">Last 7 Days</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.card {
+    transition: transform 0.2s;
+}
+.card:hover {
+    transform: translateY(-2px);
+}
+.list-group-item {
+    border: none;
+    border-bottom: 1px solid #eee;
+}
+.list-group-item:last-child {
+    border-bottom: none;
+}
+.alert {
+    border: none;
+    border-radius: 8px;
+}
+</style>
+{% endblock %}

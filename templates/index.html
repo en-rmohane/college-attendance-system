@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - College Attendance System{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="card shadow-lg border-0">
+                <div class="card-body py-5">
+                    <h1 class="display-4 text-primary mb-4">
+                        <i class="bi bi-journal-check"></i><br>
+                        College Attendance System
+                    </h1>
+                    <p class="lead text-muted mb-4">
+                        Streamline your college attendance management with our comprehensive solution
+                    </p>
+
+                    <div class="row mt-5">
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body">
+                                    <i class="bi bi-person-gear display-6 text-primary mb-3"></i>
+                                    <h5>Admin Portal</h5>
+                                    <p class="text-muted">Manage professors, subjects, and generate reports</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body">
+                                    <i class="bi bi-person-video3 display-6 text-success mb-3"></i>
+                                    <h5>Professor Portal</h5>
+                                    <p class="text-muted">Take attendance and view subject reports</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 border-0 bg-light">
+                                <div class="card-body">
+                                    <i class="bi bi-person display-6 text-info mb-3"></i>
+                                    <h5>Student Portal</h5>
+                                    <p class="text-muted">View your attendance and performance</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-5">
+                        <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg me-3">
+                            <i class="bi bi-box-arrow-in-right"></i> Login
+                        </a>
+                        {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                        <a href="{{ url_for('admin_reports') }}" class="btn btn-outline-secondary btn-lg">
+                            <i class="bi bi-file-earmark-spreadsheet"></i> Generate Report
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

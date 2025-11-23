@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professor Dashboard - College Management System</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2c3e50;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --info: #17a2b8;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+            --indigo: #6610f2;
+            --purple: #6f42c1;
+            --teal: #20c997;
+            --orange: #fd7e14;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .dashboard-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin: 1rem auto;
+            overflow: hidden;
+        }
+
+        .stat-card {
+            border: none;
+            border-radius: 15px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .subject-card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+
+        .subject-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .bg-gradient-primary {
+            background: linear-gradient(135deg, var(--primary), #2980b9) !important;
+        }
+
+        /* 🆕 PROFILE PHOTO STYLES */
+        .profile-avatar-small {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--info));
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-right: 8px;
+        }
+
+        .profile-img-small {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid white;
+            margin-right: 8px;
+        }
+
+        /* 🆕 NOTICE ALERT BADGE STYLES */
+        .notice-alert {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .quick-action-btn {
+            background: white;
+            border: 2px solid var(--light);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            color: var(--dark);
+            text-decoration: none;
+            display: block;
+            height: 100%;
+        }
+
+        .quick-action-btn:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        /* 🆕 TEST MANAGEMENT STYLES */
+        .bg-indigo {
+            background-color: var(--indigo) !important;
+        }
+
+        .bg-purple {
+            background-color: var(--purple) !important;
+        }
+
+        .bg-teal {
+            background-color: var(--teal) !important;
+        }
+
+        .bg-orange {
+            background-color: var(--orange) !important;
+        }
+
+        .test-btn {
+            background: linear-gradient(135deg, var(--indigo), var(--purple));
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .test-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 16, 242, 0.3);
+            color: white;
+        }
+
+        .notes-btn {
+            background: linear-gradient(135deg, var(--teal), #20b2aa);
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .notes-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(32, 201, 151, 0.3);
+            color: white;
+        }
+
+        .subject-actions {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .btn-group-vertical {
+            display: grid;
+            gap: 0.3rem;
+        }
+
+        /* 🆕 UPLOAD BUTTON STYLES */
+        .upload-btn {
+            background: linear-gradient(135deg, var(--orange), #ff6b35);
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(253, 126, 20, 0.3);
+            color: white;
+        }
+
+        .feature-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: linear-gradient(135deg, #ff6b35, #ff4757);
+            color: white;
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                margin: 0.5rem;
+            }
+
+            .subject-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background: var(--secondary);">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('prof_dashboard') }}">
+                <i class="fas fa-chalkboard-teacher me-2"></i>Professor Portal
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('prof_dashboard') }}">
+                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('prof_tests') }}">
+                            <i class="bi bi-pencil-square me-1"></i>Test Management
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('prof_notes') }}">
+                            <i class="fas fa-book me-1"></i>Study Materials
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('prof_reports') }}">
+                            <i class="fas fa-chart-bar me-1"></i>Reports
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link position-relative" href="{{ url_for('prof_notices') }}">
+                            <i class="fas fa-bullhorn me-1"></i>Notices
+                            {% if has_unseen_notices(current_user.id, 'professor') %}
+                            <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle notice-alert">
+                                <span class="visually-hidden">New alerts</span>
+                            </span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    <!-- 🆕 PROFILE DROPDOWN WITH PHOTO -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            {% if current_user.profile_photo %}
+                            <img src="{{ url_for('get_profile_photo', user_id=current_user.id) }}?{{ range(1, 10000) | random }}"
+                                 alt="Profile" class="profile-img-small">
+                            {% else %}
+                            <span class="profile-avatar-small">{{ current_user.fullname[0] }}</span>
+                            {% endif %}
+                            <span>{{ current_user.fullname }}</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ url_for('profile') }}">
+                                <i class="fas fa-id-card me-2"></i>My Profile
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('change_password') }}">
+                                <i class="fas fa-key me-2"></i>Change Password
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt me-2"></i>Logout
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4">
+        <div class="dashboard-container mt-3">
+            <div class="p-4">
+                <!-- Header Section -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="h3 mb-1 text-dark fw-bold">
+                            <i class="fas fa-chalkboard-teacher text-primary me-2"></i>Professor Dashboard
+                        </h2>
+                        <p class="text-muted mb-0">Welcome back, {{ current_user.fullname }}! Manage your classes efficiently.</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <!-- 🆕 ALL FEATURES BUTTONS -->
+                        <a href="{{ url_for('prof_all_subjects_report') }}" class="btn btn-success">
+                            <i class="fas fa-download me-2"></i>All Reports
+                        </a>
+                        <a href="{{ url_for('prof_notes') }}" class="btn btn-info">
+                            <i class="fas fa-upload me-2"></i>Upload Notes
+                        </a>
+                        <a href="{{ url_for('prof_tests') }}" class="btn test-btn">
+                            <i class="bi bi-pencil-square me-2"></i>Create Test
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="row g-4 mb-4">
+                    <div class="col-xl-3 col-md-6">
+                        <div class="stat-card bg-primary text-white">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1">
+                                        <h4 class="mb-0">{{ subjects|length }}</h4>
+                                        <p class="mb-0">Allotted Subjects</p>
+                                    </div>
+                                    <div class="stat-icon bg-white bg-opacity-20">
+                                        <i class="fas fa-book"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6">
+                        <div class="stat-card bg-success text-white">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1">
+                                        <h4 class="mb-0">
+                                            {% set total_students = 0 %}
+                                            {% for subj in subjects %}
+                                                {% set academic_year = (subj.semester + 1)//2 %}
+                                                {% set student_count = get_student_count(subj.branch, academic_year) %}
+                                                {% set total_students = total_students + student_count %}
+                                            {% endfor %}
+                                            {{ total_students }}
+                                        </h4>
+                                        <p class="mb-0">Total Students</p>
+                                    </div>
+                                    <div class="stat-icon bg-white bg-opacity-20">
+                                        <i class="fas fa-users"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6">
+                        <div class="stat-card bg-warning text-white">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1">
+                                        <h4 class="mb-0">
+                                            {% set today_classes = 0 %}
+                                            {% for subj in subjects %}
+                                                {% set count = get_today_attendance_count(subj.id) %}
+                                                {% set today_classes = today_classes + count %}
+                                            {% endfor %}
+                                            {{ today_classes }}
+                                        </h4>
+                                        <p class="mb-0">Today's Classes</p>
+                                    </div>
+                                    <div class="stat-icon bg-white bg-opacity-20">
+                                        <i class="fas fa-calendar-day"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6">
+                        <div class="stat-card bg-info text-white">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-grow-1">
+                                        <h4 class="mb-0">
+                                            {% set total_classes = 0 %}
+                                            {% for subj in subjects %}
+                                                {% set count = get_total_classes_count(subj.id) %}
+                                                {% set total_classes = total_classes + count %}
+                                            {% endfor %}
+                                            {{ total_classes }}
+                                        </h4>
+                                        <p class="mb-0">Total Classes</p>
+                                    </div>
+                                    <div class="stat-icon bg-white bg-opacity-20">
+                                        <i class="fas fa-chart-line"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🆕 ENHANCED QUICK ACTION BUTTONS WITH ALL FEATURES -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="card-title mb-0 text-dark">
+                            <i class="fas fa-bolt text-warning me-2"></i>Quick Actions - All Features
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <!-- Test Management -->
+                            <div class="col-md-2 col-6">
+                                <a href="{{ url_for('prof_tests') }}" class="quick-action-btn position-relative">
+                                    <i class="bi bi-pencil-square fa-2x mb-2 text-indigo"></i>
+                                    <div class="fw-bold">Test Management</div>
+                                    <small class="text-muted">Online Exams</small>
+                                    <span class="feature-badge">NEW</span>
+                                </a>
+                            </div>
+
+                            <!-- Study Materials -->
+                            <div class="col-md-2 col-6">
+                                <a href="{{ url_for('prof_notes') }}" class="quick-action-btn">
+                                    <i class="fas fa-journal-whills fa-2x mb-2 text-primary"></i>
+                                    <div class="fw-bold">Study Materials</div>
+                                    <small class="text-muted">Upload Notes</small>
+                                </a>
+                            </div>
+
+                            <!-- Attendance -->
+                            <div class="col-md-2 col-6">
+                                <a href="#attendance-section" class="quick-action-btn">
+                                    <i class="fas fa-clipboard-check fa-2x mb-2 text-success"></i>
+                                    <div class="fw-bold">Attendance</div>
+                                    <small class="text-muted">Take/Bulk</small>
+                                </a>
+                            </div>
+
+                            <!-- Marks Management -->
+                            <div class="col-md-2 col-6">
+                                <a href="#marks-section" class="quick-action-btn">
+                                    <i class="fas fa-chart-line fa-2x mb-2 text-warning"></i>
+                                    <div class="fw-bold">Marks Entry</div>
+                                    <small class="text-muted">Mid-term</small>
+                                </a>
+                            </div>
+
+                            <!-- Reports -->
+                            <div class="col-md-2 col-6">
+                                <a href="{{ url_for('prof_reports') }}" class="quick-action-btn">
+                                    <i class="fas fa-chart-pie fa-2x mb-2 text-danger"></i>
+                                    <div class="fw-bold">Analytics</div>
+                                    <small class="text-muted">Reports</small>
+                                </a>
+                            </div>
+
+                            <!-- Notices -->
+                            <div class="col-md-2 col-6">
+                                <a href="{{ url_for('prof_notices') }}" class="quick-action-btn position-relative">
+                                    <i class="fas fa-bullhorn fa-2x mb-2 text-info"></i>
+                                    <div class="fw-bold">Notices</div>
+                                    <small class="text-muted">Announcements</small>
+                                    {% if has_unseen_notices(current_user.id, 'professor') %}
+                                    <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle notice-alert">
+                                        <span class="visually-hidden">New alerts</span>
+                                    </span>
+                                    {% endif %}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subjects Grid -->
+                {% if subjects %}
+                <div class="row g-4">
+                    {% for subj in subjects %}
+                        {% set today_attendance_count = get_today_attendance_count(subj.id) %}
+                        {% set total_classes_count = get_total_classes_count(subj.id) %}
+                        {% set academic_year = (subj.semester + 1)//2 %}
+                        {% set student_count = get_student_count(subj.branch, academic_year) %}
+
+                        <div class="col-xl-4 col-lg-6 col-md-6">
+                            <div class="card subject-card h-100">
+                                <div class="card-header bg-gradient-primary text-white py-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-0 fw-bold">{{ subj.code }}</h6>
+                                            <small>Semester {{ subj.semester }}</small>
+                                        </div>
+                                        <span class="badge bg-white text-primary">{{ subj.branch }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="card-body">
+                                    <!-- Subject Info -->
+                                    <h6 class="card-title text-dark mb-3">{{ subj.name }}</h6>
+
+                                    <!-- Stats Row -->
+                                    <div class="row text-center mb-3">
+                                        <div class="col-4">
+                                            <div class="border-end">
+                                                <div class="h5 mb-1 text-primary">{{ student_count }}</div>
+                                                <small class="text-muted">Students</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="border-end">
+                                                <div class="h5 mb-1 text-success">{{ total_classes_count }}</div>
+                                                <small class="text-muted">Classes</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div>
+                                                <div class="h5 mb-1 {% if today_attendance_count > 0 %}text-warning{% else %}text-muted{% endif %}">
+                                                    {{ today_attendance_count }}
+                                                </div>
+                                                <small class="text-muted">Today</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 🆕 ENHANCED ACTION BUTTONS WITH ALL FEATURES -->
+                                    <div class="subject-actions">
+                                        <!-- Attendance Section -->
+                                        <div class="btn-group w-100" role="group">
+                                            <a href="{{ url_for('take_attendance', subject_id=subj.id) }}"
+                                               class="btn btn-success btn-sm">
+                                                <i class="fas fa-clipboard-check me-1"></i>Take Attendance
+                                            </a>
+                                            <a href="{{ url_for('bulk_attendance', subject_id=subj.id) }}"
+                                               class="btn btn-outline-success btn-sm">
+                                                <i class="fas fa-tasks me-1"></i>Bulk
+                                            </a>
+                                        </div>
+
+                                        <!-- Marks Section -->
+                                        <div class="btn-group w-100" role="group">
+                                            <a href="{{ url_for('enter_mid_term_marks', subject_id=subj.id) }}"
+                                               class="btn btn-warning btn-sm">
+                                                <i class="fas fa-edit me-1"></i>Enter Marks
+                                            </a>
+                                            <a href="{{ url_for('view_subject_marks', subject_id=subj.id) }}"
+                                               class="btn btn-outline-warning btn-sm">
+                                                <i class="fas fa-eye me-1"></i>View
+                                            </a>
+                                        </div>
+
+                                        <!-- Test Management Section -->
+                                        <div class="btn-group w-100" role="group">
+                                            <a href="{{ url_for('create_test') }}?subject_id={{ subj.id }}"
+                                               class="btn test-btn btn-sm">
+                                                <i class="bi bi-pencil-square me-1"></i>Create Test
+                                            </a>
+                                            <a href="{{ url_for('prof_tests') }}?subject_id={{ subj.id }}"
+                                               class="btn btn-outline-indigo btn-sm" style="border-color: #6610f2; color: #6610f2;">
+                                                <i class="bi bi-list-check me-1"></i>Manage
+                                            </a>
+                                        </div>
+
+                                        <!-- Notes Upload Section -->
+                                        <div class="btn-group w-100" role="group">
+                                            <a href="{{ url_for('prof_notes') }}?subject_id={{ subj.id }}"
+                                               class="btn notes-btn btn-sm">
+                                                <i class="fas fa-upload me-1"></i>Upload Notes
+                                            </a>
+                                            <a href="{{ url_for('prof_notes') }}?subject_id={{ subj.id }}"
+                                               class="btn btn-outline-teal btn-sm" style="border-color: #20c997; color: #20c997;">
+                                                <i class="fas fa-book me-1"></i>View
+                                            </a>
+                                        </div>
+
+                                        <!-- Reports Section -->
+                                        <div class="btn-group w-100" role="group">
+                                            <a href="{{ url_for('generate_subject_report', subject_id=subj.id) }}"
+                                               class="btn btn-info btn-sm">
+                                                <i class="fas fa-download me-1"></i>Download Report
+                                            </a>
+                                            <a href="{{ url_for('generate_subject_report', subject_id=subj.id) }}?days=30"
+                                               class="btn btn-outline-info btn-sm">
+                                                <i class="fas fa-chart-bar me-1"></i>View
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Card Footer -->
+                                <div class="card-footer bg-light border-0">
+                                    <div class="d-flex justify-content-between align-items-center small">
+                                        <span class="text-muted">
+                                            <i class="fas fa-users me-1"></i>Year {{ academic_year }}
+                                        </span>
+                                        <span class="text-muted">
+                                            {% if today_attendance_count > 0 %}
+                                                <i class="fas fa-check-circle text-success me-1"></i>Attendance Taken
+                                            {% else %}
+                                                <i class="fas fa-clock text-warning me-1"></i>Pending
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                {% else %}
+                <!-- No Subjects State -->
+                <div class="card shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <div class="empty-state">
+                            <i class="fas fa-book-open fa-4x text-muted mb-3"></i>
+                            <h4 class="text-muted">No Subjects Allotted</h4>
+                            <p class="text-muted mb-4">You haven't been assigned any subjects yet.</p>
+                            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary">
+                                <i class="fas fa-user-cog me-2"></i>Contact Administrator
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- 🆕 RECENT ACTIVITIES SECTION -->
+                <div class="row mt-5">
+                    <div class="col-lg-6">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-header bg-white border-0 py-3">
+                                <h5 class="card-title mb-0 text-dark">
+                                    <i class="fas fa-history text-primary me-2"></i>Recent Activities
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="list-group list-group-flush">
+                                    {% for subj in subjects[:3] %}
+                                    <div class="list-group-item border-0 px-0">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-shrink-0">
+                                                <div class="bg-primary bg-opacity-10 rounded-circle p-2">
+                                                    <i class="fas fa-book text-primary"></i>
+                                                </div>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <h6 class="mb-0">{{ subj.code }}</h6>
+                                                <small class="text-muted">{{ subj.name }}</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <small class="text-muted">Today</small>
+                                                <div class="badge bg-success">Active</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <!-- Today's Activity Section -->
+                        <div class="card shadow-sm h-100">
+                            <div class="card-header bg-white border-0 py-3">
+                                <h5 class="card-title mb-0 text-dark">
+                                    <i class="fas fa-chart-bar text-primary me-2"></i>Today's Attendance Overview
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                {% set today_stats = get_today_attendance_summary() %}
+                                {% if today_stats %}
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Subject</th>
+                                                    <th>Present</th>
+                                                    <th>%</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for stat in today_stats[:3] %}
+                                                <tr>
+                                                    <td>
+                                                        <small><strong>{{ stat.subject_code }}</strong></small>
+                                                    </td>
+                                                    <td>
+                                                        <span class="text-success fw-bold">{{ stat.present_count }}</span>/{{ stat.total_students }}
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge
+                                                            {% if stat.percentage >= 75 %}bg-success
+                                                            {% elif stat.percentage >= 50 %}bg-warning
+                                                            {% else %}bg-danger{% endif %}">
+                                                            {{ stat.percentage }}%
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <small class="text-muted">{{ stat.last_updated }}</small>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% if today_stats|length > 3 %}
+                                    <div class="text-center mt-2">
+                                        <a href="#attendance-section" class="btn btn-sm btn-outline-primary">
+                                            View All ({{ today_stats|length }})
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                {% else %}
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-clipboard-list fa-2x text-muted mb-3"></i>
+                                        <h6 class="text-muted">No Attendance Today</h6>
+                                        <small class="text-muted">No attendance recorded yet.</small>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🆕 FEATURE HIGHLIGHTS SECTION -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-white border-0 py-3">
+                                <h5 class="card-title mb-0 text-dark">
+                                    <i class="fas fa-star text-warning me-2"></i>Available Features
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-3 col-6">
+                                        <div class="text-center p-3 border rounded">
+                                            <i class="bi bi-pencil-square fa-2x text-indigo mb-2"></i>
+                                            <h6>Smart Test System</h6>
+                                            <small class="text-muted">Auto-submit, Timer, Tab-switch detection</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <div class="text-center p-3 border rounded">
+                                            <i class="fas fa-upload fa-2x text-teal mb-2"></i>
+                                            <h6>Notes Upload</h6>
+                                            <small class="text-muted">PDF, DOC, PPT files up to 16MB</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <div class="text-center p-3 border rounded">
+                                            <i class="fas fa-chart-line fa-2x text-warning mb-2"></i>
+                                            <h6>Marks Management</h6>
+                                            <small class="text-muted">Mid-term marks entry & tracking</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-6">
+                                        <div class="text-center p-3 border rounded">
+                                            <i class="fas fa-download fa-2x text-info mb-2"></i>
+                                            <h6>Reports</h6>
+                                            <small class="text-muted">CSV reports & analytics</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="text-center py-4 mt-4">
+            <p class="text-muted mb-0">
+                &copy; 2024 Shri Balaji Institute of Technology & Management. All rights reserved.
+            </p>
+            <small class="text-muted">Professor Portal v2.0 - All Features Enabled</small>
+        </footer>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // 🆕 ENHANCED JAVASCRIPT FOR ALL FEATURES
+        document.addEventListener('DOMContentLoaded', function() {
+            // Notice alert pulse animation
+            const noticeAlerts = document.querySelectorAll('.notice-alert');
+            noticeAlerts.forEach(alert => {
+                alert.style.animation = 'pulse 2s infinite';
+            });
+
+            // Add hover effects to all interactive elements
+            const interactiveElements = document.querySelectorAll('.stat-card, .subject-card, .quick-action-btn');
+            interactiveElements.forEach(element => {
+                element.style.transition = 'all 0.3s ease';
+            });
+
+            // Enhanced button hover effects
+            const specialButtons = document.querySelectorAll('.test-btn, .notes-btn, .upload-btn');
+            specialButtons.forEach(btn => {
+                btn.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-2px)';
+                    this.style.boxShadow = '0 5px 15px rgba(0,0,0,0.2)';
+                });
+                btn.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                    this.style.boxShadow = 'none';
+                });
+            });
+
+            // Feature badges animation
+            const featureBadges = document.querySelectorAll('.feature-badge');
+            featureBadges.forEach(badge => {
+                badge.style.animation = 'pulse 1.5s infinite';
+            });
+
+            // Smooth scrolling for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+
+            // Auto-refresh dashboard every 2 minutes
+            setTimeout(() => {
+                window.location.reload();
+            }, 120000);
+        });
+    </script>
+</body>
+</html>

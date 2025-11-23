@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block title %}Bulk Attendance — {{ subject.code }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('prof_dashboard') }}">Dashboard</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('take_attendance', subject_id=subject.id) }}">Regular Attendance</a></li>
+      <li class="breadcrumb-item active">Bulk Attendance</li>
+    </ol>
+  </nav>
+
+  <div class="card shadow-sm">
+    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">
+        <i class="bi bi-clipboard-data me-2"></i>
+        Bulk Attendance — {{ subject.code }}
+      </h5>
+      <span class="badge bg-dark">{{ students|length }} Students</span>
+    </div>
+
+    <div class="card-body">
+      <form method="POST" class="needs-validation" novalidate>
+        <!-- Date Selection -->
+        <div class="row mb-4">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Attendance Date</label>
+            <input type="date" name="date" class="form-control" value="{{ today.isoformat() }}" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Bulk Action</label>
+            <select name="bulk_action" class="form-select" required>
+              <option value="present">Mark All Present</option>
+              <option value="absent">Mark All Absent</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Students Preview -->
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>Bulk action will apply to all {{ students|length }} students</strong> in {{ subject.name }}.
+          This will overwrite any existing attendance for the selected date.
+        </div>
+
+        <!-- Students List Preview -->
+        <div class="table-responsive" style="max-height: 400px;">
+          <table class="table table-sm table-striped">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>Roll No</th>
+                <th>Name</th>
+                <th>Branch</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in students %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td><strong>{{ s.roll }}</strong></td>
+                <td>{{ s.name }}</td>
+                <td><span class="badge bg-secondary">{{ s.branch }}</span></td>
+                <td>
+                  <span class="badge bg-success" id="previewStatus{{ s.id }}">Present</span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex justify-content-between align-items-center mt-4">
+          <div>
+            <a href="{{ url_for('take_attendance', subject_id=subject.id) }}" class="btn btn-outline-primary">
+              <i class="bi bi-arrow-left me-1"></i>Regular Attendance
+            </a>
+          </div>
+          <div>
+            <button type="submit" class="btn btn-warning">
+              <i class="bi bi-check-all me-1"></i>Apply Bulk Attendance
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const bulkActionSelect = document.querySelector('select[name="bulk_action"]');
+
+  // Update preview when bulk action changes
+  bulkActionSelect.addEventListener('change', function() {
+    const status = this.value;
+    const badgeClass = status === 'present' ? 'bg-success' : 'bg-danger';
+    const badgeText = status === 'present' ? 'Present' : 'Absent';
+
+    // Update all preview badges
+    document.querySelectorAll('[id^="previewStatus"]').forEach(badge => {
+      badge.className = `badge ${badgeClass}`;
+      badge.textContent = badgeText;
+    });
+  });
+});
+</script>
+{% endblock %}
