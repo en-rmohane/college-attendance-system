@@ -65,12 +65,74 @@ if 'migrate' not in globals():
 
 # ========== END EXTENSION INITIALIZATION ==========
 
+def get_today_attendance_summary():
+    """Get today's attendance summary for all subjects"""
+    try:
+        today = date.today()
+        subject_ids = db.session.query(Attendance.subject_id).filter(
+            Attendance.date == today
+        ).distinct().all()
+
+        stats = []
+        for (subject_id,) in subject_ids:
+            subject = Subject.query.get(subject_id)
+            if not subject:
+                continue
+
+            allotment = ProfessorSubject.query.filter_by(subject_id=subject_id).first()
+            professor = User.query.get(allotment.professor_id) if allotment else None
+
+            present_count = Attendance.query.filter_by(
+                subject_id=subject_id,
+                date=today,
+                status='present'
+            ).count()
+
+            absent_count = Attendance.query.filter_by(
+                subject_id=subject_id,
+                date=today,
+                status='absent'
+            ).count()
+
+            total_students = present_count + absent_count
+            percentage = round((present_count / total_students) * 100, 2) if total_students > 0 else 0
+
+            latest_record = Attendance.query.filter_by(
+                subject_id=subject_id,
+                date=today
+            ).order_by(Attendance.created_at.desc()).first()
+
+            last_updated = latest_record.created_at.strftime('%H:%M') if latest_record else 'N/A'
+
+            stats.append({
+                'subject_id': subject_id,
+                'subject_code': subject.code,
+                'subject_name': subject.name,
+                'professor_name': professor.fullname if professor else 'Not Allotted',
+                'branch': subject.branch,
+                'year': (subject.semester + 1) // 2,
+                'semester': subject.semester,
+                'present_count': present_count,
+                'absent_count': absent_count,
+                'total_students': total_students,
+                'percentage': percentage,
+                'last_updated': last_updated
+            })
+
+        stats.sort(key=lambda x: x['last_updated'], reverse=True)
+        return stats
+
+    except Exception as e:
+        print(f"Error in get_today_attendance_summary: {e}")
+        return []
+
+
 # ========== DATABASE INITIALIZATION FOR RENDER ==========
 def init_database():
     """Initialize database tables and create default admin user"""
     with app.app_context():
         try:
-            print(" Starting database initialization...")
+            print("🚀 Starting database initialization...")
 
             # Create all tables
             db.create_all()
@@ -89,12 +151,12 @@ def init_database():
                     is_active=True
                 )
                 db.session.add(admin)
-                print(" Default admin user created")
+                print("✓ Default admin user created")
 
             # Load initial data if needed
             subject_count = Subject.query.count()
             if subject_count == 0:
-                print(" Loading initial data...")
+                print("✓ Loading initial data...")
                 preload_subjects()
                 load_students_from_files()
                 ensure_student_accounts()
@@ -103,17 +165,16 @@ def init_database():
                 migrate_test_system()
 
             db.session.commit()
-            print(" Database initialization completed successfully!")
+            print("✅ Database initialization completed successfully!")
 
         except Exception as e:
-            print(f"Database initialization failed: {str(e)}")
+            print(f"❌ Database initialization failed: {str(e)}")
             import traceback
             traceback.print_exc()
 
 
 # Run database initialization
 init_database()
-# ========== END DATABASE INITIALIZATION ==========
 
 # Global variables
 REPORT_DIR = os.path.join(basedir, 'reports')
@@ -235,7 +296,93 @@ def initialize_rgpv_scheme_complete():
         ("CS304", "Digital Systems", "CSE", 2, 3, 3, 0, 2, 4),
         ("CS305", "Object Oriented Programming & Methodology", "CSE", 2, 3, 3, 0, 2, 4),
         ("CS306", "Computer Workshop", "CSE", 2, 3, 0, 0, 4, 2),
-        # Add more subjects as needed...
+
+        # ---------- 4th Semester (CSE) ----------
+        ("BT401", "Mathematics III", "CSE", 2, 4, 3, 1, 0, 4),
+        ("CS402", "Analysis Design of Algorithm", "CSE", 2, 4, 2, 1, 2, 4),
+        ("CS403", "Software Engineering", "CSE", 2, 4, 3, 1, 2, 5),
+        ("CS404", "Computer Organization & Architecture", "CSE", 2, 4, 3, 1, 2, 5),
+        ("CS405", "Operating Systems", "CSE", 2, 4, 3, 0, 2, 4),
+        ("CS406", "Programming Practices", "CSE", 2, 4, 0, 0, 4, 2),
+
+        # ---------- 5th Semester (CSE) ----------
+        ("CS501", "Theory of Computation", "CSE", 3, 5, 3, 0, 2, 4),
+        ("CS502", "Database Management Systems", "CSE", 3, 5, 3, 0, 2, 4),
+        ("CS503", "Departmental Elective", "CSE", 3, 5, 3, 0, 0, 4),
+        ("CS504", "Open Elective", "CSE", 3, 5, 3, 0, 0, 3),
+        ("CS505", "Lab (Linux)", "CSE", 3, 5, 0, 0, 4, 2),
+        ("CS506", "Lab (Python)", "CSE", 3, 5, 0, 0, 4, 2),
+
+        # ---------- 6th Semester (CSE) ----------
+        ("CS601", "Machine Learning", "CSE", 3, 6, 2, 1, 2, 4),
+        ("CS602", "Computer Networks", "CSE", 3, 6, 2, 1, 2, 4),
+        ("CS603", "Departmental Elective", "CSE", 3, 6, 4, 0, 0, 4),
+        ("CS604", "Open Elective", "CSE", 3, 6, 4, 0, 0, 4),
+        ("CS605", "Data Analytics Lab", "CSE", 3, 6, 0, 0, 6, 3),
+        ("CS606", "Skill Development Lab", "CSE", 3, 6, 0, 0, 6, 3),
+
+        # ---------- 7th Semester (CSE) ----------
+        ("CS701", "Software Architectures", "CSE", 4, 7, 2, 1, 2, 4),
+        ("CS702", "Departmental Elective", "CSE", 4, 7, 3, 1, 0, 4),
+        ("CS703", "Open Elective", "CSE", 4, 7, 3, 0, 0, 3),
+        ("CS704", "Departmental Elective Lab", "CSE", 4, 7, 0, 0, 6, 3),
+        ("CS705", "Open Elective Lab", "CSE", 4, 7, 0, 0, 6, 3),
+        ("CS706", "Major Project-I", "CSE", 4, 7, 0, 0, 8, 4),
+
+        # ---------- 8th Semester (CSE) ----------
+        ("CS801", "Internet of Things", "CSE", 4, 8, 2, 1, 2, 4),
+        ("CS802", "Departmental Elective", "CSE", 4, 8, 3, 1, 0, 4),
+        ("CS803", "Open Elective", "CSE", 4, 8, 3, 0, 0, 3),
+        ("CS804", "D/O Elective Lab", "CSE", 4, 8, 0, 0, 6, 3),
+        ("CS805", "Major Project-II", "CSE", 4, 8, 0, 0, 8, 4),
+
+        # ======================= AD BRANCH =======================
+        # ---------- 3rd Semester (AD) ----------
+        ("AD301", "Technical Communication", "AD", 2, 3, 3, 1, 0, 4),
+        ("AD302", "Probability and Statistics for Data Science", "AD", 2, 3, 3, 1, 0, 4),
+        ("AD303", "Data Structures", "AD", 2, 3, 3, 0, 2, 4),
+        ("AD304", "Artificial Intelligence", "AD", 2, 3, 3, 0, 2, 4),
+        ("AD305", "Object Oriented Programming & Methodology", "AD", 2, 3, 3, 0, 2, 4),
+        ("AD306", "Computer Workshop/Introduction to Python", "AD", 2, 3, 0, 0, 4, 2),
+
+        # ---------- 4th Semester (AD) ----------
+        ("BT401", "Mathematics III", "AD", 2, 4, 3, 1, 0, 4),
+        ("AD402", "Database Management Systems", "AD", 2, 4, 4, 0, 2, 5),
+        ("AD403", "Software Engineering with Agile Methodology", "AD", 2, 4, 4, 0, 2, 5),
+        ("AD404", "Data Science", "AD", 2, 4, 3, 0, 2, 4),
+        ("AD405", "Operating Systems", "AD", 2, 4, 3, 0, 2, 4),
+        ("AD406", "Data Analytics using tools", "AD", 2, 4, 0, 0, 4, 2),
+
+        # ---------- 5th Semester (AD) ----------
+        ("AD501", "Theory of Computation", "AD", 3, 5, 3, 0, 2, 4),
+        ("AD502", "Machine Learning", "AD", 3, 5, 3, 0, 2, 4),
+        ("AD503", "Departmental Elective", "AD", 3, 5, 3, 1, 0, 4),
+        ("AD504", "Open Elective", "AD", 3, 5, 3, 0, 0, 3),
+        ("AD505", "Departmental Elective Lab", "AD", 3, 5, 0, 0, 4, 2),
+        ("AD506", "Linux Lab", "AD", 3, 5, 0, 0, 4, 2),
+
+        # ---------- 6th Semester (AD) ----------
+        ("AD601", "Deep Learning", "AD", 3, 6, 2, 1, 2, 4),
+        ("AD602", "Computer Networks", "AD", 3, 6, 2, 1, 2, 4),
+        ("AD603", "Departmental Elective", "AD", 3, 6, 4, 0, 0, 4),
+        ("AD604", "Open Elective", "AD", 3, 6, 4, 0, 0, 4),
+        ("AD605", "Departmental Elective Lab", "AD", 3, 6, 0, 0, 6, 3),
+        ("AD606", "Open Elective Lab", "AD", 3, 6, 0, 0, 6, 3),
+
+        # ---------- 7th Semester (AD) ----------
+        ("AD701", "AI for Computer Vision", "AD", 4, 7, 2, 1, 2, 4),
+        ("AD702", "Departmental Elective", "AD", 4, 7, 3, 1, 0, 4),
+        ("AD703", "Open Elective", "AD", 4, 7, 3, 0, 0, 3),
+        ("AD704", "Departmental Elective Lab", "AD", 4, 7, 0, 0, 6, 3),
+        ("AD705", "Open Elective Lab", "AD", 4, 7, 0, 0, 6, 3),
+        ("AD706", "Major Project-I", "AD", 4, 7, 0, 0, 8, 4),
+
+        # ---------- 8th Semester (AD) ----------
+        ("AD801", "Big Data", "AD", 4, 8, 2, 1, 2, 4),
+        ("AD802", "Departmental Elective", "AD", 4, 8, 3, 1, 0, 4),
+        ("AD803", "Open Elective", "AD", 4, 8, 3, 0, 0, 3),
+        ("AD804", "Departmental/Open Elective Lab", "AD", 4, 8, 0, 0, 6, 3),
+        ("AD805", "Major Project-II", "AD", 4, 8, 0, 0, 8, 4),
     ]
 
     added_count = 0
@@ -1319,6 +1466,67 @@ def utility_processor():
         except:
             return 0
 
+    def get_today_attendance_summary():
+        """Get today's attendance summary for all subjects"""
+        try:
+            today = date.today()
+            subject_ids = db.session.query(Attendance.subject_id).filter(
+                Attendance.date == today
+            ).distinct().all()
+
+            stats = []
+            for (subject_id,) in subject_ids:
+                subject = Subject.query.get(subject_id)
+                if not subject:
+                    continue
+
+                allotment = ProfessorSubject.query.filter_by(subject_id=subject_id).first()
+                professor = User.query.get(allotment.professor_id) if allotment else None
+
+                present_count = Attendance.query.filter_by(
+                    subject_id=subject_id,
+                    date=today,
+                    status='present'
+                ).count()
+
+                absent_count = Attendance.query.filter_by(
+                    subject_id=subject_id,
+                    date=today,
+                    status='absent'
+                ).count()
+
+                total_students = present_count + absent_count
+                percentage = round((present_count / total_students) * 100, 2) if total_students > 0 else 0
+
+                latest_record = Attendance.query.filter_by(
+                    subject_id=subject_id,
+                    date=today
+                ).order_by(Attendance.created_at.desc()).first()
+
+                last_updated = latest_record.created_at.strftime('%H:%M') if latest_record else 'N/A'
+
+                stats.append({
+                    'subject_id': subject_id,
+                    'subject_code': subject.code,
+                    'subject_name': subject.name,
+                    'professor_name': professor.fullname if professor else 'Not Allotted',
+                    'branch': subject.branch,
+                    'year': (subject.semester + 1) // 2,
+                    'semester': subject.semester,
+                    'present_count': present_count,
+                    'absent_count': absent_count,
+                    'total_students': total_students,
+                    'percentage': percentage,
+                    'last_updated': last_updated
+                })
+
+            stats.sort(key=lambda x: x['last_updated'], reverse=True)
+            return stats
+
+        except Exception as e:
+            print(f"Error in get_today_attendance_summary: {e}")
+            return []
+
     def get_today_date():
         return date.today().strftime('%d %b %Y')
 
@@ -1335,11 +1543,11 @@ def utility_processor():
         get_today_attendance_count=get_today_attendance_count,
         get_total_classes_count=get_total_classes_count,
         get_student_count=get_student_count,
+        get_today_attendance_summary=get_today_attendance_summary,  # ADD THIS LINE
         get_today_date=get_today_date,
         today_minus_7_days=today_minus_7_days,
         has_unseen_notices=has_unseen_notices_context
     )
-
 
 # ========== AUTHENTICATION ROUTES ==========
 @app.route('/')
@@ -1559,56 +1767,6 @@ def admin_dashboard():
         active_semesters=active_semesters,
         all_subjects=all_subjects
     )
-
-
-@app.route('/admin')
-@login_required
-def admin_dashboard():
-    if current_user.role != 'admin':
-        flash('Access denied', 'danger')
-        return redirect(url_for('login'))
-
-    professors = User.query.filter_by(role='professor').all()
-    all_subjects = Subject.query.order_by(Subject.branch, Subject.semester, Subject.code).all()
-
-    allotments = ProfessorSubject.query.all()
-    allotments_info = []
-    allotted_subject_ids = set()
-
-    for a in allotments:
-        prof = User.query.get(a.professor_id)
-        subj = Subject.query.get(a.subject_id)
-        if prof and subj:
-            allotments_info.append({
-                "id": a.id,
-                "prof": prof,
-                "subj": subj
-            })
-            allotted_subject_ids.add(subj.id)
-
-    active_subjects = [s for s in all_subjects if s.is_active]
-    available_subjects = [s for s in active_subjects if s.id not in allotted_subject_ids]
-
-    reports = AttendanceReport.query.order_by(AttendanceReport.date.desc()).limit(50).all()
-
-    current_semester = CurrentSemester.query.filter_by(is_active=True).order_by(
-        CurrentSemester.created_at.desc()).first()
-    active_semesters = []
-    if current_semester:
-        active_semesters = get_semesters_for_branch_year(current_semester.branch, current_semester.year)
-
-    return render_template(
-        'admin/dashboard.html',
-        professors=professors,
-        subjects=available_subjects,
-        allotments_info=allotments_info,
-        reports=reports,
-        current_semester=current_semester,
-        active_semesters=active_semesters,
-        all_subjects=all_subjects
-    )
-
-
 @app.route('/timetable/download/<branch>/<int:year>/<int:semester>')
 @login_required
 def download_timetable(branch, year, semester):
