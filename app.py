@@ -596,6 +596,14 @@ def ensure_student_accounts():
     db.session.commit()
     print(f"[OK] Created {created_count} new student accounts")
     print(f" Skipped {skipped_count} accounts (already exists or missing roll)")
+def get_current_academic_year():
+    """Get current academic year based on month"""
+    today = datetime.now()
+    if today.month >= 7:
+        return today.year
+    else:
+        return today.year - 1
+
 
 # ========== DATABASE INITIALIZATION FOR RENDER ==========
 def init_database():
@@ -718,16 +726,6 @@ def get_student_subject_attendance(student_id, subject_id, start_date, end_date)
         'student_id': student_id,
         'subject_id': subject_id
     }
-
-
-def get_current_academic_year():
-    """Get current academic year based on month"""
-    today = datetime.now()
-    if today.month >= 7:
-        return today.year
-    else:
-        return today.year - 1
-
 
 def get_current_semester_type():
     """Determine if current semester is odd or even"""
