@@ -125,7 +125,263 @@ def get_today_attendance_summary():
     except Exception as e:
         print(f"Error in get_today_attendance_summary: {e}")
         return []
+def preload_subjects():
+    """Preload CSE and AD subjects"""
+    existing = {
+        (s.code or "", s.branch or "", s.semester)
+        for s in Subject.query.all()
+    }
 
+    subjects_data = [
+        # ---------------- CSE BRANCH ----------------
+        # 3rd Semester (CSE)
+        ("ES301", "Energy & Environmental Engineering", "CSE", 3),
+        ("CS302", "Discrete Structure", "CSE", 3),
+        ("CS303", "Data Structure", "CSE", 3),
+        ("CS303P", "Data Structure Lab", "CSE", 3),
+        ("CS304", "Digital Systems", "CSE", 3),
+        ("CS304P", "Digital Systems Lab", "CSE", 3),
+        ("CS305", "Object Oriented Programming & Methodology", "CSE", 3),
+        ("CS305P", "OOP & Methodology Lab", "CSE", 3),
+
+        # 4th Semester (CSE)
+        ("BT401", "Mathematics-III", "CSE", 4),
+        ("CS402", "Analysis Design of Algorithm", "CSE", 4),
+        ("CS402P", "Analysis Design of Algorithm Lab", "CSE", 4),
+        ("CS403", "Software Engineering", "CSE", 4),
+        ("CS403P", "Software Engineering Lab", "CSE", 4),
+        ("CS404", "Computer Organization & Architecture", "CSE", 4),
+        ("CS405", "Operating Systems", "CSE", 4),
+        ("CS405P", "Operating Systems Lab", "CSE", 4),
+
+        # 5th Semester (CSE)
+        ("CS501", "Theory of Computation", "CSE", 5),
+        ("CS502", "Database Management Systems", "CSE", 5),
+        ("CS502P", "Database Management Systems Lab", "CSE", 5),
+        ("CS503", "Cyber Security", "CSE", 5),
+        # Open Electives (5th sem)
+        ("CS504A", "Internet and Web Technology", "CSE", 5),
+        ("CS504B", "Object Oriented Programming", "CSE", 5),
+        ("CS504C", "Introduction to Database Management Systems", "CSE", 5),
+        # Python subject + lab
+        ("CS506", "Python Programming", "CSE", 5),
+        ("CS506P", "Python Programming Lab", "CSE", 5),
+
+        # 6th Semester (CSE)
+        ("CS601", "Machine Learning", "CSE", 6),
+        ("CS601P", "Machine Learning Lab", "CSE", 6),
+        ("CS602", "Computer Networks", "CSE", 6),
+        ("CS602P", "Computer Networks Lab", "CSE", 6),
+        ("CS603", "Compiler Design", "CSE", 6),
+        ("CS603P", "Compiler Design Lab", "CSE", 6),
+        # Departmental Elective options
+        ("CS603A", "Advanced Computer Architecture", "CSE", 6),
+        ("CS603B", "Computer Graphics & Visualization", "CSE", 6),
+        # Open Electives (6th sem)
+        ("CS604A", "Knowledge Management", "CSE", 6),
+        ("CS604B", "Project Management", "CSE", 6),
+
+        # 7th Semester (CSE)
+        ("CS701", "Software Architectures", "CSE", 7),
+        ("CS702A", "Computational Intelligence", "CSE", 7),
+        ("CS702B", "Deep & Reinforcement Learning", "CSE", 7),
+        ("CS702C", "Wireless & Mobile Computing", "CSE", 7),
+        ("CS702P", "Elective-III Lab (CI / DL & RL / WMC)", "CSE", 7),
+        ("CS703A", "Cryptography & Information Security", "CSE", 7),
+        ("CS703B", "Data Mining and Warehousing", "CSE", 7),
+        ("CS703C", "Agile Software Development", "CSE", 7),
+        ("CS703P", "Data Mining and Warehousing Lab", "CSE", 7),
+        ("CS704", "Major Project Phase-I", "CSE", 7),
+        ("CS705", "Seminar", "CSE", 7),
+
+        # 8th Semester (CSE)
+        ("CS802A", "Block Chain Technologies", "CSE", 8),
+        ("CS802B", "Cloud Computing", "CSE", 8),
+        ("CS802C", "High Performance Computing", "CSE", 8),
+        ("CS802D", "Object Oriented Software Engineering", "CSE", 8),
+        ("CS802P", "Dept. Elective-IV Lab", "CSE", 8),
+        ("CS803A", "Image Processing and Computer Vision", "CSE", 8),
+        ("CS803B", "Game Theory with Engineering Applications", "CSE", 8),
+        ("CS803C", "Internet of Things", "CSE", 8),
+        ("CS803D", "Managing Innovation and Entrepreneurship", "CSE", 8),
+        ("CS803P", "Open Elective-IV Lab", "CSE", 8),
+        ("CS801", "Internship / Industrial Training", "CSE", 8),
+        ("CS804", "Major Project Phase-II", "CSE", 8),
+
+        # ---------------- AD BRANCH (AI & DS) ----------------
+        # 3rd Semester (AD)
+        ("AD301", "Technical Communication", "AD", 3),
+        ("AD302", "Probability and Statistics for Data Science", "AD", 3),
+        ("AD303", "Data Structures", "AD", 3),
+        ("AD303P", "Data Structures Lab", "AD", 3),
+        ("AD304", "Artificial Intelligence", "AD", 3),
+        ("AD304P", "Artificial Intelligence Lab", "AD", 3),
+
+        # 4th Semester (AD)
+        ("BT401", "Mathematics-III", "AD", 4),
+        ("AD402", "Database Management System", "AD", 4),
+        ("AD402P", "Database Management System Lab", "AD", 4),
+        ("AD403", "Software Engineering with Agile Methodology", "AD", 4),
+        ("AD403P", "Software Engineering Lab", "AD", 4),
+        ("AD404", "Data Mining", "AD", 4),
+        ("AD404P", "Data Mining Lab", "AD", 4),
+
+        # 5th Semester (AD)
+        ("AD501", "Theory of Computation", "AD", 5),
+        ("AD502", "Machine Learning", "AD", 5),
+        ("AD502P", "Machine Learning Lab", "AD", 5),
+        ("AD503A", "Internet and Web Technology", "AD", 5),
+        ("AD503AP", "Internet and Web Technology Lab", "AD", 5),
+        ("AD503B", "Computer Graphics & Multimedia", "AD", 5),
+        ("AD503BP", "Computer Graphics & Multimedia Lab", "AD", 5),
+
+        # 6th Semester (AD)
+        ("AD601", "Deep Learning", "AD", 6),
+        ("AD601P", "Deep Learning Lab", "AD", 6),
+        ("AD602", "Computer Networks", "AD", 6),
+        ("AD602P", "Computer Networks Lab", "AD", 6),
+        ("AD603A", "Data Mining and Warehousing", "AD", 6),
+        ("AD603AP", "Data Mining and Warehousing Lab", "AD", 6),
+        ("AD603B", "Digital Image Processing", "AD", 6),
+        ("AD603BP", "Digital Image Processing Lab", "AD", 6),
+
+        # 7th Semester (AD)
+        ("AD701", "AI for Computer Vision", "AD", 7),
+        ("AD701P", "AI for Computer Vision Lab", "AD", 7),
+        ("AD702A", "Cloud Computing", "AD", 7),
+        ("AD702B", "Business Intelligence", "AD", 7),
+        ("AD702C", "Computational Intelligence", "AD", 7),
+        ("AD702D", "Predictive Analytics", "AD", 7),
+        ("AD703", "Seminar", "AD", 7),
+        ("AD704", "Major Project Phase-I", "AD", 7),
+
+        # 8th Semester (AD)
+        ("AD801", "Big Data", "AD", 8),
+        ("AD802A", "Natural Language Processing", "AD", 8),
+        ("AD802B", "Reinforcement Learning", "AD", 8),
+        ("AD802C", "Robotic Process Automation", "AD", 8),
+        ("AD803", "Internship / Industrial Training", "AD", 8),
+        ("AD804", "Major Project Phase-II", "AD", 8),
+    ]
+    added = 0
+    for code, name, branch, sem in subjects_data:
+        key = (code, branch, sem)
+        if key in existing:
+            continue
+
+        subject = Subject(
+            code=code,
+            name=name,
+            branch=branch,
+            semester=sem,
+            is_active=True,
+        )
+        db.session.add(subject)
+        added += 1
+
+    if added > 0:
+        db.session.commit()
+        print(f"[OK] Subjects preloaded: {added} new subjects added")
+    else:
+        print(f" All subjects already present")
+
+    return added
+
+
+def load_students_from_files(data_dir="data"):
+    """Load students from Excel/CSV files"""
+    os.makedirs(data_dir, exist_ok=True)
+    files = [f for f in os.listdir(data_dir) if
+             f.lower().endswith(('.xlsx', '.xls', '.csv')) and not f.startswith('~$')]
+    total_processed = 0
+
+    if not files:
+        print(" No student files found in data directory")
+        return
+
+    print("[UPDATE] Syncing students data from files...")
+
+    for fname in files:
+        path = os.path.join(data_dir, fname)
+        low = fname.lower()
+
+        if '2nd' in low or low.startswith('2') or 'second' in low:
+            file_year = 2
+        elif '3rd' in low or '3' in low or 'third' in low:
+            file_year = 3
+        elif '4th' in low or '4' in low or 'fourth' in low:
+            file_year = 4
+        else:
+            file_year = 3
+
+        try:
+            if path.lower().endswith(('.xls', '.xlsx')):
+                df = pd.read_excel(path)
+            else:
+                df = pd.read_csv(path)
+
+            df = df.fillna('')
+            file_processed = 0
+
+            for _, row in df.iterrows():
+                roll_val = row.get('Roll') or row.get('roll') or row.get('Roll No') or row.get('roll_no') or ''
+                roll = str(roll_val).strip()
+
+                name_val = row.get('Name') or row.get('name') or row.get('Student Name') or row.get(
+                    'student_name') or ''
+                name = str(name_val).strip()
+
+                branch_val = row.get('Branch') or row.get('branch') or row.get('Department') or row.get(
+                    'department') or 'CSE'
+                branch = str(branch_val).strip()
+
+                if roll and name:
+                    existing = Student.query.filter_by(roll=roll).first()
+                    if existing:
+                        if existing.year != file_year or existing.name != name or existing.branch != branch:
+                            existing.year = file_year
+                            existing.name = name
+                            existing.branch = branch
+                            file_processed += 1
+                    else:
+                        new_student = Student(roll=roll, name=name, branch=branch, year=file_year)
+                        db.session.add(new_student)
+                        file_processed += 1
+
+            db.session.commit()
+            print(f" {fname}: Synced {file_processed} students (Year: {file_year})")
+            total_processed += file_processed
+
+        except Exception as e:
+            print(f"[ERROR] Error processing {fname}: {str(e)}")
+            db.session.rollback()
+
+    print(f"[OK] TOTAL STUDENTS SYNCED: {total_processed}")
+
+
+def activate_all_subjects():
+    """Activate ALL subjects in the database"""
+    with app.app_context():
+        subjects = Subject.query.all()
+        activated_count = 0
+
+        for subject in subjects:
+            if not subject.is_active:
+                subject.is_active = True
+                activated_count += 1
+                print(f"[OK] Activated: {subject.code} - {subject.name}")
+
+        if activated_count > 0:
+            db.session.commit()
+            print(f" Activated {activated_count} subjects!")
+        else:
+            print(" All subjects are already active")
+
+        active_count = Subject.query.filter_by(is_active=True).count()
+        total_count = Subject.query.count()
+        print(f"[INFO] Subjects Status: {active_count}/{total_count} active")
+
+        return activated_count
 
 # ========== DATABASE INITIALIZATION FOR RENDER ==========
 def init_database():
@@ -157,8 +413,8 @@ def init_database():
             subject_count = Subject.query.count()
             if subject_count == 0:
                 print("✓ Loading initial data...")
-                preload_subjects()
-                load_students_from_files()
+                preload_subjects()  # This function is now defined above
+                load_students_from_files()  # This function is now defined above
                 ensure_student_accounts()
                 initialize_current_semester()
                 initialize_rgpv_scheme_complete()
@@ -1152,264 +1408,6 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
-def preload_subjects():
-    """Preload CSE and AD subjects"""
-    existing = {
-        (s.code or "", s.branch or "", s.semester)
-        for s in Subject.query.all()
-    }
-
-    subjects_data = [
-        # ---------------- CSE BRANCH ----------------
-        # 3rd Semester (CSE)
-        ("ES301", "Energy & Environmental Engineering", "CSE", 3),
-        ("CS302", "Discrete Structure", "CSE", 3),
-        ("CS303", "Data Structure", "CSE", 3),
-        ("CS303P", "Data Structure Lab", "CSE", 3),
-        ("CS304", "Digital Systems", "CSE", 3),
-        ("CS304P", "Digital Systems Lab", "CSE", 3),
-        ("CS305", "Object Oriented Programming & Methodology", "CSE", 3),
-        ("CS305P", "OOP & Methodology Lab", "CSE", 3),
-
-        # 4th Semester (CSE)
-        ("BT401", "Mathematics-III", "CSE", 4),
-        ("CS402", "Analysis Design of Algorithm", "CSE", 4),
-        ("CS402P", "Analysis Design of Algorithm Lab", "CSE", 4),
-        ("CS403", "Software Engineering", "CSE", 4),
-        ("CS403P", "Software Engineering Lab", "CSE", 4),
-        ("CS404", "Computer Organization & Architecture", "CSE", 4),
-        ("CS405", "Operating Systems", "CSE", 4),
-        ("CS405P", "Operating Systems Lab", "CSE", 4),
-
-        # 5th Semester (CSE)
-        ("CS501", "Theory of Computation", "CSE", 5),
-        ("CS502", "Database Management Systems", "CSE", 5),
-        ("CS502P", "Database Management Systems Lab", "CSE", 5),
-        ("CS503", "Cyber Security", "CSE", 5),
-        # Open Electives (5th sem)
-        ("CS504A", "Internet and Web Technology", "CSE", 5),
-        ("CS504B", "Object Oriented Programming", "CSE", 5),
-        ("CS504C", "Introduction to Database Management Systems", "CSE", 5),
-        # Python subject + lab
-        ("CS506", "Python Programming", "CSE", 5),
-        ("CS506P", "Python Programming Lab", "CSE", 5),
-
-        # 6th Semester (CSE)
-        ("CS601", "Machine Learning", "CSE", 6),
-        ("CS601P", "Machine Learning Lab", "CSE", 6),
-        ("CS602", "Computer Networks", "CSE", 6),
-        ("CS602P", "Computer Networks Lab", "CSE", 6),
-        ("CS603", "Compiler Design", "CSE", 6),
-        ("CS603P", "Compiler Design Lab", "CSE", 6),
-        # Departmental Elective options
-        ("CS603A", "Advanced Computer Architecture", "CSE", 6),
-        ("CS603B", "Computer Graphics & Visualization", "CSE", 6),
-        # Open Electives (6th sem)
-        ("CS604A", "Knowledge Management", "CSE", 6),
-        ("CS604B", "Project Management", "CSE", 6),
-
-        # 7th Semester (CSE)
-        ("CS701", "Software Architectures", "CSE", 7),
-        ("CS702A", "Computational Intelligence", "CSE", 7),
-        ("CS702B", "Deep & Reinforcement Learning", "CSE", 7),
-        ("CS702C", "Wireless & Mobile Computing", "CSE", 7),
-        ("CS702P", "Elective-III Lab (CI / DL & RL / WMC)", "CSE", 7),
-        ("CS703A", "Cryptography & Information Security", "CSE", 7),
-        ("CS703B", "Data Mining and Warehousing", "CSE", 7),
-        ("CS703C", "Agile Software Development", "CSE", 7),
-        ("CS703P", "Data Mining and Warehousing Lab", "CSE", 7),
-        ("CS704", "Major Project Phase-I", "CSE", 7),
-        ("CS705", "Seminar", "CSE", 7),
-
-        # 8th Semester (CSE)
-        ("CS802A", "Block Chain Technologies", "CSE", 8),
-        ("CS802B", "Cloud Computing", "CSE", 8),
-        ("CS802C", "High Performance Computing", "CSE", 8),
-        ("CS802D", "Object Oriented Software Engineering", "CSE", 8),
-        ("CS802P", "Dept. Elective-IV Lab", "CSE", 8),
-        ("CS803A", "Image Processing and Computer Vision", "CSE", 8),
-        ("CS803B", "Game Theory with Engineering Applications", "CSE", 8),
-        ("CS803C", "Internet of Things", "CSE", 8),
-        ("CS803D", "Managing Innovation and Entrepreneurship", "CSE", 8),
-        ("CS803P", "Open Elective-IV Lab", "CSE", 8),
-        ("CS801", "Internship / Industrial Training", "CSE", 8),
-        ("CS804", "Major Project Phase-II", "CSE", 8),
-
-        # ---------------- AD BRANCH (AI & DS) ----------------
-        # 3rd Semester (AD)
-        ("AD301", "Technical Communication", "AD", 3),
-        ("AD302", "Probability and Statistics for Data Science", "AD", 3),
-        ("AD303", "Data Structures", "AD", 3),
-        ("AD303P", "Data Structures Lab", "AD", 3),
-        ("AD304", "Artificial Intelligence", "AD", 3),
-        ("AD304P", "Artificial Intelligence Lab", "AD", 3),
-
-        # 4th Semester (AD)
-        ("BT401", "Mathematics-III", "AD", 4),
-        ("AD402", "Database Management System", "AD", 4),
-        ("AD402P", "Database Management System Lab", "AD", 4),
-        ("AD403", "Software Engineering with Agile Methodology", "AD", 4),
-        ("AD403P", "Software Engineering Lab", "AD", 4),
-        ("AD404", "Data Mining", "AD", 4),
-        ("AD404P", "Data Mining Lab", "AD", 4),
-
-        # 5th Semester (AD)
-        ("AD501", "Theory of Computation", "AD", 5),
-        ("AD502", "Machine Learning", "AD", 5),
-        ("AD502P", "Machine Learning Lab", "AD", 5),
-        ("AD503A", "Internet and Web Technology", "AD", 5),
-        ("AD503AP", "Internet and Web Technology Lab", "AD", 5),
-        ("AD503B", "Computer Graphics & Multimedia", "AD", 5),
-        ("AD503BP", "Computer Graphics & Multimedia Lab", "AD", 5),
-
-        # 6th Semester (AD)
-        ("AD601", "Deep Learning", "AD", 6),
-        ("AD601P", "Deep Learning Lab", "AD", 6),
-        ("AD602", "Computer Networks", "AD", 6),
-        ("AD602P", "Computer Networks Lab", "AD", 6),
-        ("AD603A", "Data Mining and Warehousing", "AD", 6),
-        ("AD603AP", "Data Mining and Warehousing Lab", "AD", 6),
-        ("AD603B", "Digital Image Processing", "AD", 6),
-        ("AD603BP", "Digital Image Processing Lab", "AD", 6),
-
-        # 7th Semester (AD)
-        ("AD701", "AI for Computer Vision", "AD", 7),
-        ("AD701P", "AI for Computer Vision Lab", "AD", 7),
-        ("AD702A", "Cloud Computing", "AD", 7),
-        ("AD702B", "Business Intelligence", "AD", 7),
-        ("AD702C", "Computational Intelligence", "AD", 7),
-        ("AD702D", "Predictive Analytics", "AD", 7),
-        ("AD703", "Seminar", "AD", 7),
-        ("AD704", "Major Project Phase-I", "AD", 7),
-
-        # 8th Semester (AD)
-        ("AD801", "Big Data", "AD", 8),
-        ("AD802A", "Natural Language Processing", "AD", 8),
-        ("AD802B", "Reinforcement Learning", "AD", 8),
-        ("AD802C", "Robotic Process Automation", "AD", 8),
-        ("AD803", "Internship / Industrial Training", "AD", 8),
-        ("AD804", "Major Project Phase-II", "AD", 8),
-    ]
-    added = 0
-    for code, name, branch, sem in subjects_data:
-        key = (code, branch, sem)
-        if key in existing:
-            continue
-
-        subject = Subject(
-            code=code,
-            name=name,
-            branch=branch,
-            semester=sem,
-            is_active=True,
-        )
-        db.session.add(subject)
-        added += 1
-
-    if added > 0:
-        db.session.commit()
-        print(f"[OK] Subjects preloaded: {added} new subjects added")
-    else:
-        print(f" All subjects already present")
-
-    return added
-
-
-def activate_all_subjects():
-    """Activate ALL subjects in the database"""
-    with app.app_context():
-        subjects = Subject.query.all()
-        activated_count = 0
-
-        for subject in subjects:
-            if not subject.is_active:
-                subject.is_active = True
-                activated_count += 1
-                print(f"[OK] Activated: {subject.code} - {subject.name}")
-
-        if activated_count > 0:
-            db.session.commit()
-            print(f" Activated {activated_count} subjects!")
-        else:
-            print(" All subjects are already active")
-
-        active_count = Subject.query.filter_by(is_active=True).count()
-        total_count = Subject.query.count()
-        print(f"[INFO] Subjects Status: {active_count}/{total_count} active")
-
-        return activated_count
-
-
-def load_students_from_files(data_dir="data"):
-    """Load students from Excel/CSV files"""
-    os.makedirs(data_dir, exist_ok=True)
-    files = [f for f in os.listdir(data_dir) if
-             f.lower().endswith(('.xlsx', '.xls', '.csv')) and not f.startswith('~$')]
-    total_processed = 0
-
-    if not files:
-        print(" No student files found in data directory")
-        return
-
-    print("[UPDATE] Syncing students data from files...")
-
-    for fname in files:
-        path = os.path.join(data_dir, fname)
-        low = fname.lower()
-
-        if '2nd' in low or low.startswith('2') or 'second' in low:
-            file_year = 2
-        elif '3rd' in low or '3' in low or 'third' in low:
-            file_year = 3
-        elif '4th' in low or '4' in low or 'fourth' in low:
-            file_year = 4
-        else:
-            file_year = 3
-
-        try:
-            if path.lower().endswith(('.xls', '.xlsx')):
-                df = pd.read_excel(path)
-            else:
-                df = pd.read_csv(path)
-
-            df = df.fillna('')
-            file_processed = 0
-
-            for _, row in df.iterrows():
-                roll_val = row.get('Roll') or row.get('roll') or row.get('Roll No') or row.get('roll_no') or ''
-                roll = str(roll_val).strip()
-
-                name_val = row.get('Name') or row.get('name') or row.get('Student Name') or row.get(
-                    'student_name') or ''
-                name = str(name_val).strip()
-
-                branch_val = row.get('Branch') or row.get('branch') or row.get('Department') or row.get(
-                    'department') or 'CSE'
-                branch = str(branch_val).strip()
-
-                if roll and name:
-                    existing = Student.query.filter_by(roll=roll).first()
-                    if existing:
-                        if existing.year != file_year or existing.name != name or existing.branch != branch:
-                            existing.year = file_year
-                            existing.name = name
-                            existing.branch = branch
-                            file_processed += 1
-                    else:
-                        new_student = Student(roll=roll, name=name, branch=branch, year=file_year)
-                        db.session.add(new_student)
-                        file_processed += 1
-
-            db.session.commit()
-            print(f" {fname}: Synced {file_processed} students (Year: {file_year})")
-            total_processed += file_processed
-
-        except Exception as e:
-            print(f"[ERROR] Error processing {fname}: {str(e)}")
-            db.session.rollback()
-
-    print(f"[OK] TOTAL STUDENTS SYNCED: {total_processed}")
-
 
 # ========== JINJA2 FILTERS & CONTEXT ==========
 @app.template_filter('endswith')
@@ -1620,13 +1618,13 @@ def forgot_password():
 
             PasswordResetOTP.query.filter_by(user_id=user.id, used=False).delete()
 
-            reset_entry = PasswordResetOTP(
+            reset_entry = PasswordResetOTP(  # This is correctly defined as 'reset_entry'
                 user_id=user.id,
                 otp_code=otp,
                 expires_at=expires,
                 used=False
             )
-            db.session.add(reset_entry)
+            db.session.add(reset_entry)  # This should be 'reset_entry'
             db.session.commit()
 
             if send_otp_email(user.email, otp):
@@ -1638,7 +1636,6 @@ def forgot_password():
             flash('If this email is registered, an OTP has been sent', 'info')
 
     return render_template('auth/forgot_password.html')
-
 
 @app.route('/reset_password', methods=['GET', 'POST'])
 def reset_password():
