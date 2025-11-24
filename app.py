@@ -383,162 +383,61 @@ def activate_all_subjects():
 
         return activated_count
 
-# ========== DATABASE INITIALIZATION FOR RENDER ==========
-def init_database():
-    """Initialize database tables and create default admin user"""
+def migrate_test_system():
+    """Migrate to new test system"""
     with app.app_context():
         try:
-            print("🚀 Starting database initialization...")
+            with db.engine.connect() as conn:
+                from sqlalchemy import inspect
+                inspector = inspect(db.engine)
+                existing_columns = [col['name'] for col in inspector.get_columns('tests')]
 
-            # Create all tables
-            db.create_all()
-            print("✓ Database tables created successfully")
+                new_columns = [
+                    "available_from", "available_until", "auto_submit", "prevent_tab_switch", "allow_retake"
+                ]
 
-            # Create default admin user if not exists
-            if not User.query.filter_by(role='admin').first():
-                admin = User(
-                    username='admin',
-                    fullname='Administrator',
-                    email='admin@college.com',
-                    password_hash=generate_password_hash('admin123'),
-                    role='admin',
-                    branch='CSE',
-                    email_verified=True,
-                    is_active=True
-                )
-                db.session.add(admin)
-                print("✓ Default admin user created")
+                for col in new_columns:
+                    if col not in existing_columns:
+                        if col in ['available_from', 'available_until']:
+                            conn.execute(text(f"ALTER TABLE tests ADD COLUMN {col} DATETIME"))
+                        elif col in ['auto_submit', 'prevent_tab_switch', 'allow_retake']:
+                            conn.execute(text(f"ALTER TABLE tests ADD COLUMN {col} BOOLEAN DEFAULT TRUE"))
 
-            # Load initial data if needed
-            subject_count = Subject.query.count()
-            if subject_count == 0:
-                print("✓ Loading initial data...")
-                preload_subjects()  # This function is now defined above
-                load_students_from_files()  # This function is now defined above
-                ensure_student_accounts()
-                initialize_current_semester()
-                initialize_rgpv_scheme_complete()
-                migrate_test_system()
+                conn.execute(text(
+                    "UPDATE tests SET available_from = start_time, available_until = end_time WHERE available_from IS NULL"))
+                conn.commit()
 
-            db.session.commit()
-            print("✅ Database initialization completed successfully!")
+            print("[OK] Test system migrated successfully!")
 
         except Exception as e:
-            print(f"❌ Database initialization failed: {str(e)}")
-            import traceback
-            traceback.print_exc()
+            print(f"[ERROR] Migration error: {e}")
 
 
-# Run database initialization
-init_database()
+def initialize_current_semester():
+    """Initialize current semester for all branches and years"""
+    branches = ['CSE', 'AD']
+    years = [1, 2, 3, 4]
 
-# Global variables
-REPORT_DIR = os.path.join(basedir, 'reports')
-UPLOAD_FOLDER = os.path.join(basedir, 'uploads')
-NOTES_FOLDER = os.path.join(UPLOAD_FOLDER, 'notes')
-PROFILE_PHOTOS_FOLDER = os.path.join(UPLOAD_FOLDER, 'profile_photos')
+    for branch in branches:
+        for year in years:
+            existing = CurrentSemester.query.filter_by(
+                branch=branch,
+                year=year,
+                is_active=True
+            ).first()
 
-os.makedirs(REPORT_DIR, exist_ok=True)
-os.makedirs(NOTES_FOLDER, exist_ok=True)
-os.makedirs(PROFILE_PHOTOS_FOLDER, exist_ok=True)
-
-ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'ppt', 'pptx', 'txt', 'jpg', 'png', 'jpeg', 'gif'}
-MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB
-
-# ========== TIMETABLE CONFIGURATION ==========
-COLLEGE_TIMINGS = {
-    1: "10:00 - 11:00",
-    2: "11:00 - 12:00",
-    3: "12:30 - 13:25",
-    4: "13:25 - 14:20",
-    5: "14:35 - 15:35",
-    6: "15:35 - 16:15"
-}
-
-LAB_COMBINATIONS = [
-    [1, 2],  # P1+P2 = 10:00-12:00
-    [3, 4],  # P3+P4 = 12:30-14:20
-    [5, 6]  # P5+P6 = 14:35-16:15
-]
-
-WORKING_DAYS = {
-    1: "Monday",
-    2: "Tuesday",
-    3: "Wednesday",
-    4: "Thursday",
-    5: "Friday"
-}
-
-COMMON_SUBJECTS_MAP = {
-    "Data Structures": {"CSE": "CS303", "AD": "AD303", "is_lab": False, "weekly_slots": 3},
-    "Data Structure Lab": {"CSE": "CS303P", "AD": "AD303P", "is_lab": True, "weekly_slots": 1},
-    "Object Oriented Programming": {"CSE": "CS305", "AD": "AD305", "is_lab": False, "weekly_slots": 3},
-    "OOP Lab": {"CSE": "CS305P", "AD": "AD305P", "is_lab": True, "weekly_slots": 1},
-    "Digital Systems": {"CSE": "CS304", "AD": "AD304", "is_lab": False, "weekly_slots": 2},
-    "Digital Systems Lab": {"CSE": "CS304P", "AD": "AD304P", "is_lab": True, "weekly_slots": 1},
-    "Mathematics-III": {"CSE": "BT401", "AD": "BT401", "is_lab": False, "weekly_slots": 3},
-    "Theory of Computation": {"CSE": "CS501", "AD": "AD501", "is_lab": False, "weekly_slots": 2},
-    "Database Management Systems": {"CSE": "CS502", "AD": "AD402", "is_lab": False, "weekly_slots": 2},
-    "DBMS Lab": {"CSE": "CS502P", "AD": "AD402P", "is_lab": True, "weekly_slots": 1},
-    "Machine Learning": {"CSE": "CS601", "AD": "AD502", "is_lab": False, "weekly_slots": 2},
-    "Machine Learning Lab": {"CSE": "CS601P", "AD": "AD502P", "is_lab": True, "weekly_slots": 1},
-    "Computer Networks": {"CSE": "CS602", "AD": "AD602", "is_lab": False, "weekly_slots": 2},
-    "Computer Networks Lab": {"CSE": "CS602P", "AD": "AD602P", "is_lab": True, "weekly_slots": 1},
-    "Deep Learning": {"CSE": "CS601", "AD": "AD601", "is_lab": False, "weekly_slots": 2},
-    "Deep Learning Lab": {"CSE": "CS601P", "AD": "AD601P", "is_lab": True, "weekly_slots": 1}
-}
-
-
-# ========== HELPER FUNCTIONS ==========
-def get_student_subject_attendance(student_id, subject_id, start_date, end_date):
-    """Get student's attendance for a specific subject in date range"""
-    present_count = Attendance.query.filter(
-        Attendance.student_id == student_id,
-        Attendance.subject_id == subject_id,
-        Attendance.date.between(start_date, end_date),
-        Attendance.status == 'present'
-    ).count()
-
-    return {
-        'present_count': present_count,
-        'student_id': student_id,
-        'subject_id': subject_id
-    }
-
-
-def ensure_student_accounts():
-    """Create user accounts for all students with default passwords"""
-    students = Student.query.filter(Student.roll.isnot(None)).all()
-    created_count = 0
-    skipped_count = 0
-
-    for student in students:
-        if not student.roll or student.roll.strip() == "":
-            print(f" Skipped student with missing roll: {student.name}")
-            skipped_count += 1
-            continue
-
-        existing_user = User.query.filter_by(student_roll=student.roll).first()
-        if existing_user:
-            skipped_count += 1
-            continue
-
-        student_user = User(
-            username=student.roll,
-            fullname=student.name,
-            email=f"{student.roll.lower()}@college.com",
-            role='student',
-            branch=student.branch,
-            student_roll=student.roll,
-            email_verified=True
-        )
-        student_user.set_password(student.roll)
-        db.session.add(student_user)
-        created_count += 1
+            if not existing:
+                current_semester = CurrentSemester(
+                    branch=branch,
+                    year=year,
+                    semester_type='odd',
+                    academic_year=get_current_academic_year(),
+                    is_active=True
+                )
+                db.session.add(current_semester)
 
     db.session.commit()
-    print(f"[OK] Created {created_count} new student accounts")
-    print(f" Skipped {skipped_count} accounts (already exists or missing roll)")
+    print("[OK] Current semester initialized for all branches and years")
 
 
 def initialize_rgpv_scheme_complete():
@@ -664,6 +563,161 @@ def initialize_rgpv_scheme_complete():
 
     db.session.commit()
     print(f"[OK] RGPV Scheme initialized: {added_count} subjects")
+def ensure_student_accounts():
+    """Create user accounts for all students with default passwords"""
+    students = Student.query.filter(Student.roll.isnot(None)).all()
+    created_count = 0
+    skipped_count = 0
+
+    for student in students:
+        if not student.roll or student.roll.strip() == "":
+            print(f" Skipped student with missing roll: {student.name}")
+            skipped_count += 1
+            continue
+
+        existing_user = User.query.filter_by(student_roll=student.roll).first()
+        if existing_user:
+            skipped_count += 1
+            continue
+
+        student_user = User(
+            username=student.roll,
+            fullname=student.name,
+            email=f"{student.roll.lower()}@college.com",
+            role='student',
+            branch=student.branch,
+            student_roll=student.roll,
+            email_verified=True
+        )
+        student_user.set_password(student.roll)
+        db.session.add(student_user)
+        created_count += 1
+
+    db.session.commit()
+    print(f"[OK] Created {created_count} new student accounts")
+    print(f" Skipped {skipped_count} accounts (already exists or missing roll)")
+
+# ========== DATABASE INITIALIZATION FOR RENDER ==========
+def init_database():
+    """Initialize database tables and create default admin user"""
+    with app.app_context():
+        try:
+            print("🚀 Starting database initialization...")
+
+            # Create all tables
+            db.create_all()
+            print("✓ Database tables created successfully")
+
+            # Create default admin user if not exists
+            if not User.query.filter_by(role='admin').first():
+                admin = User(
+                    username='admin',
+                    fullname='Administrator',
+                    email='admin@college.com',
+                    password_hash=generate_password_hash('admin123'),
+                    role='admin',
+                    branch='CSE',
+                    email_verified=True,
+                    is_active=True
+                )
+                db.session.add(admin)
+                print("✓ Default admin user created")
+
+            # Load initial data if needed
+            subject_count = Subject.query.count()
+            if subject_count == 0:
+                print("✓ Loading initial data...")
+                preload_subjects()  # This function is now defined above
+                load_students_from_files()  # This function is now defined above
+                ensure_student_accounts()
+                initialize_current_semester()
+                initialize_rgpv_scheme_complete()
+                migrate_test_system()
+
+            db.session.commit()
+            print("✅ Database initialization completed successfully!")
+
+        except Exception as e:
+            print(f"❌ Database initialization failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+
+# Run database initialization
+init_database()
+
+# Global variables
+REPORT_DIR = os.path.join(basedir, 'reports')
+UPLOAD_FOLDER = os.path.join(basedir, 'uploads')
+NOTES_FOLDER = os.path.join(UPLOAD_FOLDER, 'notes')
+PROFILE_PHOTOS_FOLDER = os.path.join(UPLOAD_FOLDER, 'profile_photos')
+
+os.makedirs(REPORT_DIR, exist_ok=True)
+os.makedirs(NOTES_FOLDER, exist_ok=True)
+os.makedirs(PROFILE_PHOTOS_FOLDER, exist_ok=True)
+
+ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'ppt', 'pptx', 'txt', 'jpg', 'png', 'jpeg', 'gif'}
+MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB
+
+# ========== TIMETABLE CONFIGURATION ==========
+COLLEGE_TIMINGS = {
+    1: "10:00 - 11:00",
+    2: "11:00 - 12:00",
+    3: "12:30 - 13:25",
+    4: "13:25 - 14:20",
+    5: "14:35 - 15:35",
+    6: "15:35 - 16:15"
+}
+
+LAB_COMBINATIONS = [
+    [1, 2],  # P1+P2 = 10:00-12:00
+    [3, 4],  # P3+P4 = 12:30-14:20
+    [5, 6]  # P5+P6 = 14:35-16:15
+]
+
+WORKING_DAYS = {
+    1: "Monday",
+    2: "Tuesday",
+    3: "Wednesday",
+    4: "Thursday",
+    5: "Friday"
+}
+
+COMMON_SUBJECTS_MAP = {
+    "Data Structures": {"CSE": "CS303", "AD": "AD303", "is_lab": False, "weekly_slots": 3},
+    "Data Structure Lab": {"CSE": "CS303P", "AD": "AD303P", "is_lab": True, "weekly_slots": 1},
+    "Object Oriented Programming": {"CSE": "CS305", "AD": "AD305", "is_lab": False, "weekly_slots": 3},
+    "OOP Lab": {"CSE": "CS305P", "AD": "AD305P", "is_lab": True, "weekly_slots": 1},
+    "Digital Systems": {"CSE": "CS304", "AD": "AD304", "is_lab": False, "weekly_slots": 2},
+    "Digital Systems Lab": {"CSE": "CS304P", "AD": "AD304P", "is_lab": True, "weekly_slots": 1},
+    "Mathematics-III": {"CSE": "BT401", "AD": "BT401", "is_lab": False, "weekly_slots": 3},
+    "Theory of Computation": {"CSE": "CS501", "AD": "AD501", "is_lab": False, "weekly_slots": 2},
+    "Database Management Systems": {"CSE": "CS502", "AD": "AD402", "is_lab": False, "weekly_slots": 2},
+    "DBMS Lab": {"CSE": "CS502P", "AD": "AD402P", "is_lab": True, "weekly_slots": 1},
+    "Machine Learning": {"CSE": "CS601", "AD": "AD502", "is_lab": False, "weekly_slots": 2},
+    "Machine Learning Lab": {"CSE": "CS601P", "AD": "AD502P", "is_lab": True, "weekly_slots": 1},
+    "Computer Networks": {"CSE": "CS602", "AD": "AD602", "is_lab": False, "weekly_slots": 2},
+    "Computer Networks Lab": {"CSE": "CS602P", "AD": "AD602P", "is_lab": True, "weekly_slots": 1},
+    "Deep Learning": {"CSE": "CS601", "AD": "AD601", "is_lab": False, "weekly_slots": 2},
+    "Deep Learning Lab": {"CSE": "CS601P", "AD": "AD601P", "is_lab": True, "weekly_slots": 1}
+}
+
+
+# ========== HELPER FUNCTIONS ==========
+def get_student_subject_attendance(student_id, subject_id, start_date, end_date):
+    """Get student's attendance for a specific subject in date range"""
+    present_count = Attendance.query.filter(
+        Attendance.student_id == student_id,
+        Attendance.subject_id == subject_id,
+        Attendance.date.between(start_date, end_date),
+        Attendance.status == 'present'
+    ).count()
+
+    return {
+        'present_count': present_count,
+        'student_id': student_id,
+        'subject_id': subject_id
+    }
 
 
 def get_current_academic_year():
@@ -682,33 +736,6 @@ def get_current_semester_type():
         return 'odd'
     else:
         return 'even'
-
-
-def initialize_current_semester():
-    """Initialize current semester for all branches and years"""
-    branches = ['CSE', 'AD']
-    years = [1, 2, 3, 4]
-
-    for branch in branches:
-        for year in years:
-            existing = CurrentSemester.query.filter_by(
-                branch=branch,
-                year=year,
-                is_active=True
-            ).first()
-
-            if not existing:
-                current_semester = CurrentSemester(
-                    branch=branch,
-                    year=year,
-                    semester_type='odd',
-                    academic_year=get_current_academic_year(),
-                    is_active=True
-                )
-                db.session.add(current_semester)
-
-    db.session.commit()
-    print("[OK] Current semester initialized for all branches and years")
 
 
 def get_active_semester_for_branch_year(branch, year):
@@ -882,36 +909,6 @@ def auto_submit_test(attempt_id):
         attempt.submitted = True
         db.session.commit()
         print(f"[OK] Test auto-submitted for attempt {attempt_id}")
-
-
-def migrate_test_system():
-    """Migrate to new test system"""
-    with app.app_context():
-        try:
-            with db.engine.connect() as conn:
-                from sqlalchemy import inspect
-                inspector = inspect(db.engine)
-                existing_columns = [col['name'] for col in inspector.get_columns('tests')]
-
-                new_columns = [
-                    "available_from", "available_until", "auto_submit", "prevent_tab_switch", "allow_retake"
-                ]
-
-                for col in new_columns:
-                    if col not in existing_columns:
-                        if col in ['available_from', 'available_until']:
-                            conn.execute(text(f"ALTER TABLE tests ADD COLUMN {col} DATETIME"))
-                        elif col in ['auto_submit', 'prevent_tab_switch', 'allow_retake']:
-                            conn.execute(text(f"ALTER TABLE tests ADD COLUMN {col} BOOLEAN DEFAULT TRUE"))
-
-                conn.execute(text(
-                    "UPDATE tests SET available_from = start_time, available_until = end_time WHERE available_from IS NULL"))
-                conn.commit()
-
-            print("[OK] Test system migrated successfully!")
-
-        except Exception as e:
-            print(f"[ERROR] Migration error: {e}")
 
 
 # ========== TIMETABLE FUNCTIONS ==========
