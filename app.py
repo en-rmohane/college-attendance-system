@@ -442,127 +442,146 @@ def initialize_current_semester():
 
 def initialize_rgpv_scheme_complete():
     """Initialize complete RGPV scheme data for all semesters"""
-    RGPVScheme.query.delete()
-    rgpv_schemes = [
-        # CSE Branch - 3rd to 8th semesters
-        ("CS301", "Energy & Environmental Engineering", "CSE", 2, 3, 3, 1, 0, 4),
-        ("CS302", "Discrete Structure", "CSE", 2, 3, 3, 1, 0, 4),
-        ("CS303", "Data Structure", "CSE", 2, 3, 3, 0, 2, 4),
-        ("CS304", "Digital Systems", "CSE", 2, 3, 3, 0, 2, 4),
-        ("CS305", "Object Oriented Programming & Methodology", "CSE", 2, 3, 3, 0, 2, 4),
-        ("CS306", "Computer Workshop", "CSE", 2, 3, 0, 0, 4, 2),
+    try:
+        RGPVScheme.query.delete()
+        rgpv_schemes = [
+            # CSE Branch - 3rd to 8th semesters
+            # Format: (code, name, branch, year, semester, lectures, tutorials, practicals, credits)
+            ("CS301", "Energy & Environmental Engineering", "CSE", 2, 3, 3, 1, 0, 4),
+            ("CS302", "Discrete Structure", "CSE", 2, 3, 3, 1, 0, 4),
+            ("CS303", "Data Structure", "CSE", 2, 3, 3, 0, 2, 4),
+            ("CS304", "Digital Systems", "CSE", 2, 3, 3, 0, 2, 4),
+            ("CS305", "Object Oriented Programming & Methodology", "CSE", 2, 3, 3, 0, 2, 4),
+            ("CS306", "Computer Workshop", "CSE", 2, 3, 0, 0, 4, 2),
 
-        # ---------- 4th Semester (CSE) ----------
-        ("BT401", "Mathematics III", "CSE", 2, 4, 3, 1, 0, 4),
-        ("CS402", "Analysis Design of Algorithm", "CSE", 2, 4, 2, 1, 2, 4),
-        ("CS403", "Software Engineering", "CSE", 2, 4, 3, 1, 2, 5),
-        ("CS404", "Computer Organization & Architecture", "CSE", 2, 4, 3, 1, 2, 5),
-        ("CS405", "Operating Systems", "CSE", 2, 4, 3, 0, 2, 4),
-        ("CS406", "Programming Practices", "CSE", 2, 4, 0, 0, 4, 2),
+            # ---------- 4th Semester (CSE) ----------
+            ("BT401", "Mathematics III", "CSE", 2, 4, 3, 1, 0, 4),
+            ("CS402", "Analysis Design of Algorithm", "CSE", 2, 4, 2, 1, 2, 4),
+            ("CS403", "Software Engineering", "CSE", 2, 4, 3, 1, 2, 5),
+            ("CS404", "Computer Organization & Architecture", "CSE", 2, 4, 3, 1, 2, 5),
+            ("CS405", "Operating Systems", "CSE", 2, 4, 3, 0, 2, 4),
+            ("CS406", "Programming Practices", "CSE", 2, 4, 0, 0, 4, 2),
 
-        # ---------- 5th Semester (CSE) ----------
-        ("CS501", "Theory of Computation", "CSE", 3, 5, 3, 0, 2, 4),
-        ("CS502", "Database Management Systems", "CSE", 3, 5, 3, 0, 2, 4),
-        ("CS503", "Departmental Elective", "CSE", 3, 5, 3, 0, 0, 4),
-        ("CS504", "Open Elective", "CSE", 3, 5, 3, 0, 0, 3),
-        ("CS505", "Lab (Linux)", "CSE", 3, 5, 0, 0, 4, 2),
-        ("CS506", "Lab (Python)", "CSE", 3, 5, 0, 0, 4, 2),
+            # ---------- 5th Semester (CSE) ----------
+            ("CS501", "Theory of Computation", "CSE", 3, 5, 3, 0, 2, 4),
+            ("CS502", "Database Management Systems", "CSE", 3, 5, 3, 0, 2, 4),
+            ("CS503", "Departmental Elective", "CSE", 3, 5, 3, 0, 0, 4),
+            ("CS504", "Open Elective", "CSE", 3, 5, 3, 0, 0, 3),
+            ("CS505", "Lab (Linux)", "CSE", 3, 5, 0, 0, 4, 2),
+            ("CS506", "Lab (Python)", "CSE", 3, 5, 0, 0, 4, 2),
 
-        # ---------- 6th Semester (CSE) ----------
-        ("CS601", "Machine Learning", "CSE", 3, 6, 2, 1, 2, 4),
-        ("CS602", "Computer Networks", "CSE", 3, 6, 2, 1, 2, 4),
-        ("CS603", "Departmental Elective", "CSE", 3, 6, 4, 0, 0, 4),
-        ("CS604", "Open Elective", "CSE", 3, 6, 4, 0, 0, 4),
-        ("CS605", "Data Analytics Lab", "CSE", 3, 6, 0, 0, 6, 3),
-        ("CS606", "Skill Development Lab", "CSE", 3, 6, 0, 0, 6, 3),
+            # ---------- 6th Semester (CSE) ----------
+            ("CS601", "Machine Learning", "CSE", 3, 6, 2, 1, 2, 4),
+            ("CS602", "Computer Networks", "CSE", 3, 6, 2, 1, 2, 4),
+            ("CS603", "Departmental Elective", "CSE", 3, 6, 4, 0, 0, 4),
+            ("CS604", "Open Elective", "CSE", 3, 6, 4, 0, 0, 4),
+            ("CS605", "Data Analytics Lab", "CSE", 3, 6, 0, 0, 6, 3),
+            ("CS606", "Skill Development Lab", "CSE", 3, 6, 0, 0, 6, 3),
 
-        # ---------- 7th Semester (CSE) ----------
-        ("CS701", "Software Architectures", "CSE", 4, 7, 2, 1, 2, 4),
-        ("CS702", "Departmental Elective", "CSE", 4, 7, 3, 1, 0, 4),
-        ("CS703", "Open Elective", "CSE", 4, 7, 3, 0, 0, 3),
-        ("CS704", "Departmental Elective Lab", "CSE", 4, 7, 0, 0, 6, 3),
-        ("CS705", "Open Elective Lab", "CSE", 4, 7, 0, 0, 6, 3),
-        ("CS706", "Major Project-I", "CSE", 4, 7, 0, 0, 8, 4),
+            # ---------- 7th Semester (CSE) ----------
+            ("CS701", "Software Architectures", "CSE", 4, 7, 2, 1, 2, 4),
+            ("CS702", "Departmental Elective", "CSE", 4, 7, 3, 1, 0, 4),
+            ("CS703", "Open Elective", "CSE", 4, 7, 3, 0, 0, 3),
+            ("CS704", "Departmental Elective Lab", "CSE", 4, 7, 0, 0, 6, 3),
+            ("CS705", "Open Elective Lab", "CSE", 4, 7, 0, 0, 6, 3),
+            ("CS706", "Major Project-I", "CSE", 4, 7, 0, 0, 8, 4),
 
-        # ---------- 8th Semester (CSE) ----------
-        ("CS801", "Internet of Things", "CSE", 4, 8, 2, 1, 2, 4),
-        ("CS802", "Departmental Elective", "CSE", 4, 8, 3, 1, 0, 4),
-        ("CS803", "Open Elective", "CSE", 4, 8, 3, 0, 0, 3),
-        ("CS804", "D/O Elective Lab", "CSE", 4, 8, 0, 0, 6, 3),
-        ("CS805", "Major Project-II", "CSE", 4, 8, 0, 0, 8, 4),
+            # ---------- 8th Semester (CSE) ----------
+            ("CS801", "Internet of Things", "CSE", 4, 8, 2, 1, 2, 4),
+            ("CS802", "Departmental Elective", "CSE", 4, 8, 3, 1, 0, 4),
+            ("CS803", "Open Elective", "CSE", 4, 8, 3, 0, 0, 3),
+            ("CS804", "D/O Elective Lab", "CSE", 4, 8, 0, 0, 6, 3),
+            ("CS805", "Major Project-II", "CSE", 4, 8, 0, 0, 8, 4),
 
-        # ======================= AD BRANCH =======================
-        # ---------- 3rd Semester (AD) ----------
-        ("AD301", "Technical Communication", "AD", 2, 3, 3, 1, 0, 4),
-        ("AD302", "Probability and Statistics for Data Science", "AD", 2, 3, 3, 1, 0, 4),
-        ("AD303", "Data Structures", "AD", 2, 3, 3, 0, 2, 4),
-        ("AD304", "Artificial Intelligence", "AD", 2, 3, 3, 0, 2, 4),
-        ("AD305", "Object Oriented Programming & Methodology", "AD", 2, 3, 3, 0, 2, 4),
-        ("AD306", "Computer Workshop/Introduction to Python", "AD", 2, 3, 0, 0, 4, 2),
+            # ======================= AD BRANCH =======================
+            # ---------- 3rd Semester (AD) ----------
+            ("AD301", "Technical Communication", "AD", 2, 3, 3, 1, 0, 4),
+            ("AD302", "Probability and Statistics for Data Science", "AD", 2, 3, 3, 1, 0, 4),
+            ("AD303", "Data Structures", "AD", 2, 3, 3, 0, 2, 4),
+            ("AD304", "Artificial Intelligence", "AD", 2, 3, 3, 0, 2, 4),
+            ("AD305", "Object Oriented Programming & Methodology", "AD", 2, 3, 3, 0, 2, 4),
+            ("AD306", "Computer Workshop/Introduction to Python", "AD", 2, 3, 0, 0, 4, 2),
 
-        # ---------- 4th Semester (AD) ----------
-        ("BT401", "Mathematics III", "AD", 2, 4, 3, 1, 0, 4),
-        ("AD402", "Database Management Systems", "AD", 2, 4, 4, 0, 2, 5),
-        ("AD403", "Software Engineering with Agile Methodology", "AD", 2, 4, 4, 0, 2, 5),
-        ("AD404", "Data Science", "AD", 2, 4, 3, 0, 2, 4),
-        ("AD405", "Operating Systems", "AD", 2, 4, 3, 0, 2, 4),
-        ("AD406", "Data Analytics using tools", "AD", 2, 4, 0, 0, 4, 2),
+            # ---------- 4th Semester (AD) ----------
+            ("BT401", "Mathematics III", "AD", 2, 4, 3, 1, 0, 4),
+            ("AD402", "Database Management Systems", "AD", 2, 4, 4, 0, 2, 5),
+            ("AD403", "Software Engineering with Agile Methodology", "AD", 2, 4, 4, 0, 2, 5),
+            ("AD404", "Data Science", "AD", 2, 4, 3, 0, 2, 4),
+            ("AD405", "Operating Systems", "AD", 2, 4, 3, 0, 2, 4),
+            ("AD406", "Data Analytics using tools", "AD", 2, 4, 0, 0, 4, 2),
 
-        # ---------- 5th Semester (AD) ----------
-        ("AD501", "Theory of Computation", "AD", 3, 5, 3, 0, 2, 4),
-        ("AD502", "Machine Learning", "AD", 3, 5, 3, 0, 2, 4),
-        ("AD503", "Departmental Elective", "AD", 3, 5, 3, 1, 0, 4),
-        ("AD504", "Open Elective", "AD", 3, 5, 3, 0, 0, 3),
-        ("AD505", "Departmental Elective Lab", "AD", 3, 5, 0, 0, 4, 2),
-        ("AD506", "Linux Lab", "AD", 3, 5, 0, 0, 4, 2),
+            # ---------- 5th Semester (AD) ----------
+            ("AD501", "Theory of Computation", "AD", 3, 5, 3, 0, 2, 4),
+            ("AD502", "Machine Learning", "AD", 3, 5, 3, 0, 2, 4),
+            ("AD503", "Departmental Elective", "AD", 3, 5, 3, 1, 0, 4),
+            ("AD504", "Open Elective", "AD", 3, 5, 3, 0, 0, 3),
+            ("AD505", "Departmental Elective Lab", "AD", 3, 5, 0, 0, 4, 2),
+            ("AD506", "Linux Lab", "AD", 3, 5, 0, 0, 4, 2),
 
-        # ---------- 6th Semester (AD) ----------
-        ("AD601", "Deep Learning", "AD", 3, 6, 2, 1, 2, 4),
-        ("AD602", "Computer Networks", "AD", 3, 6, 2, 1, 2, 4),
-        ("AD603", "Departmental Elective", "AD", 3, 6, 4, 0, 0, 4),
-        ("AD604", "Open Elective", "AD", 3, 6, 4, 0, 0, 4),
-        ("AD605", "Departmental Elective Lab", "AD", 3, 6, 0, 0, 6, 3),
-        ("AD606", "Open Elective Lab", "AD", 3, 6, 0, 0, 6, 3),
+            # ---------- 6th Semester (AD) ----------
+            ("AD601", "Deep Learning", "AD", 3, 6, 2, 1, 2, 4),
+            ("AD602", "Computer Networks", "AD", 3, 6, 2, 1, 2, 4),
+            ("AD603", "Departmental Elective", "AD", 3, 6, 4, 0, 0, 4),
+            ("AD604", "Open Elective", "AD", 3, 6, 4, 0, 0, 4),
+            ("AD605", "Departmental Elective Lab", "AD", 3, 6, 0, 0, 6, 3),
+            ("AD606", "Open Elective Lab", "AD", 3, 6, 0, 0, 6, 3),
 
-        # ---------- 7th Semester (AD) ----------
-        ("AD701", "AI for Computer Vision", "AD", 4, 7, 2, 1, 2, 4),
-        ("AD702", "Departmental Elective", "AD", 4, 7, 3, 1, 0, 4),
-        ("AD703", "Open Elective", "AD", 4, 7, 3, 0, 0, 3),
-        ("AD704", "Departmental Elective Lab", "AD", 4, 7, 0, 0, 6, 3),
-        ("AD705", "Open Elective Lab", "AD", 4, 7, 0, 0, 6, 3),
-        ("AD706", "Major Project-I", "AD", 4, 7, 0, 0, 8, 4),
+            # ---------- 7th Semester (AD) ----------
+            ("AD701", "AI for Computer Vision", "AD", 4, 7, 2, 1, 2, 4),
+            ("AD702", "Departmental Elective", "AD", 4, 7, 3, 1, 0, 4),
+            ("AD703", "Open Elective", "AD", 4, 7, 3, 0, 0, 3),
+            ("AD704", "Departmental Elective Lab", "AD", 4, 7, 0, 0, 6, 3),
+            ("AD705", "Open Elective Lab", "AD", 4, 7, 0, 0, 6, 3),
+            ("AD706", "Major Project-I", "AD", 4, 7, 0, 0, 8, 4),
 
-        # ---------- 8th Semester (AD) ----------
-        ("AD801", "Big Data", "AD", 4, 8, 2, 1, 2, 4),
-        ("AD802", "Departmental Elective", "AD", 4, 8, 3, 1, 0, 4),
-        ("AD803", "Open Elective", "AD", 4, 8, 3, 0, 0, 3),
-        ("AD804", "Departmental/Open Elective Lab", "AD", 4, 8, 0, 0, 6, 3),
-        ("AD805", "Major Project-II", "AD", 4, 8, 0, 0, 8, 4),
-    ]
+            # ---------- 8th Semester (AD) ----------
+            ("AD801", "Big Data", "AD", 4, 8, 2, 1, 2, 4),
+            ("AD802", "Departmental Elective", "AD", 4, 8, 3, 1, 0, 4),
+            ("AD803", "Open Elective", "AD", 4, 8, 3, 0, 0, 3),
+            ("AD804", "Departmental/Open Elective Lab", "AD", 4, 8, 0, 0, 6, 3),
+            ("AD805", "Major Project-II", "AD", 4, 8, 0, 0, 8, 4),
+        ]
 
-    added_count = 0
-    for code, name, branch, year, semester, lectures, tutorials, practicals in rgpv_schemes:
-        subject = Subject.query.filter_by(
-            code=code,
-            branch=branch,
-            semester=semester
-        ).first()
+        added_count = 0
+        for scheme_data in rgpv_schemes:
+            try:
+                # Unpack the data - ensure exactly 9 values
+                if len(scheme_data) == 9:
+                    code, name, branch, year, semester, lectures, tutorials, practicals, credits = scheme_data
 
-        if subject:
-            scheme = RGPVScheme(
-                branch=branch,
-                year=year,
-                semester=semester,
-                subject_id=subject.id,
-                lectures_per_week=lectures,
-                tutorials_per_week=tutorials,
-                practicals_per_week=practicals
-            )
-            db.session.add(scheme)
-            added_count += 1
+                    subject = Subject.query.filter_by(
+                        code=code,
+                        branch=branch,
+                        semester=semester
+                    ).first()
 
-    db.session.commit()
-    print(f"[OK] RGPV Scheme initialized: {added_count} subjects")
+                    if subject:
+                        scheme = RGPVScheme(
+                            branch=branch,
+                            year=year,
+                            semester=semester,
+                            subject_id=subject.id,
+                            lectures_per_week=lectures,
+                            tutorials_per_week=tutorials,
+                            practicals_per_week=practicals,
+                            credits=credits
+                        )
+                        db.session.add(scheme)
+                        added_count += 1
+                else:
+                    print(f"⚠️  Skipping invalid scheme data: {scheme_data}")
+
+            except Exception as e:
+                print(f"⚠️  Error processing scheme {scheme_data}: {e}")
+                continue
+
+        db.session.commit()
+        print(f"[OK] RGPV Scheme initialized: {added_count} subjects")
+
+    except Exception as e:
+        print(f"[ERROR] RGPV Scheme initialization failed: {e}")
+        db.session.rollback()
+       
 def ensure_student_accounts():
     """Create user accounts for all students with default passwords"""
     students = Student.query.filter(Student.roll.isnot(None)).all()
