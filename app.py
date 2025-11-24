@@ -581,7 +581,7 @@ def initialize_rgpv_scheme_complete():
     except Exception as e:
         print(f"[ERROR] RGPV Scheme initialization failed: {e}")
         db.session.rollback()
-       
+
 def ensure_student_accounts():
     """Create user accounts for all students with default passwords"""
     students = Student.query.filter(Student.roll.isnot(None)).all()
