@@ -4905,5 +4905,14 @@ def verify_security_code(test_id):
 
 
 # ========== MAIN APPLICATION LAUNCH ==========
+# ========== MAIN APPLICATION LAUNCH ==========
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Get port from environment variable or default to 5000
+    port = int(os.environ.get("PORT", 5000))
+
+    # Run the app
+    app.run(
+        host='0.0.0.0',  # Important: Bind to all interfaces
+        port=port,
+        debug=False  # Set to False in production
+    )
