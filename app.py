@@ -38,20 +38,23 @@ app.config['MAIL_USERNAME'] = 'sbitmstudy@gmail.com'
 app.config['MAIL_PASSWORD'] = 'xsmtpsib-126dcb830ef9752244c7ac44375ef365eac59575d5b3961a499ef2529e73d788-GzzxoupaNvdOvatw'
 app.config['MAIL_DEFAULT_SENDER'] = 'sbitmstudy@gmail.com'
 import os
-app = Flask(__name__)
-
 def setup_database():
     if os.environ.get('RENDER'):
         db_url = os.environ.get('DATABASE_URL', '')
+
         if db_url.startswith("postgres://"):
             db_url = db_url.replace("postgres://", "postgresql+psycopg://", 1)
-        if "sslmode=" not in db_url:
-            db_url += "?sslmode=require"
-        return db_url
-    return "sqlite:///college_attendance.db"
+        elif db_url.startswith("postgresql://"):
+            db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = setup_database()
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+        if "sslmode=" not in db_url:
+            connector = "&" if "?" in db_url else "?"
+            db_url = f"{db_url}{connector}sslmode=require"
+
+        print("Using Render DB:", db_url[:60])
+        return db_url
+
+    return "sqlite:///college_attendance.db"
 
 
 
