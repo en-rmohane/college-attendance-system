@@ -29,6 +29,14 @@ from models import db, User, Student, Subject, ProfessorSubject, Attendance, Att
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
+# PostgreSQL connection stability ke liye
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_pre_ping": True,   # stale / dead connection detect karega
+    "pool_recycle": 280,     # ~5 min baad connection recycle
+    "pool_size": 5,          # chhota pool (Render free tier ke liye safe)
+    "max_overflow": 2,
+}
+
 
 # Email Configuration
 app.config['MAIL_SERVER'] = 'smtp-relay.brevo.com'
@@ -39,39 +47,33 @@ app.config['MAIL_PASSWORD'] = 'xsmtpsib-126dcb830ef9752244c7ac44375ef365eac59575
 app.config['MAIL_DEFAULT_SENDER'] = 'sbitmstudy@gmail.com'
 import os
 
-
 def setup_database():
-    if os.environ.get('RENDER'):
-        db_url = os.environ.get('DATABASE_URL', '')
-        print(f"DEBUG: DATABASE_URL found: {db_url is not None}")  # Debug line
+    db_url = os.environ.get('DATABASE_URL')
 
-        if db_url:
-            # Render ka URL usually 'postgres://...' hota hai
-            if db_url.startswith('postgres://'):
-                db_url = db_url.replace('postgres://', 'postgresql+psycopg://', 1)
-            elif db_url.startswith('postgresql://'):
-                db_url = db_url.replace('postgresql://', 'postgresql+psycopg://', 1)
+    if db_url:
+        # Render ka URL mostly 'postgres://...' hota hai
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql+psycopg://", 1)
+        elif db_url.startswith("postgresql://"):
+            db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
 
-            # ✅ SSL FIX
-            if '?' in db_url:
+        # SSL ensure karo – BUT duplicate mat banao
+        if "sslmode=" not in db_url:
+            if "?" in db_url:
                 db_url += "&sslmode=require"
             else:
                 db_url += "?sslmode=require"
 
-            print(f"✅ Database configured: {db_url[:60]}...")
-            return db_url
-        else:
-            print("❌ DATABASE_URL is empty")
+        print(f"✅ Database configured: {db_url[:60]}...")
+        return db_url
 
-    # Fallback - SQLite
-    db_url = 'sqlite:///college_attendance.db'
-    print(f"✅ Database configured (fallback): {db_url}")
+    # Local development - SQLite
+    db_url = "sqlite:///college_attendance.db"
+    print(f"✅ Database configured (local): {db_url}")
     return db_url
 
-
-app.config['SQLALCHEMY_DATABASE_URI'] = setup_database()
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
+app.config["SQLALCHEMY_DATABASE_URI"] = setup_database()
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # ========== SAFE EXTENSION INITIALIZATION ==========
 # Initialize extensions ONLY if not already initialized
