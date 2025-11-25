@@ -1,6 +1,7 @@
 import csv
 import os
 
+import requests
 from flask_sqlalchemy import SQLAlchemy
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, Border, Side
@@ -30,12 +31,12 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
 
 # Email Configuration
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_SERVER'] = 'smtp-relay.brevo.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'your-email@gmail.com'
-app.config['MAIL_PASSWORD'] = 'your-app-password'
-app.config['MAIL_DEFAULT_SENDER'] = 'your-email@gmail.com'
+app.config['MAIL_USERNAME'] = 'sbitmstudy@gmail.com'
+app.config['MAIL_PASSWORD'] = 'xsmtpsib-126dcb830ef9752244c7ac44375ef365eac59575d5b3961a499ef2529e73d788-GzzxoupaNvdOvatw'
+app.config['MAIL_DEFAULT_SENDER'] = 'sbitmstudy@gmail.com'
 import os
 
 def setup_database():
@@ -75,6 +76,14 @@ if 'login_manager' not in globals():
 
 if 'migrate' not in globals():
     migrate = Migrate(app, db)
+@login_manager.user_loader
+def load_user(user_id):
+    """Required by Flask-Login"""
+    try:
+        return User.query.get(int(user_id))
+    except Exception as e:
+        print(f"Error loading user: {e}")
+        return None
 
 
 # ========== END EXTENSION INITIALIZATION ==========
@@ -1442,7 +1451,7 @@ def save_timetable_to_db(timetables):
 
 # ========== EMAIL SERVICE ==========
 def send_email(to_email, subject, body):
-    """Send email with real SMTP"""
+    """Send email using Brevo SMTP"""
     try:
         msg = MIMEMultipart()
         msg['From'] = app.config['MAIL_DEFAULT_SENDER']
@@ -1450,6 +1459,7 @@ def send_email(to_email, subject, body):
         msg['Subject'] = subject
         msg.attach(MIMEText(body, 'html'))
 
+        # Brevo SMTP configuration
         server = smtplib.SMTP(app.config['MAIL_SERVER'], app.config['MAIL_PORT'])
         server.starttls()
         server.login(app.config['MAIL_USERNAME'], app.config['MAIL_PASSWORD'])
@@ -1457,6 +1467,7 @@ def send_email(to_email, subject, body):
         server.sendmail(app.config['MAIL_DEFAULT_SENDER'], to_email, text)
         server.quit()
 
+        # Log email
         email_log = EmailLog(
             recipient=to_email,
             subject=subject,
@@ -1465,44 +1476,124 @@ def send_email(to_email, subject, body):
         )
         db.session.add(email_log)
         db.session.commit()
+
+        print(f"[SUCCESS] Email sent to {to_email}")
         return True
+
     except Exception as e:
-        print(f"Email sending failed: {e}")
+        print(f"[ERROR] Email sending failed: {e}")
+        # Log failed email
         email_log = EmailLog(
             recipient=to_email,
             subject=subject,
             body=body,
-            status='failed'
+            status='failed',
+            error_message=str(e)
         )
         db.session.add(email_log)
         db.session.commit()
         return False
 
 
+def send_email_brevo_api(to_email, subject, body):
+    """Send email using Brevo API directly"""
+    try:
+        brevo_api_key = app.config['MAIL_PASSWORD']  # Your API key
+        sender_email = app.config['MAIL_DEFAULT_SENDER']
+        sender_name = "DEPARTMENT OF COMPUTER SCIENCE AND ENGG. & ARTIFICIAL INTELLIGENCE AND DATA SCIENCE"
+
+        url = "https://api.brevo.com/v3/smtp/email"
+
+        payload = {
+            "sender": {
+                "name": sender_name,
+                "email": sender_email
+            },
+            "to": [
+                {
+                    "email": to_email,
+                    "name": to_email.split('@')[0]
+                }
+            ],
+            "subject": subject,
+            "htmlContent": body
+        }
+
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "api-key": brevo_api_key
+        }
+
+        response = requests.post(url, json=payload, headers=headers)
+
+        if response.status_code == 201:
+            print(f"[SUCCESS] Email sent via Brevo API to {to_email}")
+
+            # Log email
+            email_log = EmailLog(
+                recipient=to_email,
+                subject=subject,
+                body=body,
+                status='sent'
+            )
+            db.session.add(email_log)
+            db.session.commit()
+            return True
+        else:
+            print(f"[ERROR] Brevo API error: {response.status_code} - {response.text}")
+            return False
+
+    except Exception as e:
+        print(f"[ERROR] Brevo API exception: {e}")
+        return False
+
+
 def send_otp_email(email, otp):
-    """Send OTP email"""
+    """Send OTP email with better formatting and fallback"""
     subject = "Password Reset OTP - College Attendance System"
+
     body = f"""
+    <!DOCTYPE html>
     <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: #007bff; color: white; padding: 20px; text-align: center; }}
+            .content {{ background: #f9f9f9; padding: 20px; }}
+            .otp {{ font-size: 32px; font-weight: bold; text-align: center; color: #007bff; margin: 20px 0; }}
+            .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #666; }}
+        </style>
+    </head>
     <body>
-        <h3>Password Reset Request</h3>
-        <p>Your OTP for password reset is: <strong>{otp}</strong></p>
-        <p>This OTP is valid for 10 minutes.</p>
-        <p>If you didn't request this, please ignore this email.</p>
-        <br>
-        <p>Best regards,<br>College Attendance System</p>
+        <div class="container">
+            <div class="header">
+                <h2>College Attendance System</h2>
+            </div>
+            <div class="content">
+                <h3>Password Reset Request</h3>
+                <p>Your One-Time Password (OTP) for password reset is:</p>
+                <div class="otp">{otp}</div>
+                <p>This OTP is valid for <strong>10 minutes</strong>.</p>
+                <p>If you didn't request this password reset, please ignore this email.</p>
+            </div>
+            <div class="footer">
+                <p>This is an automated message. Please do not reply to this email.</p>
+                <p>&copy; {datetime.now().year} College Attendance System. All rights reserved.</p>
+            </div>
+        </div>
     </body>
     </html>
     """
-    return send_email(email, subject, body)
 
-
-# ========== INITIALIZATION ==========
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
-
-
+    # Try SMTP first, then API as fallback
+    if send_email(email, subject, body):
+        return True
+    else:
+        # Fallback to API if SMTP fails
+        print("[INFO] SMTP failed, trying Brevo API...")
+        return send_email_brevo_api(email, subject, body)
 
 # ========== JINJA2 FILTERS & CONTEXT ==========
 @app.template_filter('endswith')
