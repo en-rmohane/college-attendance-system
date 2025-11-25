@@ -5120,7 +5120,127 @@ def migrate_data():
         flash(f'Migration failed: {str(e)}', 'danger')
         return redirect(url_for('admin_dashboard'))
 
-# ========== MAIN APPLICATION LAUNCH ==========
+
+import json
+from sqlalchemy import text
+
+
+@app.route('/admin/import_data')
+@login_required
+def import_data():
+    if current_user.role != 'admin':
+        flash('Access denied', 'danger')
+        return redirect(url_for('admin_dashboard'))
+
+    try:
+        # Load exported data
+        with open('database_export.json', 'r', encoding='utf-8') as f:
+            export_data = json.load(f)
+
+        results = []
+
+        # Import data table by table
+        for table_name, records in export_data.items():
+            try:
+                if table_name == 'user':
+                    for record in records:
+                        # Check if user already exists
+                        existing = User.query.filter_by(email=record['email']).first()
+                        if not existing:
+                            user = User(
+                                username=record['username'],
+                                email=record['email'],
+                                fullname=record['fullname'],
+                                role=record['role'],
+                                branch=record['branch'],
+                                student_roll=record.get('student_roll'),
+                                email_verified=record.get('email_verified', True),
+                                is_active=record.get('is_active', True)
+                            )
+                            # Note: Password cannot be imported (security)
+                            user.set_password('temp123')  # Set temporary password
+                            db.session.add(user)
+                    db.session.commit()
+                    results.append(f"✅ Users: {len(records)} imported")
+
+                elif table_name == 'student':
+                    for record in records:
+                        existing = Student.query.filter_by(roll=record['roll']).first()
+                        if not existing:
+                            student = Student(
+                                roll=record['roll'],
+                                name=record['name'],
+                                branch=record['branch'],
+                                year=record['year']
+                            )
+                            db.session.add(student)
+                    db.session.commit()
+                    results.append(f"✅ Students: {len(records)} imported")
+
+                elif table_name == 'subject':
+                    for record in records:
+                        existing = Subject.query.filter_by(code=record['code']).first()
+                        if not existing:
+                            subject = Subject(
+                                code=record['code'],
+                                name=record['name'],
+                                branch=record['branch'],
+                                semester=record['semester'],
+                                is_active=record.get('is_active', True)
+                            )
+                            db.session.add(subject)
+                    db.session.commit()
+                    results.append(f"✅ Subjects: {len(records)} imported")
+
+                elif table_name == 'professor_subject':
+                    for record in records:
+                        # Check if both professor and subject exist
+                        professor = User.query.get(record['professor_id'])
+                        subject = Subject.query.get(record['subject_id'])
+
+                        if professor and subject:
+                            existing = ProfessorSubject.query.filter_by(
+                                professor_id=record['professor_id'],
+                                subject_id=record['subject_id']
+                            ).first()
+
+                            if not existing:
+                                allotment = ProfessorSubject(
+                                    professor_id=record['professor_id'],
+                                    subject_id=record['subject_id']
+                                )
+                                db.session.add(allotment)
+                    db.session.commit()
+                    results.append(f"✅ Professor Subjects: {len(records)} imported")
+
+                # Add more tables as needed...
+
+            except Exception as e:
+                results.append(f"❌ {table_name}: Error - {str(e)}")
+                db.session.rollback()
+
+        # Create admin notice
+        notice = Notice(
+            title="Data Import Completed",
+            message=f"Data import completed on {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            created_by=current_user.id,
+            target_audience="all",
+            is_important=True
+        )
+        db.session.add(notice)
+        db.session.commit()
+
+        result_html = "<br>".join(results)
+        return f"""
+        <h3>Data Import Results</h3>
+        {result_html}
+        <br><br>
+        <a href="/admin" class="btn btn-primary">Back to Dashboard</a>
+        """
+
+    except Exception as e:
+        flash(f'Import failed: {str(e)}', 'danger')
+        return redirect(url_for('admin_dashboard'))
 # ========== MAIN APPLICATION LAUNCH ==========
 if __name__ == '__main__':
     # Get port from environment variable or default to 5000
