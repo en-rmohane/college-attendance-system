@@ -39,11 +39,13 @@ app.config['MAIL_DEFAULT_SENDER'] = 'your-email@gmail.com'
 import os
 
 
-def setup_database():
+# CORRECT DATABASE CONFIGURATION
+def get_database_url():
     if os.environ.get('RENDER'):
+        # On Render - use PostgreSQL
         db_url = os.environ.get('DATABASE_URL', '')
         if db_url:
-            # Render ka URL usually 'postgres://'
+            # CORRECT: Use standard postgresql:// with psycopg2
             if db_url.startswith('postgres://'):
                 db_url = db_url.replace('postgres://', 'postgresql://', 1)
             return db_url
@@ -52,12 +54,10 @@ def setup_database():
     return 'sqlite:///college_attendance.db'
 
 
-
-app.config['SQLALCHEMY_DATABASE_URI'] = setup_database()
+app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-print(f"✅ Database configured successfully!")
-print(f"   Using: {app.config['SQLALCHEMY_DATABASE_URI'][:50]}...")
+print(f"✅ Database configured: {app.config['SQLALCHEMY_DATABASE_URI'][:50]}...")
 # ========== SAFE EXTENSION INITIALIZATION ==========
 # Initialize extensions ONLY if not already initialized
 if 'db' not in globals():
