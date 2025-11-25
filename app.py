@@ -582,6 +582,73 @@ def initialize_rgpv_scheme_complete():
         print(f"[ERROR] RGPV Scheme initialization failed: {e}")
         db.session.rollback()
 
+
+def get_today_attendance_summary():
+    """Get today's attendance summary for all subjects"""
+    try:
+        today = date.today()
+
+        # Get all subjects that have attendance records today
+        subject_ids = db.session.query(Attendance.subject_id).filter(
+            Attendance.date == today
+        ).distinct().all()
+
+        stats = []
+        for (subject_id,) in subject_ids:
+            subject = Subject.query.get(subject_id)
+            if not subject:
+                continue
+
+            # Get professor for this subject
+            allotment = ProfessorSubject.query.filter_by(subject_id=subject_id).first()
+            professor = User.query.get(allotment.professor_id) if allotment else None
+
+            # Count present and absent students
+            present_count = Attendance.query.filter_by(
+                subject_id=subject_id,
+                date=today,
+                status='present'
+            ).count()
+
+            absent_count = Attendance.query.filter_by(
+                subject_id=subject_id,
+                date=today,
+                status='absent'
+            ).count()
+
+            total_students = present_count + absent_count
+            percentage = round((present_count / total_students) * 100, 2) if total_students > 0 else 0
+
+            # Get last updated time
+            latest_record = Attendance.query.filter_by(
+                subject_id=subject_id,
+                date=today
+            ).order_by(Attendance.created_at.desc()).first()
+
+            last_updated = latest_record.created_at.strftime('%H:%M') if latest_record else 'N/A'
+
+            stats.append({
+                'subject_id': subject_id,
+                'subject_code': subject.code,
+                'subject_name': subject.name,
+                'professor_name': professor.fullname if professor else 'Not Allotted',
+                'branch': subject.branch,
+                'year': (subject.semester + 1) // 2,  # Calculate year from semester
+                'semester': subject.semester,
+                'present_count': present_count,
+                'absent_count': absent_count,
+                'total_students': total_students,
+                'percentage': percentage,
+                'last_updated': last_updated
+            })
+
+        # Sort by last updated (most recent first)
+        stats.sort(key=lambda x: x['last_updated'], reverse=True)
+        return stats
+
+    except Exception as e:
+        print(f"Error in get_today_attendance_summary: {e}")
+        return []
 def ensure_student_accounts():
     """Create user accounts for all students with default passwords"""
     students = Student.query.filter(Student.roll.isnot(None)).all()
@@ -1448,6 +1515,8 @@ def contains_filter(s, substring):
 @app.context_processor
 def utility_processor():
     from datetime import datetime, timedelta
+    from flask import request
+    import os
 
     def today_minus_7_days():
         return datetime.now() - timedelta(days=7)
@@ -1458,7 +1527,8 @@ def utility_processor():
                 subject_id=subject_id,
                 date=date.today()
             ).count()
-        except:
+        except Exception as e:
+            print(f"Error in get_today_attendance_count: {e}")
             return 0
 
     def get_total_classes_count(subject_id):
@@ -1466,7 +1536,8 @@ def utility_processor():
             return db.session.query(db.func.count(db.func.distinct(Attendance.date))).filter_by(
                 subject_id=subject_id
             ).scalar() or 0
-        except:
+        except Exception as e:
+            print(f"Error in get_total_classes_count: {e}")
             return 0
 
     def get_student_count(branch, year):
@@ -1475,13 +1546,16 @@ def utility_processor():
                 branch=branch,
                 year=year
             ).count()
-        except:
+        except Exception as e:
+            print(f"Error in get_student_count: {e}")
             return 0
 
     def get_today_attendance_summary():
         """Get today's attendance summary for all subjects"""
         try:
             today = date.today()
+
+            # Get all subjects that have attendance records today
             subject_ids = db.session.query(Attendance.subject_id).filter(
                 Attendance.date == today
             ).distinct().all()
@@ -1492,9 +1566,11 @@ def utility_processor():
                 if not subject:
                     continue
 
+                # Get professor for this subject
                 allotment = ProfessorSubject.query.filter_by(subject_id=subject_id).first()
                 professor = User.query.get(allotment.professor_id) if allotment else None
 
+                # Count present and absent students
                 present_count = Attendance.query.filter_by(
                     subject_id=subject_id,
                     date=today,
@@ -1510,6 +1586,7 @@ def utility_processor():
                 total_students = present_count + absent_count
                 percentage = round((present_count / total_students) * 100, 2) if total_students > 0 else 0
 
+                # Get last updated time
                 latest_record = Attendance.query.filter_by(
                     subject_id=subject_id,
                     date=today
@@ -1523,7 +1600,7 @@ def utility_processor():
                     'subject_name': subject.name,
                     'professor_name': professor.fullname if professor else 'Not Allotted',
                     'branch': subject.branch,
-                    'year': (subject.semester + 1) // 2,
+                    'year': (subject.semester + 1) // 2,  # Calculate year from semester
                     'semester': subject.semester,
                     'present_count': present_count,
                     'absent_count': absent_count,
@@ -1532,6 +1609,7 @@ def utility_processor():
                     'last_updated': last_updated
                 })
 
+            # Sort by last updated (most recent first)
             stats.sort(key=lambda x: x['last_updated'], reverse=True)
             return stats
 
@@ -1543,24 +1621,74 @@ def utility_processor():
         return date.today().strftime('%d %b %Y')
 
     def has_unseen_notices_context(user_id, user_role, branch=None, year=None):
-        return has_unseen_notices(user_id, user_role, branch, year)
+        try:
+            return has_unseen_notices(user_id, user_role, branch, year)
+        except Exception as e:
+            print(f"Error in has_unseen_notices_context: {e}")
+            return False
+
+    # Additional useful functions for templates
+    def get_current_year():
+        return datetime.now().year
+
+    def get_current_month():
+        return datetime.now().strftime('%B')
+
+    def format_datetime(dt, format_str='%d %b %Y %H:%M'):
+        """Format datetime for templates"""
+        if dt:
+            return dt.strftime(format_str)
+        return ''
+
+    def is_active_route(route_name):
+        """Check if current route is active for navigation highlighting"""
+        return request.endpoint == route_name
+
+    def get_app_name():
+        """Get application name"""
+        return "College Attendance System"
+
+    def get_app_version():
+        """Get application version"""
+        return "2.0"
 
     return dict(
+        # Basic Python functions
         enumerate=enumerate,
         len=len,
         str=str,
+        int=int,
+        float=float,
+        list=list,
+        dict=dict,
+
+        # Date/Time functions
         date=date,
-        timedelta=timedelta,
         datetime=datetime,
+        timedelta=timedelta,
+
+        # Attendance functions
         get_today_attendance_count=get_today_attendance_count,
         get_total_classes_count=get_total_classes_count,
         get_student_count=get_student_count,
-        get_today_attendance_summary=get_today_attendance_summary,  # ADD THIS LINE
+        get_today_attendance_summary=get_today_attendance_summary,
+
+        # Utility functions
         get_today_date=get_today_date,
         today_minus_7_days=today_minus_7_days,
-        has_unseen_notices=has_unseen_notices_context
-    )
+        has_unseen_notices=has_unseen_notices_context,
+        get_current_year=get_current_year,
+        get_current_month=get_current_month,
+        format_datetime=format_datetime,
+        is_active_route=is_active_route,
+        get_app_name=get_app_name,
+        get_app_version=get_app_version,
 
+        # Additional useful template functions
+        round=round,
+        zip=zip,
+        range=range
+    )
 # ========== AUTHENTICATION ROUTES ==========
 @app.route('/')
 def index():
