@@ -39,19 +39,21 @@ app.config['MAIL_DEFAULT_SENDER'] = 'your-email@gmail.com'
 import os
 
 
-# FINAL DATABASE CONFIGURATION - GUARANTEED TO WORK
 def setup_database():
     if os.environ.get('RENDER'):
-        # On Render - use PostgreSQL
         db_url = os.environ.get('DATABASE_URL', '')
         if db_url:
-            # Fix for SQLAlchemy 1.4
+            # Render ka URL usually 'postgres://' hota hai
             if db_url.startswith('postgres://'):
-                db_url = db_url.replace('postgres://', 'postgresql://', 1)
+                db_url = db_url.replace('postgres://', 'postgresql+psycopg://', 1)
+            elif db_url.startswith('postgresql://'):
+                db_url = db_url.replace('postgresql://', 'postgresql+psycopg://', 1)
+
             return db_url
 
     # Local development - SQLite
     return 'sqlite:///college_attendance.db'
+
 
 
 app.config['SQLALCHEMY_DATABASE_URI'] = setup_database()
