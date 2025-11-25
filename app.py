@@ -20,7 +20,7 @@ from sqlalchemy import text
 from werkzeug.utils import secure_filename, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from fix_database import get_timetable_from_db, generate_monthly_attendance_excel
+from fix_database import get_timetable_from_db, generate_monthly_attendance_excel, basedir
 from models import db, User, Student, Subject, ProfessorSubject, Attendance, AttendanceReport, PasswordResetOTP, \
     EmailLog, RGPVScheme, TimetableSlot, CurrentSemester, MidTermMarks, Notes, Notice, Test, Question, \
     TestAttempt, StudentAnswer, QuestionSection
@@ -36,34 +36,24 @@ app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = 'your-email@gmail.com'
 app.config['MAIL_PASSWORD'] = 'your-app-password'
 app.config['MAIL_DEFAULT_SENDER'] = 'your-email@gmail.com'
-
 import os
-from urllib.parse import urlparse
 
-# Database configuration
-if 'RENDER' in os.environ:
-    # Render PostgreSQL database
-    database_url = os.environ.get('DATABASE_URL')
-
-    if database_url:
-        # PostgreSQL URL fix for SQLAlchemy
-        if database_url.startswith('postgres://'):
-            database_url = database_url.replace('postgres://', 'postgresql://', 1)
-
-        app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-        print(f"✅ Using PostgreSQL database on Render: {database_url[:20]}...")
+# Database Configuration
+if os.environ.get('RENDER'):
+    db_url = os.environ.get('DATABASE_URL', '')
+    if db_url:
+        # Use psycopg3
+        if db_url.startswith('postgres://'):
+            db_url = db_url.replace('postgres://', 'postgresql+psycopg://', 1)
+        app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+        print("✅ Using PostgreSQL with psycopg3")
     else:
-        print("❌ DATABASE_URL environment variable not found!")
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fallback.db'
+        print("⚠️ Using SQLite fallback")
 else:
-    # Local SQLite database
-    basedir = os.path.abspath(os.path.dirname(__file__))
-    instance_dir = os.path.join(basedir, 'instance')
-    os.makedirs(instance_dir, exist_ok=True)
-    db_path = os.path.join(instance_dir, 'college_attendance.db')
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
-    print(f"✅ Using SQLite database locally: {db_path}")
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///college_attendance.db'
+    print("✅ Using SQLite locally")
 
-# Add this required configuration - YE LINE LAST MEIN ADD KARNA HAI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # ========== SAFE EXTENSION INITIALIZATION ==========
 # Initialize extensions ONLY if not already initialized
