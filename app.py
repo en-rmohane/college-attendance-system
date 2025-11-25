@@ -5063,6 +5063,63 @@ def verify_security_code(test_id):
         return jsonify({'success': False, 'error': str(e)})
 
 
+@app.route('/admin/migrate_data')
+@login_required
+def migrate_data():
+    if current_user.role != 'admin':
+        flash('Access denied', 'danger')
+        return redirect(url_for('admin_dashboard'))
+
+    try:
+        # Get all data from SQLite
+        from sqlalchemy import create_engine
+        import pandas as pd
+
+        # SQLite connection
+        sqlite_engine = create_engine('sqlite:///college_attendance.db')
+
+        # PostgreSQL connection (from environment variable)
+        postgres_url = os.environ.get('DATABASE_URL')
+        if postgres_url.startswith('postgres://'):
+            postgres_url = postgres_url.replace('postgres://', 'postgresql+psycopg://', 1)
+        postgres_engine = create_engine(postgres_url)
+
+        # List of tables to migrate
+        tables = ['user', 'student', 'subject', 'professor_subject', 'attendance',
+                  'attendance_report', 'mid_term_marks', 'notes', 'notice', 'test',
+                  'question', 'test_attempt', 'student_answer']
+
+        migrated_tables = []
+
+        for table in tables:
+            try:
+                # Read data from SQLite
+                df = pd.read_sql_table(table, sqlite_engine)
+
+                # Write to PostgreSQL
+                df.to_sql(table, postgres_engine, if_exists='replace', index=False)
+
+                migrated_tables.append(f"✅ {table}: {len(df)} records")
+
+            except Exception as e:
+                migrated_tables.append(f"❌ {table}: {str(e)}")
+
+        # Update database configuration to use PostgreSQL
+        app.config['SQLALCHEMY_DATABASE_URI'] = postgres_url
+
+        result = "<br>".join(migrated_tables)
+        flash('Data migration completed!', 'success')
+        return f"""
+        <h3>Data Migration Results</h3>
+        {result}
+        <br><br>
+        <a href="/admin" class="btn btn-primary">Back to Dashboard</a>
+        """
+
+    except Exception as e:
+        flash(f'Migration failed: {str(e)}', 'danger')
+        return redirect(url_for('admin_dashboard'))
+
 # ========== MAIN APPLICATION LAUNCH ==========
 # ========== MAIN APPLICATION LAUNCH ==========
 if __name__ == '__main__':
