@@ -5,7 +5,7 @@ Flask-Login==0.6.2
 Flask-Migrate==4.0.4
 email-validator==2.0.0
 openpyxl==3.1.2
-SQLAlchemy==2.0.23
+SQLAlchemy==1.4.46
 gunicorn==21.2.0
 pandas
-psycopg==3.1.18
+psycopg2-binary==2.9.7
