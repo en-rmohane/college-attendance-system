@@ -40,35 +40,27 @@ app.config['MAIL_DEFAULT_SENDER'] = 'sbitmstudy@gmail.com'
 import os
 
 import os
-
 def setup_database():
     if os.environ.get('RENDER'):
         db_url = os.environ.get('DATABASE_URL', '')
         if db_url:
-            # Render ka URL usually 'postgres://...' hota hai
-            if db_url.startswith('postgres://'):
-                db_url = db_url.replace('postgres://', 'postgresql+psycopg://', 1)
-            elif db_url.startswith('postgresql://'):
-                db_url = db_url.replace('postgresql://', 'postgresql+psycopg://', 1)
+            # Convert Postgres URL properly for psycopg3
+            if db_url.startswith("postgres://"):
+                db_url = db_url.replace("postgres://", "postgresql+psycopg://", 1)
 
-            # ✅ SSL fix: force sslmode=require if not present
+            # Force SSLmode for Render DB
             if "sslmode=" not in db_url:
-                if "?" in db_url:
-                    db_url += "&sslmode=require"
-                else:
-                    db_url += "?sslmode=require"
+                connector = "&" if "?" in db_url else "?"
+                db_url = f"{db_url}{connector}sslmode=require"
 
-            print(f"✅ Database configured: {db_url[:60]}...")
+            print("Using Render PostgreSQL DB:", db_url[:60], "...")
             return db_url
 
-    # Local development - SQLite
-    db_url = "sqlite:///college_attendance.db"
-    print(f"✅ Database configured (local): {db_url}")
-    return db_url
+    # SQLite fallback (local)
+    local_db = "sqlite:///college_attendance.db"
+    print("Using Local SQLite DB")
+    return local_db
 
-
-app.config["SQLALCHEMY_DATABASE_URI"] = setup_database()
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # ========== SAFE EXTENSION INITIALIZATION ==========
 # Initialize extensions ONLY if not already initialized
