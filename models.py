@@ -145,17 +145,14 @@ class PasswordResetOTP(db.Model):
     used = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
-
 class EmailLog(db.Model):
-    __tablename__ = 'email_logs'
-
     id = db.Column(db.Integer, primary_key=True)
-    recipient = db.Column(db.String(120), nullable=False)
-    subject = db.Column(db.String(200), nullable=False)
+    recipient = db.Column(db.String(255), nullable=False)
+    subject = db.Column(db.String(255), nullable=False)
     body = db.Column(db.Text, nullable=False)
-    status = db.Column(db.String(20), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now)
-
+    status = db.Column(db.String(20), default='Pending')
+    error_message = db.Column(db.Text, nullable=True)  # <-- ADD THIS
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Faculty(db.Model):
     __tablename__ = 'faculties'
