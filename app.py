@@ -37,21 +37,23 @@ app.config['MAIL_USERNAME'] = 'your-email@gmail.com'
 app.config['MAIL_PASSWORD'] = 'your-app-password'
 app.config['MAIL_DEFAULT_SENDER'] = 'your-email@gmail.com'
 
-# Database configuration
-# Database configuration
 import os
 from urllib.parse import urlparse
 
+# Database configuration
 if 'RENDER' in os.environ:
     # Render PostgreSQL database
     database_url = os.environ.get('DATABASE_URL')
 
-    # PostgreSQL URL fix for SQLAlchemy
-    if database_url and database_url.startswith('postgres://'):
-        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    if database_url:
+        # PostgreSQL URL fix for SQLAlchemy
+        if database_url.startswith('postgres://'):
+            database_url = database_url.replace('postgres://', 'postgresql://', 1)
 
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    print(f"✅ Using PostgreSQL database on Render")
+        app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+        print(f"✅ Using PostgreSQL database on Render: {database_url[:20]}...")
+    else:
+        print("❌ DATABASE_URL environment variable not found!")
 else:
     # Local SQLite database
     basedir = os.path.abspath(os.path.dirname(__file__))
@@ -60,6 +62,9 @@ else:
     db_path = os.path.join(instance_dir, 'college_attendance.db')
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
     print(f"✅ Using SQLite database locally: {db_path}")
+
+# Add this required configuration - YE LINE LAST MEIN ADD KARNA HAI
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # ========== SAFE EXTENSION INITIALIZATION ==========
 # Initialize extensions ONLY if not already initialized
 if 'db' not in globals():
