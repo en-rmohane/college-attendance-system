@@ -39,6 +39,7 @@ app.config['MAIL_PASSWORD'] = 'xsmtpsib-126dcb830ef9752244c7ac44375ef365eac59575
 app.config['MAIL_DEFAULT_SENDER'] = 'sbitmstudy@gmail.com'
 import os
 
+import os
 
 def setup_database():
     if os.environ.get('RENDER'):
@@ -50,23 +51,25 @@ def setup_database():
             elif db_url.startswith('postgresql://'):
                 db_url = db_url.replace('postgresql://', 'postgresql+psycopg://', 1)
 
-            # ✅ COMPLETE SSL FIX
-            if '?' in db_url:
-                db_url += "&sslmode=require"
-            else:
-                db_url += "?sslmode=require"
+            # ✅ SSL fix: force sslmode=require if not present
+            if "sslmode=" not in db_url:
+                if "?" in db_url:
+                    db_url += "&sslmode=require"
+                else:
+                    db_url += "?sslmode=require"
 
             print(f"✅ Database configured: {db_url[:60]}...")
             return db_url
 
     # Local development - SQLite
-    db_url = 'sqlite:///college_attendance.db'
+    db_url = "sqlite:///college_attendance.db"
     print(f"✅ Database configured (local): {db_url}")
     return db_url
 
 
-app.config['SQLALCHEMY_DATABASE_URI'] = setup_database()
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config["SQLALCHEMY_DATABASE_URI"] = setup_database()
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
 # ========== SAFE EXTENSION INITIALIZATION ==========
 # Initialize extensions ONLY if not already initialized
 if 'db' not in globals():
