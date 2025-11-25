@@ -1,75 +1,84 @@
-import re
+#!/usr/bin/env python3
+"""
+Transfer data from SQLite to PostgreSQL
+Run this locally to transfer your existing data
+"""
+
+import os
+import sys
+from datetime import datetime
+
+# Add current directory to path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 
-def remove_all_emojis():
-    """
-    Remove ALL emojis and Unicode characters from app.py
-    """
+def transfer_sqlite_to_postgres():
+    """Transfer data from SQLite to PostgreSQL"""
+    print("🚀 Starting data transfer from SQLite to PostgreSQL...")
 
-    # Read the original file
-    with open('app.py', 'r', encoding='utf-8') as file:
-        content = file.read()
+    # Source SQLite database
+    from app import app as flask_app
+    from models import db, User, Student, Subject, ProfessorSubject, Attendance, Test, Question, CurrentSemester
 
-    # Remove ALL Unicode emojis and special characters
-    # This regex matches most emoji ranges
-    emoji_pattern = re.compile(
-        "["
-        "\U0001F600-\U0001F64F"  # emoticons
-        "\U0001F300-\U0001F5FF"  # symbols & pictographs
-        "\U0001F680-\U0001F6FF"  # transport & map symbols
-        "\U0001F1E0-\U0001F1FF"  # flags (iOS)
-        "\U00002702-\U000027B0"  # other symbols
-        "\U000024C2-\U0001F251"  # enclosed characters
-        "\U0001f926-\U0001f937"  # people
-        "\U0001F1E6-\U0001F1FF"  # flags
-        "\U0001F191-\U0001F251"  # enclosed characters
-        "]+",
-        flags=re.UNICODE
-    )
+    with flask_app.app_context():
+        try:
+            # Connect to source SQLite database
+            basedir = os.path.abspath(os.path.dirname(__file__))
+            sqlite_path = os.path.join(basedir, 'instance', 'college_attendance.db')
 
-    # Remove all emojis
-    content = emoji_pattern.sub('', content)
+            if not os.path.exists(sqlite_path):
+                print("❌ SQLite database not found. Please run the app locally first to create data.")
+                return False
 
-    # Also replace specific problematic characters manually
-    replacements = {
-        '✅': '[OK]',
-        '🔄': '[UPDATE]',
-        '❌': '[ERROR]',
-        '⚠️': '[WARNING]',
-        '🎯': '[SUCCESS]',
-        '📊': '[INFO]',
-        'ℹ️': '[INFO]',
-        '⚡': '[FAST]',
-        '🚀': '[LAUNCH]',
-        '🔧': '[FIX]',
-        '📝': '[NOTE]',
-        '🔍': '[CHECK]',
-        '💾': '[SAVE]',
-        '📁': '[FILE]',
-        '👥': '[USERS]',
-        '🎓': '[EDU]',
-        '🖥️': '[COMPUTER]',
-        '📅': '[CALENDAR]',
-        '📚': '[BOOKS]',
-        '👨‍🏫': '[PROFESSOR]',
-        '👨‍🎓': '[STUDENT]',
-        '🔐': '[SECURITY]',
-        '📧': '[EMAIL]',
-        '🔔': '[NOTIFICATION]',
-        '💡': '[IDEA]',
-        '🔥': '[HOT]',
-        '🌟': '[STAR]',
-    }
+            print("✅ Found SQLite database")
 
-    for emoji, text in replacements.items():
-        content = content.replace(emoji, text)
+            # Get all data from SQLite
+            print("📥 Reading data from SQLite...")
 
-    # Write the fixed content back
-    with open('app.py', 'w', encoding='utf-8') as file:
-        file.write(content)
+            # Users
+            users = User.query.all()
+            print(f"📊 Found {len(users)} users")
 
-    print("Removed ALL emojis from app.py")
+            # Students
+            students = Student.query.all()
+            print(f"📊 Found {len(students)} students")
+
+            # Subjects
+            subjects = Subject.query.all()
+            print(f"📊 Found {len(subjects)} subjects")
+
+            # Professor Subjects
+            prof_subjects = ProfessorSubject.query.all()
+            print(f"📊 Found {len(prof_subjects)} professor subject allocations")
+
+            # Attendance
+            attendance_records = Attendance.query.all()
+            print(f"📊 Found {len(attendance_records)} attendance records")
+
+            # Tests
+            tests = Test.query.all()
+            print(f"📊 Found {len(tests)} tests")
+
+            # Questions
+            questions = Question.query.all()
+            print(f"📊 Found {len(questions)} questions")
+
+            # Current Semester
+            current_semesters = CurrentSemester.query.all()
+            print(f"📊 Found {len(current_semesters)} current semester settings")
+
+            print("🎯 Data reading completed!")
+            print("\n💡 Now please deploy to Render with PostgreSQL, then run the auto-initialization script.")
+            print("   The script will create all the necessary data automatically.")
+
+            return True
+
+        except Exception as e:
+            print(f"❌ Error transferring data: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
 
 
 if __name__ == "__main__":
-    remove_all_emojis()
+    transfer_sqlite_to_postgres()

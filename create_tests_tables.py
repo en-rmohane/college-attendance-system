@@ -1,16 +1,19 @@
-import sqlite3
+def create_app():
+    app = Flask(__name__)
 
-# Database connection
-conn = sqlite3.connect('instance/college_attendance.db')
-cursor = conn.cursor()
+    # Your config...
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-try:
-    # Add new columns
-    cursor.execute("ALTER TABLE timetable_slots ADD COLUMN is_common BOOLEAN DEFAULT FALSE")
-    cursor.execute("ALTER TABLE timetable_slots ADD COLUMN common_name VARCHAR(100)")
-    conn.commit()
-    print("✅ Columns added successfully!")
-except Exception as e:
-    print(f"❌ Error: {e}")
-finally:
-    conn.close()
+    # Initialize extensions
+    db.init_app(app)
+    login_manager.init_app(app)
+    migrate.init_app(app, db)
+
+    # Import and register routes
+    from app import routes
+
+    return app
+
+
+app = create_app()
