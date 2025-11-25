@@ -39,6 +39,7 @@ app.config['MAIL_PASSWORD'] = 'xsmtpsib-126dcb830ef9752244c7ac44375ef365eac59575
 app.config['MAIL_DEFAULT_SENDER'] = 'sbitmstudy@gmail.com'
 import os
 
+
 def setup_database():
     if os.environ.get('RENDER'):
         db_url = os.environ.get('DATABASE_URL', '')
@@ -49,6 +50,12 @@ def setup_database():
             elif db_url.startswith('postgresql://'):
                 db_url = db_url.replace('postgresql://', 'postgresql+psycopg://', 1)
 
+            # ✅ COMPLETE SSL FIX
+            if '?' in db_url:
+                db_url += "&sslmode=require"
+            else:
+                db_url += "?sslmode=require"
+
             print(f"✅ Database configured: {db_url[:60]}...")
             return db_url
 
@@ -57,9 +64,9 @@ def setup_database():
     print(f"✅ Database configured (local): {db_url}")
     return db_url
 
+
 app.config['SQLALCHEMY_DATABASE_URI'] = setup_database()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 # ========== SAFE EXTENSION INITIALIZATION ==========
 # Initialize extensions ONLY if not already initialized
 if 'db' not in globals():
@@ -1865,13 +1872,13 @@ def forgot_password():
 
             PasswordResetOTP.query.filter_by(user_id=user.id, used=False).delete()
 
-            reset_entry = PasswordResetOTP(  # This is correctly defined as 'reset_entry'
+            reset_entry = PasswordResetOTP(
                 user_id=user.id,
                 otp_code=otp,
                 expires_at=expires,
                 used=False
             )
-            db.session.add(reset_entry)  # This should be 'reset_entry'
+            db.session.add(reset_entry)
             db.session.commit()
 
             if send_otp_email(user.email, otp):
@@ -1880,10 +1887,12 @@ def forgot_password():
                 flash('Failed to send OTP. Please try again.', 'danger')
             return redirect(url_for('reset_password', email=email))
         else:
-            flash('If this email is registered, an OTP has been sent', 'info')
+            # ✅ FIX: Agar user nahi mila to yeh message dikhao
+            flash('Email not found. Please check your email address.', 'danger')
+            # ✅ Redirect nahi karo, same page par raho
+            return render_template('auth/forgot_password.html')
 
     return render_template('auth/forgot_password.html')
-
 @app.route('/reset_password', methods=['GET', 'POST'])
 def reset_password():
     email = request.args.get('email', '').strip()
