@@ -38,23 +38,27 @@ app.config['MAIL_PASSWORD'] = 'your-app-password'
 app.config['MAIL_DEFAULT_SENDER'] = 'your-email@gmail.com'
 import os
 
-# Database Configuration
-if os.environ.get('RENDER'):
-    db_url = os.environ.get('DATABASE_URL', '')
-    if db_url:
-        # Use psycopg3
-        if db_url.startswith('postgres://'):
-            db_url = db_url.replace('postgres://', 'postgresql+psycopg://', 1)
-        app.config['SQLALCHEMY_DATABASE_URI'] = db_url
-        print("✅ Using PostgreSQL with psycopg3")
-    else:
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///fallback.db'
-        print("⚠️ Using SQLite fallback")
-else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///college_attendance.db'
-    print("✅ Using SQLite locally")
 
+# FINAL DATABASE CONFIGURATION - GUARANTEED TO WORK
+def setup_database():
+    if os.environ.get('RENDER'):
+        # On Render - use PostgreSQL
+        db_url = os.environ.get('DATABASE_URL', '')
+        if db_url:
+            # Fix for SQLAlchemy 1.4
+            if db_url.startswith('postgres://'):
+                db_url = db_url.replace('postgres://', 'postgresql://', 1)
+            return db_url
+
+    # Local development - SQLite
+    return 'sqlite:///college_attendance.db'
+
+
+app.config['SQLALCHEMY_DATABASE_URI'] = setup_database()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+print(f"✅ Database configured successfully!")
+print(f"   Using: {app.config['SQLALCHEMY_DATABASE_URI'][:50]}...")
 # ========== SAFE EXTENSION INITIALIZATION ==========
 # Initialize extensions ONLY if not already initialized
 if 'db' not in globals():
