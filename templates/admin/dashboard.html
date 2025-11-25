@@ -79,18 +79,7 @@
                 </div>
             </div>
         </div>
-        <!-- Existing cards ke baad -->
-<div class="col-md-4">
-    <div class="card bg-info text-white">
-        <div class="card-body">
-            <h5 class="card-title">📅 Monthly Department Report</h5>
-            <p class="card-text">Generate monthly attendance in department Excel format</p>
-            <a href="{{ url_for('generate_monthly_attendance') }}" class="btn btn-warning">
-                📊 Generate Monthly Excel
-            </a>
-        </div>
-    </div>
-</div>
+
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card card-hover border-0 shadow-sm h-100">
                 <div class="card-body p-4">
@@ -171,7 +160,7 @@
                             </a>
                         </div>
 
-                        <!-- Test Management - NEW BUTTON -->
+                        <!-- Test Management -->
                         <div class="col-xl-2 col-md-4 col-6">
                             <a href="{{ url_for('admin_tests') }}" class="card action-card border-0 text-decoration-none">
                                 <div class="card-body text-center p-4">
@@ -180,6 +169,19 @@
                                     </div>
                                     <h6 class="fw-bold text-dark mb-1">Test Management</h6>
                                     <small class="text-muted">Online exams</small>
+                                </div>
+                            </a>
+                        </div>
+
+                        <!-- Reports -->
+                        <div class="col-xl-2 col-md-4 col-6">
+                            <a href="{{ url_for('admin_reports') }}" class="card action-card border-0 text-decoration-none">
+                                <div class="card-body text-center p-4">
+                                    <div class="icon-shape icon-lg bg-info text-white rounded-3 mb-3 mx-auto">
+                                        <i class="bi bi-file-earmark-text fs-3"></i>
+                                    </div>
+                                    <h6 class="fw-bold text-dark mb-1">Reports</h6>
+                                    <small class="text-muted">View analytics</small>
                                 </div>
                             </a>
                         </div>
@@ -206,19 +208,6 @@
                                     </div>
                                     <h6 class="fw-bold text-dark mb-1">Add Subject</h6>
                                     <small class="text-muted">New course</small>
-                                </div>
-                            </a>
-                        </div>
-
-                        <!-- Reports -->
-                        <div class="col-xl-2 col-md-4 col-6">
-                            <a href="{{ url_for('admin_reports') }}" class="card action-card border-0 text-decoration-none">
-                                <div class="card-body text-center p-4">
-                                    <div class="icon-shape icon-lg bg-info text-white rounded-3 mb-3 mx-auto">
-                                        <i class="bi bi-file-earmark-text fs-3"></i>
-                                    </div>
-                                    <h6 class="fw-bold text-dark mb-1">Reports</h6>
-                                    <small class="text-muted">View analytics</small>
                                 </div>
                             </a>
                         </div>
