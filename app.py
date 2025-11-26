@@ -4543,6 +4543,51 @@ def start_test_smart(test_id):
         flash('Test availability period has ended!', 'warning')
         return redirect(url_for('student_tests'))
 
+    # Check existing attempt
+    existing_attempt = TestAttempt.query.filter_by(
+        student_id=student.id,
+        test_id=test_id
+    ).first()
+
+    if existing_attempt:
+        if existing_attempt.submitted:
+            flash('You have already submitted this test', 'warning')
+            return redirect(url_for('student_tests'))
+        else:
+            # Resume existing attempt
+            attempt = existing_attempt
+    else:
+        # Create new attempt
+        attempt = TestAttempt(
+            student_id=student.id,
+            test_id=test_id,
+            start_time=datetime.now(),
+            expected_end_time=datetime.now() + timedelta(minutes=test.duration_minutes),
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent')
+        )
+        db.session.add(attempt)
+        db.session.commit()
+
+    questions = Question.query.filter_by(test_id=test_id).order_by(Question.question_order).all()
+
+    # Calculate remaining seconds
+    now = datetime.now()
+    remaining_seconds = int((attempt.expected_end_time - now).total_seconds())
+
+    if remaining_seconds <= 0:
+        if test.auto_submit:
+            auto_submit_test(attempt.id)
+        flash('Test time has expired', 'warning')
+        return redirect(url_for('student_tests'))
+
+    # ✅ CRITICAL FIX: Add this return statement
+    return render_template('student/test_page_smart.html',
+                           test=test,
+                           questions=questions,
+                           attempt=attempt,
+                           remaining_seconds=remaining_seconds)
+
     # ... rest of existing start_test_smart code ...
 @app.route('/student/test/<int:attempt_id>/submit_answer', methods=['POST'])
 @login_required
