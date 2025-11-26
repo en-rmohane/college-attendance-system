@@ -29,10 +29,9 @@ from models import db, User, Student, Subject, ProfessorSubject, Attendance, Att
 from datetime import datetime, timedelta, timezone
 
 IST = timezone(timedelta(hours=5, minutes=30))
-
-def now_ist():
+def get_now():
+    """Return current time in IST timezone"""
     return datetime.now(IST)
-
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
