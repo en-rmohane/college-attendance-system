@@ -215,26 +215,6 @@
                 padding: 10px;
             }
         }
-
-        /* Fullscreen Styles */
-        body:fullscreen {
-            padding: 20px;
-            background: #f8f9fa;
-        }
-
-        body:-webkit-full-screen {
-            padding: 20px;
-            background: #f8f9fa;
-        }
-
-        body:-moz-full-screen {
-            padding: 20px;
-            background: #f8f9fa;
-        }
-
-        .fullscreen-enabled .test-container {
-            max-width: 1400px;
-        }
     </style>
 </head>
 <body>
@@ -400,11 +380,9 @@
         let answers = {};
         let markedQuestions = new Set();
         let isSubmitting = false;
-        let isFullScreen = false;
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
-            enterFullscreen(); // Enable full screen on page load
             startTimer();
             loadSavedAnswers();
             setupTabSwitchDetection();
@@ -418,41 +396,6 @@
                 }
             });
         });
-
-        // ================= FULL SCREEN FUNCTIONS =================
-        function enterFullscreen() {
-            const elem = document.documentElement;
-
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen().then(() => {
-                    isFullScreen = true;
-                    console.log("✅ Full screen enabled");
-                }).catch(err => {
-                    console.log("❌ Full screen error:", err);
-                    // Continue without fullscreen
-                });
-            } else if (elem.webkitRequestFullscreen) {
-                elem.webkitRequestFullscreen();
-                isFullScreen = true;
-            } else if (elem.msRequestFullscreen) {
-                elem.msRequestFullscreen();
-                isFullScreen = true;
-            } else {
-                console.log("ℹ️ Full screen not supported");
-                // Continue without fullscreen
-            }
-        }
-
-        function exitFullscreen() {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
-            }
-            isFullScreen = false;
-        }
 
         // ================= TIMER FUNCTIONS =================
         function startTimer() {
@@ -521,59 +464,58 @@
         }
 
         // ================= ANSWER SELECTION =================
-        // test_page_smart.html mein yeh function fix karo
-function selectOption(questionId, option) {
-    // Remove selection from all options for this question
-    document.querySelectorAll(`input[name="question_${questionId}"]`).forEach(radio => {
-        radio.parentElement.classList.remove('selected');
-    });
+        function selectOption(questionId, option) {
+            console.log(`Selecting option ${option} for question ${questionId}`);
 
-    // Select the clicked option
-    const selectedOption = document.querySelector(`input[name="question_${questionId}"][value="${option}"]`);
-    selectedOption.parentElement.classList.add('selected');
-    selectedOption.checked = true;
-
-    // ✅ FIX: Save answer with clean value
-    saveAnswer(questionId, option); // Direct value pass karo, no processing
-}
-
-async function saveAnswer(questionId, answer) {
-    // ✅ FIX: Clean the answer before sending
-    const cleanAnswer = answer.trim().toUpperCase();
-
-    answers[questionId] = cleanAnswer;
-    updateQuestionStatus(questionId, 'answered');
-
-    try {
-        const response = await fetch('/student/test/{{ attempt.id }}/submit_answer', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                question_id: questionId,
-                selected_answer: cleanAnswer // Clean value send karo
-            })
-        });
-
-        if (!response.ok) {
-            console.error('Failed to save answer');
-        }
-    } catch (error) {
-        console.error('Error saving answer:', error);
-    }
-}
-        function loadSavedAnswers() {
-            // Load previously saved answers from server
-            Object.keys(answers).forEach(questionId => {
-                const answer = answers[questionId];
-                const radio = document.querySelector(`input[name="question_${questionId}"][value="${answer}"]`);
-                if (radio) {
-                    radio.checked = true;
-                    radio.parentElement.classList.add('selected');
-                    updateQuestionStatus(parseInt(questionId), 'answered');
-                }
+            // Remove selection from all options for this question
+            document.querySelectorAll(`input[name="question_${questionId}"]`).forEach(radio => {
+                radio.parentElement.classList.remove('selected');
             });
+
+            // Select the clicked option
+            const selectedOption = document.querySelector(`input[name="question_${questionId}"][value="${option}"]`);
+            if (selectedOption) {
+                selectedOption.parentElement.classList.add('selected');
+                selectedOption.checked = true;
+
+                // Save answer
+                saveAnswer(questionId, option);
+            }
+        }
+
+        async function saveAnswer(questionId, answer) {
+            // Clean the answer
+            const cleanAnswer = answer.trim().toUpperCase();
+
+            answers[questionId] = cleanAnswer;
+            updateQuestionStatus(questionId, 'answered');
+
+            try {
+                const response = await fetch('/student/test/{{ attempt.id }}/submit_answer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        question_id: questionId,
+                        selected_answer: cleanAnswer
+                    })
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to save answer');
+                } else {
+                    console.log(`✅ Answer saved: Q${questionId} = ${cleanAnswer}`);
+                }
+            } catch (error) {
+                console.error('Error saving answer:', error);
+            }
+        }
+
+        function loadSavedAnswers() {
+            // This would typically load from server, but for now initialize empty
+            console.log("Loading saved answers...");
+            updateCounters();
         }
 
         // ================= QUESTION STATUS =================
@@ -612,6 +554,8 @@ async function saveAnswer(questionId, answer) {
 
         // ================= SECURITY FUNCTIONS =================
         function setupTabSwitchDetection() {
+            // Only enable if test prevents tab switch
+            {% if test.prevent_tab_switch %}
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
                     handleSecurityViolation();
@@ -621,6 +565,7 @@ async function saveAnswer(questionId, answer) {
             window.addEventListener('blur', () => {
                 handleSecurityViolation();
             });
+            {% endif %}
         }
 
         function handleSecurityViolation() {
@@ -629,7 +574,7 @@ async function saveAnswer(questionId, answer) {
 
             tabSwitchCount++;
             if (tabSwitchCount > maxTabSwitches) {
-                // 2nd time tab switch - auto submit with proper message
+                // 2nd time tab switch - auto submit
                 showFinalWarning("🚫 Test Auto-Submitted! You switched tabs multiple times.");
             } else {
                 // 1st time tab switch - warning only
@@ -661,35 +606,29 @@ async function saveAnswer(questionId, answer) {
                 understandBtn.style.display = 'none';
             }
 
-            // Show countdown for final submit
-            let countdown = 3;
-            const countdownInterval = setInterval(() => {
-                document.getElementById('warningMessage').textContent =
-                    `${message}\n\nAuto-submitting in ${countdown} seconds...`;
-                countdown--;
-
-                if (countdown < 0) {
-                    clearInterval(countdownInterval);
-                    forceAutoSubmit(message);
-                }
-            }, 1000);
+            // Auto submit after 3 seconds
+            setTimeout(() => {
+                forceAutoSubmit(message);
+            }, 3000);
         }
 
         function hideWarning() {
             document.getElementById('securityWarning').style.display = 'none';
-            // Re-enable full screen
-            if (!isFullScreen) {
-                enterFullscreen();
-            }
         }
 
         // ================= SUBMIT FUNCTIONS =================
         async function submitTest() {
             if (isSubmitting) return;
 
-            if (confirm('Are you sure you want to submit the test?')) {
+            const unanswered = {{ questions|length }} - Object.keys(answers).length;
+            let confirmMessage = 'Are you sure you want to submit the test?';
+
+            if (unanswered > 0) {
+                confirmMessage = `You have ${unanswered} unanswered questions. Are you sure you want to submit?`;
+            }
+
+            if (confirm(confirmMessage)) {
                 isSubmitting = true;
-                // Submit while in full screen
                 await finalSubmit("✅ Test Submitted Successfully!");
             }
         }
@@ -706,19 +645,10 @@ async function saveAnswer(questionId, answer) {
                     body: JSON.stringify({})
                 });
 
-                console.log("📡 Response status:", response.status);
-
                 const result = await response.json();
-                console.log("📦 Response data:", result);
 
                 if (result.success) {
-                    // Show success message first in full screen
                     alert(successMessage);
-
-                    // Then exit full screen
-                    exitFullscreen();
-
-                    // Redirect to tests page
                     window.location.href = '/student/tests';
                 } else {
                     alert('❌ Error: ' + (result.error || 'Unknown error occurred'));
@@ -735,14 +665,18 @@ async function saveAnswer(questionId, answer) {
             if (isSubmitting) return;
             isSubmitting = true;
 
-            // Hide warning modal
             document.getElementById('securityWarning').style.display = 'none';
-
-            console.log("🔄 Force auto-submitting...");
-
-            // Auto-submit while in full screen
             finalSubmit(reason);
         }
+
+        // Keyboard shortcuts for navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowLeft') {
+                showPreviousQuestion();
+            } else if (e.key === 'ArrowRight') {
+                showNextQuestion();
+            }
+        });
     </script>
 </body>
 </html>
