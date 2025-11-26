@@ -29,11 +29,11 @@ from models import db, User, Student, Subject, ProfessorSubject, Attendance, Att
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
-# PostgreSQL connection stability ke liye
+
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_pre_ping": True,   # stale / dead connection detect karega
-    "pool_recycle": 280,     # ~5 min baad connection recycle
-    "pool_size": 5,          # chhota pool (Render free tier ke liye safe)
+    "pool_pre_ping": True,
+    "pool_recycle": 280,
+    "pool_size": 5,
     "max_overflow": 2,
 }
 
@@ -51,13 +51,13 @@ def setup_database():
     db_url = os.environ.get('DATABASE_URL')
 
     if db_url:
-        # Render ka URL mostly 'postgres://...' hota hai
+        # Render ka URL mostly 'postgres://...'
         if db_url.startswith("postgres://"):
             db_url = db_url.replace("postgres://", "postgresql+psycopg://", 1)
         elif db_url.startswith("postgresql://"):
             db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
 
-        # SSL ensure karo – BUT duplicate mat banao
+
         if "sslmode=" not in db_url:
             if "?" in db_url:
                 db_url += "&sslmode=require"
@@ -4758,6 +4758,54 @@ def debug_student_answers(attempt_id):
     return result
 
 
+@app.route('/debug/test-routes')
+def debug_test_routes():
+    """Test all test routes"""
+    routes = [
+        '/student/test/1/instructions',
+        '/student/test/1/start_smart',
+        '/student/tests',
+        '/debug/routes'
+    ]
+
+    result = "<h3>Test Routes Debug</h3>"
+    for route in routes:
+        result += f'<p><a href="{route}" target="_blank">{route}</a></p>'
+
+    return result
+
+
+@app.route('/debug/templates')
+def debug_templates():
+    """Check if template files exist"""
+    import os
+    template_dir = 'templates/student'
+
+    files = {
+        'test_instructions.html': os.path.exists(f'{template_dir}/test_instructions.html'),
+        'test_page_smart.html': os.path.exists(f'{template_dir}/test_page_smart.html')
+    }
+
+    result = "<h3>Template Files Status</h3>"
+    for file, exists in files.items():
+        status = "✅ EXISTS" if exists else "❌ MISSING"
+        result += f"<p>{file}: {status}</p>"
+
+    return result
+
+
+@app.route('/debug/simple-test/<int:test_id>')
+@login_required
+def debug_simple_test(test_id):
+    """Simple test page without template"""
+    test = Test.query.get_or_404(test_id)
+    return f"""
+    <h1>Simple Test - {test.title}</h1>
+    <p>This is a simple test page without template</p>
+    <p>Test ID: {test_id}</p>
+    <p>If this works, then template issue hai</p>
+    <a href="/student/tests">Back to Tests</a>
+    """
 @app.route('/admin/fix_all_attempt_marks/<int:test_id>')
 @login_required
 def fix_all_attempt_marks(test_id):
