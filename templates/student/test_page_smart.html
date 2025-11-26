@@ -28,7 +28,6 @@
             padding: 20px;
         }
 
-        /* Header Styles */
         .test-header {
             background: white;
             border-radius: 15px;
@@ -57,7 +56,6 @@
             100% { transform: scale(1); }
         }
 
-        /* Question Styles */
         .question-card {
             background: white;
             border-radius: 15px;
@@ -127,7 +125,6 @@
             display: none;
         }
 
-        /* Navigation Styles */
         .question-nav {
             background: white;
             border-radius: 15px;
@@ -171,7 +168,6 @@
             background: #fff3cd;
         }
 
-        /* Security Warning */
         .security-warning {
             position: fixed;
             top: 0;
@@ -203,14 +199,12 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
-        /* Responsive */
         @media (max-width: 768px) {
             .nav-btns-container {
                 display: flex;
                 flex-wrap: wrap;
                 justify-content: center;
             }
-
             .test-container {
                 padding: 10px;
             }
@@ -290,7 +284,7 @@
                         <p class="lead">{{ question.question_text }}</p>
                     </div>
 
-                    <!-- Options - Fixed click issue -->
+                    <!-- Options -->
                     <div class="options-container">
                         <label class="option-container" onclick="selectOption({{ question.id }}, 'A')">
                             <input type="radio" name="question_{{ question.id }}" value="A">
@@ -372,11 +366,11 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Global variables to track test state
+        // Global variables
         let currentQuestionId = {{ questions[0].id if questions else 0 }};
         let remainingSeconds = {{ remaining_seconds }};
         let tabSwitchCount = 0;
-        const maxTabSwitches = 1; // 1 warning, 2nd time auto submit
+        const maxTabSwitches = 1;
         let answers = {};
         let markedQuestions = new Set();
         let isSubmitting = false;
@@ -387,7 +381,7 @@
             loadSavedAnswers();
             setupTabSwitchDetection();
 
-            // Prevent right click and F12 for security
+            // Security measures
             document.addEventListener('contextmenu', e => e.preventDefault());
             document.addEventListener('keydown', e => {
                 if (e.ctrlKey || e.key === 'F12') {
@@ -397,9 +391,9 @@
             });
         });
 
-        // ================= TIMER FUNCTIONS =================
+        // Timer Functions
         function startTimer() {
-            updateTimerDisplay(); // Show immediately
+            updateTimerDisplay();
 
             const timer = setInterval(() => {
                 remainingSeconds--;
@@ -410,7 +404,7 @@
                     forceAutoSubmit("⏰ Time is over! Test submitted automatically.");
                 }
 
-                if (remainingSeconds === 300) { // 5 minutes warning
+                if (remainingSeconds === 300) {
                     document.getElementById('timerContainer').classList.add('timer-warning');
                 }
             }, 1000);
@@ -425,20 +419,17 @@
                 `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         }
 
-        // ================= QUESTION NAVIGATION =================
+        // Question Navigation
         function showQuestion(questionId) {
-            // Hide all questions
             document.querySelectorAll('.question-card').forEach(card => {
                 card.style.display = 'none';
                 card.classList.remove('active');
             });
 
-            // Show selected question
             const questionCard = document.getElementById(`question-${questionId}`);
             questionCard.style.display = 'block';
             questionCard.classList.add('active');
 
-            // Update navigation
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
@@ -463,35 +454,30 @@
             }
         }
 
-        // ================= ANSWER SELECTION =================
+        // Answer Selection
         function selectOption(questionId, option) {
             console.log(`Selecting option ${option} for question ${questionId}`);
 
-            // Remove selection from all options for this question
             document.querySelectorAll(`input[name="question_${questionId}"]`).forEach(radio => {
                 radio.parentElement.classList.remove('selected');
             });
 
-            // Select the clicked option
             const selectedOption = document.querySelector(`input[name="question_${questionId}"][value="${option}"]`);
             if (selectedOption) {
                 selectedOption.parentElement.classList.add('selected');
                 selectedOption.checked = true;
-
-                // Save answer
                 saveAnswer(questionId, option);
             }
         }
 
         async function saveAnswer(questionId, answer) {
-            // Clean the answer
             const cleanAnswer = answer.trim().toUpperCase();
-
             answers[questionId] = cleanAnswer;
             updateQuestionStatus(questionId, 'answered');
 
             try {
-                const response = await fetch('/student/test/{{ attempt.id }}/submit_answer', {
+                // FIXED: Correct API endpoint
+                const response = await fetch("{{ url_for('submit_answer', attempt_id=attempt.id) }}", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -513,12 +499,11 @@
         }
 
         function loadSavedAnswers() {
-            // This would typically load from server, but for now initialize empty
             console.log("Loading saved answers...");
             updateCounters();
         }
 
-        // ================= QUESTION STATUS =================
+        // Question Status
         function updateQuestionStatus(questionId, status) {
             const navBtn = document.getElementById(`nav-${questionId}`);
             const questionCard = document.getElementById(`question-${questionId}`);
@@ -527,7 +512,6 @@
                 navBtn.classList.add('answered');
                 questionCard.classList.add('answered');
             }
-
             updateCounters();
         }
 
@@ -552,9 +536,8 @@
             document.getElementById('markedCount').textContent = markedCount;
         }
 
-        // ================= SECURITY FUNCTIONS =================
+        // Security Functions
         function setupTabSwitchDetection() {
-            // Only enable if test prevents tab switch
             {% if test.prevent_tab_switch %}
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
@@ -569,15 +552,12 @@
         }
 
         function handleSecurityViolation() {
-            // If already submitting, do nothing
             if (isSubmitting) return;
 
             tabSwitchCount++;
             if (tabSwitchCount > maxTabSwitches) {
-                // 2nd time tab switch - auto submit
                 showFinalWarning("🚫 Test Auto-Submitted! You switched tabs multiple times.");
             } else {
-                // 1st time tab switch - warning only
                 showWarning("⚠️ Warning! Don't switch tabs. Next violation will auto-submit.");
             }
         }
@@ -587,7 +567,6 @@
             document.getElementById('remainingWarnings').textContent = (maxTabSwitches - tabSwitchCount + 1);
             document.getElementById('securityWarning').style.display = 'flex';
 
-            // Auto hide warning after 5 seconds
             setTimeout(() => {
                 if (document.getElementById('securityWarning').style.display === 'flex') {
                     hideWarning();
@@ -600,13 +579,11 @@
             document.getElementById('remainingWarnings').textContent = '0';
             document.getElementById('securityWarning').style.display = 'flex';
 
-            // Hide "I Understand" button in final warning
             const understandBtn = document.querySelector('#securityWarning .btn');
             if (understandBtn) {
                 understandBtn.style.display = 'none';
             }
 
-            // Auto submit after 3 seconds
             setTimeout(() => {
                 forceAutoSubmit(message);
             }, 3000);
@@ -616,7 +593,7 @@
             document.getElementById('securityWarning').style.display = 'none';
         }
 
-        // ================= SUBMIT FUNCTIONS =================
+        // Submit Functions
         async function submitTest() {
             if (isSubmitting) return;
 
@@ -637,7 +614,8 @@
             try {
                 console.log("🔄 Submitting test...");
 
-                const response = await fetch('/student/test/{{ attempt.id }}/submit_test', {
+                // FIXED: Correct submit endpoint
+                const response = await fetch("{{ url_for('submit_test', attempt_id=attempt.id) }}", {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -649,7 +627,7 @@
 
                 if (result.success) {
                     alert(successMessage);
-                    window.location.href = '/student/tests';
+                    window.location.href = "{{ url_for('student_tests') }}";
                 } else {
                     alert('❌ Error: ' + (result.error || 'Unknown error occurred'));
                     isSubmitting = false;
@@ -664,12 +642,11 @@
         function forceAutoSubmit(reason) {
             if (isSubmitting) return;
             isSubmitting = true;
-
             document.getElementById('securityWarning').style.display = 'none';
             finalSubmit(reason);
         }
 
-        // Keyboard shortcuts for navigation
+        // Keyboard shortcuts
         document.addEventListener('keydown', function(e) {
             if (e.key === 'ArrowLeft') {
                 showPreviousQuestion();

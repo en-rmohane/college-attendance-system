@@ -152,7 +152,7 @@ class EmailLog(db.Model):
     body = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(20), default='Pending')
     error_message = db.Column(db.Text, nullable=True)  # <-- ADD THIS
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
 class Faculty(db.Model):
     __tablename__ = 'faculties'

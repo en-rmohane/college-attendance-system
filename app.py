@@ -26,12 +26,12 @@ from models import db, User, Student, Subject, ProfessorSubject, Attendance, Att
     EmailLog, RGPVScheme, TimetableSlot, CurrentSemester, MidTermMarks, Notes, Notice, Test, Question, \
     TestAttempt, StudentAnswer, QuestionSection
 # app.py (top par)
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
-IST = timezone(timedelta(hours=5, minutes=30))
 def get_now():
-    """Return current time in IST timezone"""
-    return datetime.now(IST)
+    """Return current naive datetime (same as other code)"""
+    return datetime.now()
+
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
@@ -4399,8 +4399,7 @@ def debug_tests():
 @app.route('/student/test/<int:test_id>/instructions')
 @login_required
 def test_instructions(test_id):
-
-    # Only students are allowed
+    """Test instructions page - FIXED VERSION"""
     if current_user.role != 'student':
         flash("Access denied!", "danger")
         return redirect(url_for('student_tests'))
@@ -4412,14 +4411,19 @@ def test_instructions(test_id):
         return redirect(url_for('logout'))
 
     test = Test.query.get_or_404(test_id)
-    now = get_now()  # IST-support function
 
-    # Check if test is available
-    if test.available_from and now < test.available_from:
+    # Check if test belongs to student's branch
+    if test.subject.branch != student.branch:
+        flash("Access to this test is denied!", "danger")
+        return redirect(url_for('student_tests'))
+
+    # Check test availability
+    now = get_now()
+    if now < test.available_from:
         flash("This test has not started yet!", "warning")
         return redirect(url_for('student_tests'))
 
-    if test.available_until and now > test.available_until:
+    if now > test.available_until:
         flash("This test is no longer available!", "danger")
         return redirect(url_for('student_tests'))
 
@@ -4429,7 +4433,7 @@ def test_instructions(test_id):
         student_id=student.id
     ).first()
 
-    if existing_attempt:
+    if existing_attempt and existing_attempt.submitted:
         flash("You have already attempted this test!", "info")
         return redirect(url_for('student_tests'))
 
@@ -4438,7 +4442,6 @@ def test_instructions(test_id):
         test=test,
         student=student
     )
-
 @app.route('/student/test/<int:test_id>/start_smart', methods=['GET', 'POST'])
 @login_required
 def start_test_smart(test_id):
