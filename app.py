@@ -4279,63 +4279,66 @@ def student_dashboard():
 @app.route('/student/tests')
 @login_required
 def student_tests():
-    """Student test dashboard - FIXED VERSION"""
+    """Student test dashboard - FIXED VERSION (timezone + status logic)"""
     if current_user.role != 'student':
         flash('Access denied', 'danger')
         return redirect(url_for('login'))
 
+    # User → Student record
     student = Student.query.filter_by(roll=current_user.student_roll).first()
     if not student:
         flash('Student record not found', 'danger')
         return redirect(url_for('logout'))
 
-    # Get current semesters
+
     current_semesters = get_student_current_semesters(student.branch, student.year)
 
-    # [OK] FIXED QUERY: Get ALL published tests for student's branch
-    now = datetime.now()
+    now = get_now()
 
-    tests = Test.query.join(Subject).filter(
-        Subject.branch == student.branch,
-        Test.status == 'published',
-        Test.is_active == True,
-        Test.available_from <= now,
-        Test.available_until >= now
-    ).order_by(Test.available_from).all()
 
-    # Debug output
+    tests = (
+        Test.query
+        .join(Subject)
+        .filter(
+            Subject.branch == student.branch,
+            Test.status == 'published',
+            Test.is_active == True
+        )
+        .order_by(Test.available_from)
+        .all()
+    )
+
     print(f"[SUCCESS] Student Tests Page Query Results:")
     print(f"   Student: {student.roll}, Branch: {student.branch}")
+    print(f"   Now (IST-adjusted): {now}")
     print(f"   Tests Found: {len(tests)}")
-
     for test in tests:
         print(
-            f"   - {test.title} | Status: {test.status} | Active: {test.is_active} | Available: {test.available_from} to {test.available_until}")
+            f"   - {test.title} | Status: {test.status} | Active: {test.is_active} | "
+            f"Available: {test.available_from} to {test.available_until}"
+        )
 
-    # Get test attempts
+
     test_attempts = TestAttempt.query.filter_by(student_id=student.id).all()
     attempted_test_ids = [attempt.test_id for attempt in test_attempts]
 
-    # Test status calculate karo
     test_data = []
-
     for test in tests:
-        # Check if already attempted
         attempted = test.id in attempted_test_ids
 
-        # Check test availability status
-        if now < test.available_from:
+
+        if test.available_from and now < test.available_from:
             status = 'upcoming'
             button_text = 'Not Available Yet'
             button_disabled = True
-        elif test.available_from <= now <= test.available_until:
-            status = 'available'
-            button_text = 'Start Test'
-            button_disabled = False
-        else:
+        elif test.available_until and now > test.available_until:
             status = 'ended'
             button_text = 'Test Ended'
             button_disabled = True
+        else:
+            status = 'available'
+            button_text = 'Start Test'
+            button_disabled = False
 
         test_data.append({
             'test': test,
@@ -4345,11 +4348,12 @@ def student_tests():
             'attempted': attempted
         })
 
-    return render_template('student/tests.html',
-                           student=student,
-                           test_data=test_data,
-                           datetime=datetime)
-
+    return render_template(
+        'student/tests.html',
+        student=student,
+        test_data=test_data,
+        datetime=datetime
+    )
 
 @app.route('/debug_tests')
 @login_required
@@ -4396,42 +4400,45 @@ def debug_tests():
 @app.route('/student/test/<int:test_id>/instructions')
 @login_required
 def test_instructions(test_id):
-    """Test instructions page"""
-    if current_user.role != 'student':
-        flash('Access denied', 'danger')
-        return redirect(url_for('login'))
 
+    # Only students are allowed
+    if current_user.role != 'student':
+        flash("Access denied!", "danger")
+        return redirect(url_for('student_tests'))
+
+    # Fetch student record
     student = Student.query.filter_by(roll=current_user.student_roll).first()
     if not student:
-        flash('Student record not found', 'danger')
+        flash("Student record not found!", "danger")
         return redirect(url_for('logout'))
 
     test = Test.query.get_or_404(test_id)
-    now = datetime.now()
+    now = get_now()  # IST-support function
 
-    # Timing check karo
-    if now < test.available_from:
-        flash('Test is not available yet', 'info')
+    # Check if test is available
+    if test.available_from and now < test.available_from:
+        flash("This test has not started yet!", "warning")
         return redirect(url_for('student_tests'))
 
-    if now > test.available_until:
-        flash('Test availability period has ended', 'warning')
+    if test.available_until and now > test.available_until:
+        flash("This test is no longer available!", "danger")
         return redirect(url_for('student_tests'))
 
-    # Check if student has already attempted
+    # Check if already attempted
     existing_attempt = TestAttempt.query.filter_by(
-        student_id=student.id,
-        test_id=test_id
+        test_id=test.id,
+        student_id=student.id
     ).first()
 
-    if existing_attempt and existing_attempt.submitted:
-        flash('You have already submitted this test', 'warning')
+    if existing_attempt:
+        flash("You have already attempted this test!", "info")
         return redirect(url_for('student_tests'))
 
-    return render_template('student/test_instructions.html',
-                           test=test,
-                           student=student)
-
+    return render_template(
+        "student/test_instructions.html",
+        test=test,
+        student=student
+    )
 
 @app.route('/student/test/<int:test_id>/start_smart', methods=['GET', 'POST'])
 @login_required
