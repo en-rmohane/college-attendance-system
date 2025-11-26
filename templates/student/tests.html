@@ -17,7 +17,7 @@
                             <div class="bg-white bg-opacity-25 rounded-3 p-3 d-inline-block">
                                 <div class="text-white fw-bold mb-1">Current Time (IST)</div>
                                 <div class="text-white fw-bold fs-5" id="currentTime">
-                                    {{ get_ist_time().strftime('%H:%M') }}
+                                    {{ get_ist_time().strftime('%H:%M:%S') }}
                                 </div>
                             </div>
                         </div>
@@ -83,7 +83,7 @@
                                         </div>
                                     </div>
 
-                                    <!-- Schedule - FIXED: Show IST Times -->
+                                    <!-- Schedule -->
                                     <div class="mb-3">
                                         <div class="d-flex justify-content-between align-items-center mb-1">
                                             <small class="text-muted">Start Time (IST)</small>
@@ -107,14 +107,19 @@
                                         </div>
                                     </div>
 
-                                    <!-- Debug Info (Hidden) -->
-                                    <div style="display: none;" class="debug-info">
-                                        <small class="text-muted">
-                                            Status: {{ test_info.status }} |
-                                            Attempted: {{ test_info.attempted }} |
-                                            Now: {{ get_ist_time().strftime('%d %b, %I:%M %p') }}
-                                        </small>
+                                    <!-- 🆕 COUNTDOWN TIMER -->
+                                    {% if test_info.status == 'upcoming' %}
+                                    <div class="countdown-section mb-3 p-3 bg-warning bg-opacity-10 rounded-2 border border-warning">
+                                        <div class="text-center">
+                                            <small class="text-warning fw-bold d-block mb-1">⏰ Test Starts In:</small>
+                                            <div class="countdown-timer fw-bold text-danger fs-5"
+                                                 id="countdown-{{ test_info.test.id }}"
+                                                 data-start-time="{% if test_info.available_from_ist %}{{ test_info.available_from_ist.isoformat() }}{% else %}{{ test_info.test.available_from.isoformat() }}{% endif %}">
+                                                Loading...
+                                            </div>
+                                        </div>
                                     </div>
+                                    {% endif %}
 
                                     <!-- Action Button -->
                                     <div class="d-grid">
@@ -123,10 +128,9 @@
                                                 <i class="fas fa-check-circle me-1"></i>Already Attempted
                                             </button>
                                         {% elif test_info.status == 'upcoming' %}
-                                            <button class="btn btn-outline-secondary fw-bold" disabled>
-                                                <i class="fas fa-clock me-1"></i>Starts Soon
-                                            <br>
-                                                <small>Available at {{ test_info.available_from_ist.strftime('%I:%M %p') if test_info.available_from_ist else test_info.test.available_from.strftime('%I:%M %p') }}</small>
+                                            <button class="btn btn-outline-warning fw-bold" disabled id="upcoming-btn-{{ test_info.test.id }}">
+                                                <i class="fas fa-clock me-1"></i>Starts In:
+                                                <span id="countdown-btn-{{ test_info.test.id }}">--:--:--</span>
                                             </button>
                                         {% elif test_info.status == 'ended' %}
                                             <button class="btn btn-outline-secondary fw-bold" disabled>
@@ -135,7 +139,7 @@
                                         {% else %}
                                             <a href="{{ url_for('test_instructions', test_id=test_info.test.id) }}"
                                                class="btn btn-primary fw-bold">
-                                                <i class="fas fa-play-circle me-1"></i>Start Test
+                                                <i class="fas fa-play-circle me-1"></i>Attempt Now
                                             </a>
                                         {% endif %}
                                     </div>
@@ -155,17 +159,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Timezone Info -->
-    <div class="row mt-3">
-        <div class="col-12">
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>
-                <strong>Timezone Information:</strong> All times shown are in <strong>Indian Standard Time (IST)</strong>.
-                Tests automatically adjust for your timezone.
-            </div>
-        </div>
-    </div>
 </div>
 
 <style>
@@ -181,11 +174,13 @@
 .bg-gradient-primary {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
 }
-.debug-info {
-    font-size: 0.7rem;
-    border-top: 1px dashed #dee2e6;
-    padding-top: 8px;
-    margin-top: 10px;
+.countdown-section {
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
 }
 </style>
 
@@ -197,29 +192,70 @@ function updateCurrentTime() {
         timeZone: 'Asia/Kolkata',
         hour: '2-digit',
         minute: '2-digit',
+        second: '2-digit',
         hour12: false
     };
     const timeString = now.toLocaleTimeString('en-US', options);
     document.getElementById('currentTime').textContent = timeString + ' IST';
 }
 
-// Update immediately and every second
+// 🆕 COUNTDOWN TIMER FUNCTION
+function updateAllCountdowns() {
+    const now = new Date();
+
+    // Har test ke liye countdown update karo
+    document.querySelectorAll('[id^="countdown-"]').forEach(element => {
+        const testId = element.id.split('-')[1];
+        const startTime = new Date(element.dataset.startTime);
+
+        // Time difference calculate karo
+        const diff = startTime - now;
+
+        if (diff > 0) {
+            // Time bacha hai - countdown show karo
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            const countdownText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+            // Main countdown update
+            element.textContent = countdownText;
+
+            // Button par bhi countdown update
+            const btnCountdown = document.getElementById(`countdown-btn-${testId}`);
+            if (btnCountdown) {
+                btnCountdown.textContent = countdownText;
+            }
+        } else {
+            // Time ho gaya - page refresh karo
+            element.textContent = "Starting...";
+            const btnCountdown = document.getElementById(`countdown-btn-${testId}`);
+            if (btnCountdown) {
+                btnCountdown.textContent = "00:00:00";
+            }
+
+            // 2 second baad page refresh
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        }
+    });
+}
+
+// Initialize everything
 updateCurrentTime();
+updateAllCountdowns();
+
+// Har second update karo
 setInterval(updateCurrentTime, 1000);
+setInterval(updateAllCountdowns, 1000);
 
 // Auto-refresh page every 30 seconds to update test status
 setTimeout(() => {
     window.location.reload();
 }, 30000);
 
-// Debug function to check test timing
-function debugTestTiming(testId) {
-    fetch(`/debug/test_timing/${testId}`)
-        .then(response => response.json())
-        .then(data => {
-            console.log('Test Timing Debug:', data);
-            alert(`Debug: ${JSON.stringify(data, null, 2)}`);
-        });
-}
+console.log('✅ Student Dashboard with Countdown Initialized');
 </script>
 {% endblock %}
