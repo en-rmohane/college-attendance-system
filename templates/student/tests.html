@@ -15,8 +15,10 @@
                         </div>
                         <div class="col-md-4 text-end">
                             <div class="bg-white bg-opacity-25 rounded-3 p-3 d-inline-block">
-                                <div class="text-white fw-bold mb-1">Current Time</div>
-                                <div class="text-white fw-bold fs-5" id="currentTime">{{ datetime.now().strftime('%H:%M') }}</div>
+                                <div class="text-white fw-bold mb-1">Current Time (IST)</div>
+                                <div class="text-white fw-bold fs-5" id="currentTime">
+                                    {{ get_ist_time().strftime('%H:%M') }}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -81,19 +83,40 @@
                                         </div>
                                     </div>
 
-                                    <!-- Schedule -->
+                                    <!-- Schedule - FIXED: Show IST Times -->
                                     <div class="mb-3">
                                         <div class="d-flex justify-content-between align-items-center mb-1">
-                                            <small class="text-muted">Start Time</small>
-                                            <small class="fw-bold text-dark">{{ test_info.test.available_from.strftime('%d %b, %I:%M %p') }}</small>
+                                            <small class="text-muted">Start Time (IST)</small>
+                                            <small class="fw-bold text-dark">
+                                                {% if test_info.available_from_ist %}
+                                                    {{ test_info.available_from_ist.strftime('%d %b, %I:%M %p') }}
+                                                {% else %}
+                                                    {{ test_info.test.available_from.strftime('%d %b, %I:%M %p') }}
+                                                {% endif %}
+                                            </small>
                                         </div>
                                         <div class="d-flex justify-content-between align-items-center">
-                                            <small class="text-muted">End Time</small>
-                                            <small class="fw-bold text-dark">{{ test_info.test.available_until.strftime('%d %b, %I:%M %p') }}</small>
+                                            <small class="text-muted">End Time (IST)</small>
+                                            <small class="fw-bold text-dark">
+                                                {% if test_info.available_until_ist %}
+                                                    {{ test_info.available_until_ist.strftime('%d %b, %I:%M %p') }}
+                                                {% else %}
+                                                    {{ test_info.test.available_until.strftime('%d %b, %I:%M %p') }}
+                                                {% endif %}
+                                            </small>
                                         </div>
                                     </div>
 
-                                    <!-- Action Button - FIXED URL -->
+                                    <!-- Debug Info (Hidden) -->
+                                    <div style="display: none;" class="debug-info">
+                                        <small class="text-muted">
+                                            Status: {{ test_info.status }} |
+                                            Attempted: {{ test_info.attempted }} |
+                                            Now: {{ get_ist_time().strftime('%d %b, %I:%M %p') }}
+                                        </small>
+                                    </div>
+
+                                    <!-- Action Button -->
                                     <div class="d-grid">
                                         {% if test_info.attempted %}
                                             <button class="btn btn-success fw-bold" disabled>
@@ -102,13 +125,14 @@
                                         {% elif test_info.status == 'upcoming' %}
                                             <button class="btn btn-outline-secondary fw-bold" disabled>
                                                 <i class="fas fa-clock me-1"></i>Starts Soon
+                                            <br>
+                                                <small>Available at {{ test_info.available_from_ist.strftime('%I:%M %p') if test_info.available_from_ist else test_info.test.available_from.strftime('%I:%M %p') }}</small>
                                             </button>
                                         {% elif test_info.status == 'ended' %}
                                             <button class="btn btn-outline-secondary fw-bold" disabled>
                                                 <i class="fas fa-times-circle me-1"></i>Test Expired
                                             </button>
                                         {% else %}
-                                            <!-- FIXED: Correct route to instructions -->
                                             <a href="{{ url_for('test_instructions', test_id=test_info.test.id) }}"
                                                class="btn btn-primary fw-bold">
                                                 <i class="fas fa-play-circle me-1"></i>Start Test
@@ -131,6 +155,17 @@
             </div>
         </div>
     </div>
+
+    <!-- Timezone Info -->
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Timezone Information:</strong> All times shown are in <strong>Indian Standard Time (IST)</strong>.
+                Tests automatically adjust for your timezone.
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -146,19 +181,45 @@
 .bg-gradient-primary {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
 }
+.debug-info {
+    font-size: 0.7rem;
+    border-top: 1px dashed #dee2e6;
+    padding-top: 8px;
+    margin-top: 10px;
+}
 </style>
 
 <script>
-// Update current time
+// Update current IST time every second
 function updateCurrentTime() {
     const now = new Date();
-    const timeString = now.toLocaleTimeString('en-US', {
+    const options = {
+        timeZone: 'Asia/Kolkata',
         hour: '2-digit',
         minute: '2-digit',
         hour12: false
-    });
-    document.getElementById('currentTime').textContent = timeString;
+    };
+    const timeString = now.toLocaleTimeString('en-US', options);
+    document.getElementById('currentTime').textContent = timeString + ' IST';
 }
+
+// Update immediately and every second
+updateCurrentTime();
 setInterval(updateCurrentTime, 1000);
+
+// Auto-refresh page every 30 seconds to update test status
+setTimeout(() => {
+    window.location.reload();
+}, 30000);
+
+// Debug function to check test timing
+function debugTestTiming(testId) {
+    fetch(`/debug/test_timing/${testId}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Test Timing Debug:', data);
+            alert(`Debug: ${JSON.stringify(data, null, 2)}`);
+        });
+}
 </script>
 {% endblock %}

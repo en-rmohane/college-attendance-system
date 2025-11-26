@@ -243,6 +243,24 @@
             {% endif %}
         {% endwith %}
 
+        <!-- Current Time Info -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="alert alert-info d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-clock me-2"></i>
+                        <strong class="ist-clock">Current IST: Loading...</strong>
+                    </div>
+                    <div>
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            All times are in Indian Standard Time (IST)
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Agar specific test manage kar rahe hain -->
         {% if test %}
             <!-- Test Summary -->
@@ -593,7 +611,7 @@
 
                                     <!-- Timing -->
                                     <div class="col-md-6">
-                                        <label class="form-label fw-bold">Start Time *</label>
+                                        <label class="form-label fw-bold">Start Time (IST) *</label>
                                         <input type="datetime-local" name="start_time" class="form-control" id="startTimeInput" required>
                                     </div>
 
@@ -601,6 +619,48 @@
                                         <label class="form-label fw-bold">End Time (Auto-calculated) *</label>
                                         <input type="datetime-local" name="end_time" class="form-control auto-calculated" id="endTimeInput" readonly>
                                         <small class="text-muted">Automatically calculated from start time + duration</small>
+                                    </div>
+
+                                    <!-- Instructions -->
+                                    <div class="col-12">
+                                        <label class="form-label fw-bold">Test Instructions</label>
+                                        <textarea name="instructions" class="form-control" rows="3"
+                                                  placeholder="Special instructions for students..."></textarea>
+                                    </div>
+
+                                    <!-- Test Settings -->
+                                    <div class="col-12">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <h6 class="fw-bold"><i class="fas fa-cog"></i> Test Settings</h6>
+                                                <div class="row">
+                                                    <div class="col-md-4">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" name="auto_submit" id="autoSubmit" checked>
+                                                            <label class="form-check-label" for="autoSubmit">
+                                                                Auto Submit
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" name="prevent_tab_switch" id="preventTabSwitch" checked>
+                                                            <label class="form-check-label" for="preventTabSwitch">
+                                                                Prevent Tab Switch
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" name="allow_retake" id="allowRetake">
+                                                            <label class="form-check-label" for="allowRetake">
+                                                                Allow Retake
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <!-- 🆕 SECURITY CODE SECTION -->
@@ -738,76 +798,61 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // ✅ SIMPLE FIX - Manual time calculation
+        // ✅ FIXED: IST Timezone handling
         const startTimeInput = document.getElementById('startTimeInput');
         const durationInput = document.getElementById('durationInput');
         const endTimeInput = document.getElementById('endTimeInput');
 
+        // Get current IST time for default value
+        function getCurrentISTTime() {
+            const now = new Date();
+            // Convert to IST (UTC+5:30)
+            const istTime = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
+            return istTime.toISOString().slice(0, 16); // "YYYY-MM-DDTHH:MM" format
+        }
+
+        // Calculate end time based on start time and duration
         function calculateEndTime() {
             if (!startTimeInput || !durationInput || !endTimeInput) return;
 
-            const startValue = startTimeInput.value; // Format: "2025-11-20T22:08"
+            const startValue = startTimeInput.value;
             const duration = parseInt(durationInput.value) || 60;
 
             if (!startValue) return;
 
-            // Parse the start time manually
-            const [datePart, timePart] = startValue.split('T');
-            const [startHours, startMinutes] = timePart.split(':').map(Number);
+            try {
+                const startDate = new Date(startValue + ':00');
+                const endDate = new Date(startDate.getTime() + (duration * 60 * 1000));
+                endTimeInput.value = endDate.toISOString().slice(0, 16);
+            } catch (error) {
+                console.error('Error calculating end time:', error);
+            }
+        }
 
-            // Calculate end time
-            let endHours = startHours;
-            let endMinutes = startMinutes + duration;
+        // Set default start time to current IST time + 1 hour
+        function setDefaultStartTime() {
+            if (!startTimeInput || startTimeInput.value) return;
 
-            // Handle minute overflow
-            if (endMinutes >= 60) {
-                endHours += Math.floor(endMinutes / 60);
-                endMinutes = endMinutes % 60;
+            const currentIST = getCurrentISTTime();
+            const [datePart, timePart] = currentIST.split('T');
+            let [hours, minutes] = timePart.split(':').map(Number);
+
+            // Add 1 hour for default start time
+            hours = (hours + 1) % 24;
+            const hoursStr = String(hours).padStart(2, '0');
+            const minutesStr = String(minutes).padStart(2, '0');
+
+            startTimeInput.value = `${datePart}T${hoursStr}:${minutesStr}`;
+
+            if (durationInput && !durationInput.value) {
+                durationInput.value = 60;
             }
 
-            // Handle hour overflow (next day)
-            if (endHours >= 24) {
-                // For simplicity, we'll keep same date
-                endHours = endHours % 24;
-            }
-
-            // Format end time
-            const endHoursStr = String(endHours).padStart(2, '0');
-            const endMinutesStr = String(endMinutes).padStart(2, '0');
-
-            endTimeInput.value = `${datePart}T${endHoursStr}:${endMinutesStr}`;
-
-            console.log(`Calculation: ${startHours}:${startMinutes} + ${duration}min = ${endHours}:${endMinutes}`);
+            calculateEndTime();
         }
-
-        // Set default start time to current time + 1 hour
-        const now = new Date();
-        now.setHours(now.getHours() + 1);
-        now.setMinutes(0);
-
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-
-        if (startTimeInput && !startTimeInput.value) {
-            startTimeInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
-        }
-        if (durationInput && !durationInput.value) {
-            durationInput.value = 60;
-        }
-
-        // Calculate initial end time
-        calculateEndTime();
-
-        // Add event listeners
-        if (startTimeInput) startTimeInput.addEventListener('change', calculateEndTime);
-        if (durationInput) durationInput.addEventListener('input', calculateEndTime);
 
         // 🆕 SECURITY CODE FUNCTIONS
         function generateSecurityCode() {
-            // 6-digit random code generate karo
             const code = Math.floor(100000 + Math.random() * 900000);
             document.getElementById('generatedCode').textContent = code;
             document.getElementById('securityCodeInput').value = code;
@@ -819,14 +864,35 @@
             securityCheckbox.addEventListener('change', function() {
                 const securitySection = document.getElementById('securityCodeSection');
                 securitySection.style.display = this.checked ? 'block' : 'none';
-
-                if (this.checked) {
-                    generateSecurityCode(); // Auto generate code
-                } else {
-                    document.getElementById('securityCodeInput').value = '';
-                }
+                if (this.checked) generateSecurityCode();
+                else document.getElementById('securityCodeInput').value = '';
             });
         }
+
+        // 🆕 REAL-TIME IST CLOCK
+        function updateISTClock() {
+            const now = new Date();
+            const options = {
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+            const istTime = now.toLocaleTimeString('en-IN', options);
+            document.querySelector('.ist-clock').textContent = `Current IST: ${istTime}`;
+        }
+
+        // Initialize everything
+        setDefaultStartTime();
+        updateISTClock();
+        setInterval(updateISTClock, 1000);
+
+        // Add event listeners
+        if (startTimeInput) startTimeInput.addEventListener('change', calculateEndTime);
+        if (durationInput) durationInput.addEventListener('input', calculateEndTime);
+
+        console.log('✅ Test Management Page Initialized with IST Timezone');
     });
     </script>
 </body>
