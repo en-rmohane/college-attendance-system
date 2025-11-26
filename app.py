@@ -4806,6 +4806,19 @@ def debug_simple_test(test_id):
     <p>If this works, then template issue hai</p>
     <a href="/student/tests">Back to Tests</a>
     """
+# ========== EMERGENCY ROUTES ==========
+
+@app.route('/urgent/test')
+def urgent_test():
+    return "🚨 URGENT TEST - ROUTES WORKING!"
+
+@app.route('/urgent/instructions/<int:test_id>')
+def urgent_instructions(test_id):
+    return f"📝 URGENT INSTRUCTIONS - Test {test_id}"
+
+@app.route('/urgent/start/<int:test_id>')
+def urgent_start(test_id):
+    return f"🎯 URGENT START - Test {test_id}"
 @app.route('/admin/fix_all_attempt_marks/<int:test_id>')
 @login_required
 def fix_all_attempt_marks(test_id):
