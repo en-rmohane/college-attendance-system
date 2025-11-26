@@ -25,6 +25,13 @@ from fix_database import get_timetable_from_db, generate_monthly_attendance_exce
 from models import db, User, Student, Subject, ProfessorSubject, Attendance, AttendanceReport, PasswordResetOTP, \
     EmailLog, RGPVScheme, TimetableSlot, CurrentSemester, MidTermMarks, Notes, Notice, Test, Question, \
     TestAttempt, StudentAnswer, QuestionSection
+# app.py (top par)
+from datetime import datetime, timedelta, timezone
+
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def now_ist():
+    return datetime.now(IST)
 
 # Initialize Flask app
 app = Flask(__name__)
