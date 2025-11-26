@@ -414,13 +414,16 @@
                                                 </span>
 
                                                 {% if data.status == 'available' and not data.attempted %}
+                                                    <!-- Direct link when server says available -->
                                                     <a href="{{ url_for('test_instructions', test_id=data.test.id) }}"
                                                        class="btn btn-success btn-sm">
                                                         <i class="fas fa-play-circle"></i> Attempt
                                                     </a>
                                                 {% elif data.status == 'upcoming' and not data.attempted %}
+                                                    <!-- Button for JS-based countdown handling -->
                                                     <button class="btn btn-outline-warning btn-sm attempt-btn"
                                                             data-test-id="{{ data.test.id }}"
+                                                            data-instructions-url="{{ url_for('test_instructions', test_id=data.test.id) }}"
                                                             disabled>
                                                         <i class="fas fa-clock"></i> Wait
                                                     </button>
@@ -526,7 +529,10 @@
                 second: '2-digit',
                 hour12: true
             });
-            document.getElementById('currentTime').textContent = timeString;
+            const timeEl = document.getElementById('currentTime');
+            if (timeEl) {
+                timeEl.textContent = timeString;
+            }
         }
 
         // Countdown timer for upcoming tests
@@ -542,23 +548,29 @@
                 const countdownElement = document.getElementById(`countdown-${testId}`);
                 const attemptBtn = testCard.querySelector('.attempt-btn');
 
+                // Safety check
+                if (!countdownElement || !attemptBtn) return;
+
                 if (timeLeft <= 0) {
-                    // Test start ho gaya - page refresh karo
+                    // Test start ho gaya - UI update karo
                     countdownElement.innerHTML = '<i class="fas fa-play-circle"></i> Available Now!';
                     countdownElement.classList.remove('countdown-timer');
                     countdownElement.classList.add('countdown-ended');
 
-                    if (attemptBtn) {
-                        attemptBtn.disabled = false;
-                        attemptBtn.classList.remove('btn-outline-warning');
-                        attemptBtn.classList.add('btn-success');
-                        attemptBtn.innerHTML = '<i class="fas fa-play-circle"></i> Attempt';
-                        attemptBtn.onclick = function() {
-                            window.location.href = `/student/test/${testId}/instructions`;
-                        };
-                    }
+                    // Button ko "Attempt" bana do
+                    attemptBtn.disabled = false;
+                    attemptBtn.classList.remove('btn-outline-warning');
+                    attemptBtn.classList.add('btn-success');
+                    attemptBtn.innerHTML = '<i class="fas fa-play-circle"></i> Attempt';
 
-                    // Auto-refresh after 5 seconds
+                    const instructionsUrl = attemptBtn.dataset.instructionsUrl;
+                    attemptBtn.onclick = function () {
+                        if (instructionsUrl) {
+                            window.location.href = instructionsUrl;
+                        }
+                    };
+
+                    // (Optional) Auto-refresh after 5 seconds so backend status bhi 'available' ho jaye
                     setTimeout(() => {
                         window.location.reload();
                     }, 5000);
@@ -571,14 +583,18 @@
                 const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
                 const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
 
-                // Display karo
-                const countdownValue = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                countdownElement.querySelector('.countdown-value').textContent = countdownValue;
+                const countdownValue = `${hours.toString().padStart(2, '0')}:${minutes
+                    .toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+                const valueSpan = countdownElement.querySelector('.countdown-value');
+                if (valueSpan) {
+                    valueSpan.textContent = countdownValue;
+                }
             });
         }
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             updateCurrentTime();
             updateAllCountdowns();
 
