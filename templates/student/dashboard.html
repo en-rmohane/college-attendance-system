@@ -521,88 +521,86 @@
     <!-- JavaScript -->
     <script>
         // Update current time
-        function updateCurrentTime() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('en-IN', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true
-            });
-            const timeEl = document.getElementById('currentTime');
-            if (timeEl) {
-                timeEl.textContent = timeString;
+        // Update current time
+function updateCurrentTime() {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    });
+    const timeEl = document.getElementById('currentTime');
+    if (timeEl) {
+        timeEl.textContent = timeString;
+    }
+}
+
+// Countdown timer for upcoming tests
+function updateAllCountdowns() {
+    const upcomingTests = document.querySelectorAll('.test-card[data-test-id]');
+
+    upcomingTests.forEach(testCard => {
+        const testId = testCard.dataset.testId;
+        const availableFrom = new Date(testCard.dataset.availableFrom);
+        const now = new Date();
+        const timeLeft = availableFrom - now;
+
+        const countdownElement = document.getElementById(`countdown-${testId}`);
+        const attemptBtn = testCard.querySelector('.attempt-btn');
+
+        // Agar countdown element nahi hai to skip karo
+        if (!countdownElement) return;
+
+        if (timeLeft <= 0) {
+            // Test available ho gaya hai
+            countdownElement.innerHTML = '<i class="fas fa-play-circle"></i> Available Now!';
+            countdownElement.className = 'countdown-timer countdown-ended';
+
+            // Button ko enable karo
+            if (attemptBtn) {
+                attemptBtn.disabled = false;
+                attemptBtn.classList.remove('btn-outline-warning');
+                attemptBtn.classList.add('btn-success');
+                attemptBtn.innerHTML = '<i class="fas fa-play-circle"></i> Attempt';
+
+                const instructionsUrl = attemptBtn.dataset.instructionsUrl;
+                attemptBtn.onclick = function() {
+                    window.location.href = instructionsUrl;
+                };
             }
+            return;
         }
 
-        // Countdown timer for upcoming tests
-        function updateAllCountdowns() {
-            const upcomingTests = document.querySelectorAll('.test-card.test-upcoming');
+        // Time calculate karo
+        const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+        const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
 
-            upcomingTests.forEach(testCard => {
-                const testId = testCard.dataset.testId;
-                const availableFrom = new Date(testCard.dataset.availableFrom);
-                const now = new Date();
-                const timeLeft = availableFrom - now;
+        const countdownValue = `${hours.toString().padStart(2, '0')}:${minutes
+            .toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
-                const countdownElement = document.getElementById(`countdown-${testId}`);
-                const attemptBtn = testCard.querySelector('.attempt-btn');
-
-                // Safety check
-                if (!countdownElement || !attemptBtn) return;
-
-                if (timeLeft <= 0) {
-                    // Test start ho gaya - UI update karo
-                    countdownElement.innerHTML = '<i class="fas fa-play-circle"></i> Available Now!';
-                    countdownElement.classList.remove('countdown-timer');
-                    countdownElement.classList.add('countdown-ended');
-
-                    // Button ko "Attempt" bana do
-                    attemptBtn.disabled = false;
-                    attemptBtn.classList.remove('btn-outline-warning');
-                    attemptBtn.classList.add('btn-success');
-                    attemptBtn.innerHTML = '<i class="fas fa-play-circle"></i> Attempt';
-
-                    const instructionsUrl = attemptBtn.dataset.instructionsUrl;
-                    attemptBtn.onclick = function () {
-                        if (instructionsUrl) {
-                            window.location.href = instructionsUrl;
-                        }
-                    };
-
-                    // (Optional) Auto-refresh after 5 seconds so backend status bhi 'available' ho jaye
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 5000);
-
-                    return;
-                }
-
-                // Time calculate karo
-                const hours = Math.floor(timeLeft / (1000 * 60 * 60));
-                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-
-                const countdownValue = `${hours.toString().padStart(2, '0')}:${minutes
-                    .toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-                const valueSpan = countdownElement.querySelector('.countdown-value');
-                if (valueSpan) {
-                    valueSpan.textContent = countdownValue;
-                }
-            });
+        // Countdown text update karo
+        const valueSpan = countdownElement.querySelector('.countdown-value');
+        if (valueSpan) {
+            valueSpan.textContent = countdownValue;
+        } else {
+            // Agar span nahi hai, directly element mein daalo
+            countdownElement.innerHTML = `<i class="fas fa-hourglass-start"></i> Starts in: <span class="countdown-value">${countdownValue}</span>`;
         }
+    });
+}
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function () {
-            updateCurrentTime();
-            updateAllCountdowns();
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    updateCurrentTime();
+    updateAllCountdowns();
 
-            // Update time every second
-            setInterval(updateCurrentTime, 1000);
-            // Update countdown every second
-            setInterval(updateAllCountdowns, 1000);
-        });
+    // Update time every second
+    setInterval(updateCurrentTime, 1000);
+    // Update countdown every second
+    setInterval(updateAllCountdowns, 1000);
+   });
     </script>
 </body>
 </html>
