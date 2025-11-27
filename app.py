@@ -2932,6 +2932,8 @@ def add_professor():
 
 from sqlalchemy import or_   # 👈 Top par (baaki imports ke saath) ek baar add kar dena
 
+from sqlalchemy import or_
+
 @app.route('/admin/delete_professor/<int:prof_id>', methods=['POST'])
 @login_required
 def delete_professor(prof_id):
@@ -2940,34 +2942,37 @@ def delete_professor(prof_id):
         return redirect(url_for('login'))
 
     professor = User.query.get_or_404(prof_id)
+
     if professor.role != 'professor':
         flash('Invalid professor', 'danger')
         return redirect(url_for('admin_dashboard'))
 
     try:
-        # 1️⃣ Remove subject allocations
+        # Assign tests to admin instead of NULL
+        admin_user = User.query.filter_by(role='admin').first()
+        Test.query.filter_by(professor_id=prof_id).update(
+            {Test.professor_id: admin_user.id}, synchronize_session=False
+        )
+
+        # Remove professor-subject links
         ProfessorSubject.query.filter_by(professor_id=prof_id).delete()
 
-        # 2️⃣ Clean any OTP records linked to this user OR having NULL user_id
-        PasswordResetOTP.query.filter(
-            or_(
-                PasswordResetOTP.user_id == prof_id,
-                PasswordResetOTP.user_id == None  # existing bad rows safety
-            )
-        ).delete(synchronize_session=False)
+        # Remove any unused OTP linked to this user
+        PasswordResetOTP.query.filter_by(user_id=prof_id).delete(synchronize_session=False)
 
-        # 3️⃣ Finally delete professor user
+        # Delete professor user
         db.session.delete(professor)
         db.session.commit()
 
-        flash('Professor deleted successfully.', 'success')
+        flash('Professor deleted successfully!', 'success')
 
     except Exception as e:
         db.session.rollback()
-        print("[ERROR] Failed to delete professor:", e)
-        flash('Error while deleting professor. Please contact admin.', 'danger')
+        flash(f'Error deleting professor: {e}', 'danger')
+        print(f"[ERROR] Delete Professor: {e}")
 
     return redirect(url_for('admin_dashboard'))
+
 
 @app.route('/admin/remove_allotment/<int:allot_id>', methods=['POST'])
 @login_required
