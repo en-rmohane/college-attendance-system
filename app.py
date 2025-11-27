@@ -3141,28 +3141,6 @@ def fix_student_accounts():
 
     return result
 
-@app.route('/admin/delete_test/<int:test_id>', methods=['POST'])
-@login_required
-def admin_delete_test(test_id):
-    if current_user.role not in ['admin']:
-        flash('Access denied! Only Admin can delete tests.', 'danger')
-        return redirect(url_for('login'))
-
-    try:
-        test = Test.query.get_or_404(test_id)
-
-        # ORM ko cascade deletion ka kaam karne do
-        db.session.delete(test)
-        db.session.commit()
-
-        flash('Test deleted successfully with all attempts & answers!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        print("Error deleting test:", e)
-        flash(f'Failed to delete test: {str(e)}', 'danger')
-
-    return redirect(url_for('admin_dashboard'))
-
 @app.route('/admin/notices')
 @login_required
 def admin_notices():
@@ -3261,10 +3239,13 @@ def admin_tests():
     return render_template('admin/tests.html', tests=tests)
 
 
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+
+
 @app.route('/admin/test/<int:test_id>/delete', methods=['POST'])
 @login_required
 def admin_delete_test(test_id):
-    """Admin delete test"""
+    """Admin delete test with full cascade"""
     if current_user.role != 'admin':
         flash('Access denied', 'danger')
         return redirect(url_for('login'))
@@ -3272,18 +3253,31 @@ def admin_delete_test(test_id):
     test = Test.query.get_or_404(test_id)
 
     try:
-        # Delete associated records
-        TestAttempt.query.filter_by(test_id=test_id).delete()
-        Question.query.filter_by(test_id=test_id).delete()
-        QuestionSection.query.filter_by(test_id=test_id).delete()
-        db.session.delete(test)
+        # 1️⃣ Pehle saare attempts + unke answers delete honge (ORM cascade se)
+        #    Relationships me cascade='all, delete-orphan' already hai:
+        #    - Test.attempts -> TestAttempt
+        #    - TestAttempt.answers -> StudentAnswer
+        #    - Test.questions -> Question
+        #    - Question.student_answers -> StudentAnswer
+        #    - Test.sections -> QuestionSection  (agar aise defined hai)
+
+        db.session.delete(test)   # 🔥 Just delete parent, ORM karega baaki
+
         db.session.commit()
-        flash('Test deleted successfully', 'success')
-    except Exception as e:
+        flash('Test and all related data deleted successfully.', 'success')
+
+    except IntegrityError as e:
         db.session.rollback()
+        print("IntegrityError while deleting test:", e)
+        flash('Database constraint error while deleting test. Please contact developer.', 'danger')
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        print("SQLAlchemyError while deleting test:", e)
         flash(f'Error deleting test: {str(e)}', 'danger')
 
     return redirect(url_for('admin_tests'))
+
 
 
 @app.route('/admin/test/<int:test_id>/results')
