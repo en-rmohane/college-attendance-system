@@ -2109,6 +2109,34 @@ def download_timetable(branch, year, semester):
             'Content-Disposition': f'attachment; filename={filename}'
         }
     )
+@app.route('/admin/sync_faculties')
+@login_required
+def admin_sync_faculties():
+    if current_user.role != 'admin':
+        flash('Access denied', 'danger')
+        return redirect(url_for('login'))
+
+    added = 0
+    professors = User.query.filter_by(role='professor').all()
+
+    for prof in professors:
+        fac = Faculty.query.filter_by(email=prof.email).first()
+
+        if not fac:
+            new_fac = Faculty(
+                id=prof.id,
+                name=prof.fullname or prof.username,
+                email=prof.email,
+                phone=None,
+                designation="Professor",
+                branches=prof.branch or "CSE,AD"
+            )
+            db.session.add(new_fac)
+            added += 1
+
+    db.session.commit()
+    flash(f"Faculty Sync Complete! {added} Professors Added", "success")
+    return redirect(url_for('admin_dashboard'))
 
 
 # ========== FIXED REPORT GENERATION ROUTES ==========
