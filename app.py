@@ -24,7 +24,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from fix_database import get_timetable_from_db, generate_monthly_attendance_excel, basedir
 from models import db, User, Student, Subject, ProfessorSubject, Attendance, AttendanceReport, PasswordResetOTP, \
     EmailLog, RGPVScheme, TimetableSlot, CurrentSemester, MidTermMarks, Notes, Notice, Test, Question, \
-    TestAttempt, StudentAnswer, QuestionSection
+    TestAttempt, StudentAnswer, QuestionSection, Faculty
 # app.py (top par)
 from datetime import datetime
 
@@ -5112,8 +5112,8 @@ def generate_timetable():
 
         print(f"[SUCCESS] Starting timetable generation for: {branches}, {years}, {semesters}")
 
-        # ✅ PEHLE FACULTIES CHECK KARO
-        available_faculties = Faculty.query.all()
+        available_faculties = User.query.filter_by(role='faculty').all()
+
         if not available_faculties:
             flash('No faculties found. Please add faculties first.', 'danger')
             return redirect(url_for('admin_timetable'))
