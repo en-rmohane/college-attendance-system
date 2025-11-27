@@ -3141,6 +3141,27 @@ def fix_student_accounts():
 
     return result
 
+@app.route('/admin/delete_test/<int:test_id>', methods=['POST'])
+@login_required
+def admin_delete_test(test_id):
+    if current_user.role not in ['admin']:
+        flash('Access denied! Only Admin can delete tests.', 'danger')
+        return redirect(url_for('login'))
+
+    try:
+        test = Test.query.get_or_404(test_id)
+
+        # ORM ko cascade deletion ka kaam karne do
+        db.session.delete(test)
+        db.session.commit()
+
+        flash('Test deleted successfully with all attempts & answers!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        print("Error deleting test:", e)
+        flash(f'Failed to delete test: {str(e)}', 'danger')
+
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/notices')
 @login_required
