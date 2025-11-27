@@ -3237,10 +3237,7 @@ def admin_tests():
 
     tests = Test.query.order_by(Test.created_at.desc()).all()
     return render_template('admin/tests.html', tests=tests)
-
-
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-
 
 @app.route('/admin/test/<int:test_id>/delete', methods=['POST'])
 @login_required
@@ -3253,17 +3250,16 @@ def admin_delete_test(test_id):
     test = Test.query.get_or_404(test_id)
 
     try:
-        # 1️⃣ Pehle saare attempts + unke answers delete honge (ORM cascade se)
-        #    Relationships me cascade='all, delete-orphan' already hai:
-        #    - Test.attempts -> TestAttempt
-        #    - TestAttempt.answers -> StudentAnswer
-        #    - Test.questions -> Question
-        #    - Question.student_answers -> StudentAnswer
-        #    - Test.sections -> QuestionSection  (agar aise defined hai)
+        # ORM cascades handle:
+        # - Test.attempts -> TestAttempt
+        # - TestAttempt.answers -> StudentAnswer
+        # - Test.questions -> Question
+        # - Question.student_answers -> StudentAnswer
+        # - Test.sections -> QuestionSection
 
-        db.session.delete(test)   # 🔥 Just delete parent, ORM karega baaki
-
+        db.session.delete(test)   
         db.session.commit()
+
         flash('Test and all related data deleted successfully.', 'success')
 
     except IntegrityError as e:
@@ -3277,8 +3273,6 @@ def admin_delete_test(test_id):
         flash(f'Error deleting test: {str(e)}', 'danger')
 
     return redirect(url_for('admin_tests'))
-
-
 
 @app.route('/admin/test/<int:test_id>/results')
 @login_required
