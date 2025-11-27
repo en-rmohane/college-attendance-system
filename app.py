@@ -1,6 +1,6 @@
 import csv
 import os
-
+from sqlalchemy import or_
 import requests
 from flask_sqlalchemy import SQLAlchemy
 from openpyxl import Workbook
@@ -2930,6 +2930,7 @@ def add_professor():
     flash(f'Professor {name} added successfully!', 'success')
     return redirect(url_for('admin_dashboard'))
 
+from sqlalchemy import or_   # 👈 Top par (baaki imports ke saath) ek baar add kar dena
 
 @app.route('/admin/delete_professor/<int:prof_id>', methods=['POST'])
 @login_required
@@ -2943,13 +2944,30 @@ def delete_professor(prof_id):
         flash('Invalid professor', 'danger')
         return redirect(url_for('admin_dashboard'))
 
-    ProfessorSubject.query.filter_by(professor_id=prof_id).delete()
-    db.session.delete(professor)
-    db.session.commit()
+    try:
+        # 1️⃣ Remove subject allocations
+        ProfessorSubject.query.filter_by(professor_id=prof_id).delete()
 
-    flash('Professor deleted successfully', 'success')
+        # 2️⃣ Clean any OTP records linked to this user OR having NULL user_id
+        PasswordResetOTP.query.filter(
+            or_(
+                PasswordResetOTP.user_id == prof_id,
+                PasswordResetOTP.user_id == None  # existing bad rows safety
+            )
+        ).delete(synchronize_session=False)
+
+        # 3️⃣ Finally delete professor user
+        db.session.delete(professor)
+        db.session.commit()
+
+        flash('Professor deleted successfully.', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        print("[ERROR] Failed to delete professor:", e)
+        flash('Error while deleting professor. Please contact admin.', 'danger')
+
     return redirect(url_for('admin_dashboard'))
-
 
 @app.route('/admin/remove_allotment/<int:allot_id>', methods=['POST'])
 @login_required
