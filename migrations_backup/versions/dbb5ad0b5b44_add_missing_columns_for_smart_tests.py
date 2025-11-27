@@ -26,7 +26,7 @@ def upgrade():
 
     with op.batch_alter_table('student_answers', schema=None) as batch_op:
         batch_op.create_foreign_key('fk_student_answers_evaluated_by', 'users', ['evaluated_by'],
-                                    ['id'])  # ← NAME ADD KARO
+                                    ['id'])
 
     with op.batch_alter_table('test_attempts', schema=None) as batch_op:
         batch_op.add_column(sa.Column('expected_end_time', sa.DateTime(), nullable=True))

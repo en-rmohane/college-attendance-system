@@ -5112,8 +5112,16 @@ def generate_timetable():
 
         print(f"[SUCCESS] Starting timetable generation for: {branches}, {years}, {semesters}")
 
-        # Use the optimized timetable generator
-        timetables = generate_smart_timetable(branches, years, semesters)
+        # ✅ PEHLE FACULTIES CHECK KARO
+        available_faculties = Faculty.query.all()
+        if not available_faculties:
+            flash('No faculties found. Please add faculties first.', 'danger')
+            return redirect(url_for('admin_timetable'))
+
+        print(f"[INFO] Available faculties: {[f.id for f in available_faculties]}")
+
+        # Use the optimized timetable generator with faculties
+        timetables = generate_smart_timetable(branches, years, semesters, available_faculties)
 
         if timetables:
             success = save_timetable_to_db(timetables)
@@ -5135,10 +5143,13 @@ def generate_timetable():
         print(f"[ERROR] ERROR in custom timetable generation: {e}")
         import traceback
         traceback.print_exc()
-        flash(f'Error generating timetable: {str(e)}', 'danger')
+
+        if 'foreign key constraint' in str(e).lower() or 'faculty_id' in str(e).lower():
+            flash('Error: Faculty not found. Please add faculties before generating timetable.', 'danger')
+        else:
+            flash(f'Error generating timetable: {str(e)}', 'danger')
+
         return redirect(url_for('admin_timetable'))
-
-
 @app.route('/timetable/combined')
 @login_required
 def view_combined_timetable():
