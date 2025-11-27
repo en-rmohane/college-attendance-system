@@ -5121,58 +5121,70 @@ def admin_timetable():
 @login_required
 def generate_timetable():
     if current_user.role != 'admin':
-        flash('Access denied', 'danger')
+        flash("Access denied!", "danger")
         return redirect(url_for('login'))
 
     try:
-        branches = request.form.getlist('branches')
-        years = [int(y) for y in request.form.getlist('years')]
-        semesters = [int(s) for s in request.form.getlist('semesters')]
+        # Get form selections
+        branches = request.form.getlist("branches")
+        years = [int(y) for y in request.form.getlist("years")]
+        semesters = [int(s) for s in request.form.getlist("semesters")]
 
         if not branches or not years or not semesters:
-            flash('Please select at least one branch, year and semester', 'warning')
+            flash("Please select at least one branch, year and semester", "warning")
             return redirect(url_for('admin_timetable'))
 
-        print(f"[SUCCESS] Starting timetable generation for: {branches}, {years}, {semesters}")
+        print(f"[START] Timetable requested => Branches: {branches}, Years: {years}, Semesters: {semesters}")
 
-        available_faculties = User.query.filter_by(role='faculty').all()
+        # Fetch only professors
+        available_faculties = User.query.filter_by(role="professor").all()
 
         if not available_faculties:
-            flash('No faculties found. Please add faculties first.', 'danger')
+            flash("No professors found. Please add professors first.", "danger")
             return redirect(url_for('admin_timetable'))
 
-        print(f"[INFO] Available faculties: {[f.id for f in available_faculties]}")
+        print(f"[INFO] Professors available => {[f.id for f in available_faculties]}")
 
-        # Use the optimized timetable generator with faculties
+        # Ensure subjects allotted
+        faculty_ids = [f.id for f in available_faculties]
+        assigned_subjects = ProfessorSubject.query.filter(
+            ProfessorSubject.professor_id.in_(faculty_ids)
+        ).all()
+
+        if not assigned_subjects:
+            flash("No subject allotted to any professor! Please allot subjects first.", "warning")
+            return redirect(url_for('admin_timetable'))
+
+        print(f"[INFO] Subject allotments found => {len(assigned_subjects)} records")
+
+        # Generate timetable
         timetables = generate_smart_timetable(branches, years, semesters, available_faculties)
 
         if timetables:
-            success = save_timetable_to_db(timetables)
-            if success:
-                flash(f'[OK] Custom timetable generated successfully for {len(timetables)} combinations!', 'success')
+            print(f"[INFO] Timetables created => Count: {len(timetables)}")
+
+            result = save_timetable_to_db(timetables)
+
+            if result:
+                flash("Timetable generated successfully!", "success")
                 return redirect(url_for('view_combined_timetable',
-                                        branches=','.join(branches),
-                                        years=','.join(map(str, years)),
-                                        semesters=','.join(map(str, semesters))))
+                                        branches=",".join(branches),
+                                        years=",".join(map(str, years)),
+                                        semesters=",".join(map(str, semesters))))
             else:
-                flash('[ERROR] Failed to save timetable to database', 'danger')
-                return redirect(url_for('admin_timetable'))
+                flash("Database save failed!", "danger")
         else:
-            flash('[ERROR] Timetable generation failed. No suitable slots found. Please check subject allotments.',
-                  'warning')
-            return redirect(url_for('admin_timetable'))
+            flash("Timetable generation failed — Check subject allotment & professor availability.", "danger")
 
     except Exception as e:
-        print(f"[ERROR] ERROR in custom timetable generation: {e}")
+        print(f"[ERROR] Timetable generation crash: {e}")
         import traceback
         traceback.print_exc()
 
-        if 'foreign key constraint' in str(e).lower() or 'faculty_id' in str(e).lower():
-            flash('Error: Faculty not found. Please add faculties before generating timetable.', 'danger')
-        else:
-            flash(f'Error generating timetable: {str(e)}', 'danger')
+        flash(f"Internal error: {str(e)}", "danger")
 
-        return redirect(url_for('admin_timetable'))
+    return redirect(url_for('admin_timetable'))
+
 @app.route('/timetable/combined')
 @login_required
 def view_combined_timetable():
@@ -5184,15 +5196,14 @@ def view_combined_timetable():
     for branch in branches:
         for year in years:
             for semester in semesters:
-                key = f"{branch}_{year}_{semester}"
-                timetables[key] = get_timetable_from_db(branch, year, semester)
+             key = f"{branch}_{year}_{semester}"
+             timetables[key] = get_timetable_from_db(branch, year, semester)
 
     return render_template('timetable/combined.html',
                            timetables=timetables,
                            years=years,
                            semesters=semesters,
                            branches=branches)
-
 
 # ========== AUTO-SUBMIT BACKGROUND TASK ==========
 @app.route('/cron/auto_submit_tests')
