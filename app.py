@@ -2138,6 +2138,33 @@ def admin_sync_faculties():
     flash(f"Faculty Sync Complete! {added} Professors Added", "success")
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/admin/fix_faculties')
+@login_required
+def fix_faculties():
+    if current_user.role != 'admin':
+        flash("Access denied", "danger")
+        return redirect(url_for("login"))
+
+    professors = User.query.filter_by(role='professor').all()
+    added = 0
+
+    for p in professors:
+        fac = Faculty.query.filter_by(id=p.id).first()
+        if not fac:
+            new_fac = Faculty(
+                id=p.id,
+                name=p.fullname or p.username,
+                email=p.email,
+                designation="Professor",
+                branches=p.branch or "CSE,AD",
+                phone=None
+            )
+            db.session.add(new_fac)
+            added += 1
+
+    db.session.commit()
+    flash(f"Faculty Sync Complete! {added} record(s) added", "success")
+    return redirect(url_for("admin_dashboard"))
 
 # ========== FIXED REPORT GENERATION ROUTES ==========
 @app.route('/admin/generate_monthly_attendance', methods=['GET', 'POST'])
