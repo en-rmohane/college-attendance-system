@@ -5158,7 +5158,7 @@ def generate_timetable():
         print(f"[INFO] Subject allotments found => {len(assigned_subjects)} records")
 
         # Generate timetable
-        timetables = generate_smart_timetable(branches, years, semesters, available_faculties)
+        timetables = generate_smart_timetable(branches, years, semesters)
 
         if timetables:
             print(f"[INFO] Timetables created => Count: {len(timetables)}")
