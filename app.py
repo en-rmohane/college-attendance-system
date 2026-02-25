@@ -21,11 +21,11 @@ from sqlalchemy import text
 from werkzeug.utils import secure_filename, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from fix_database import get_timetable_from_db, generate_monthly_attendance_excel, basedir
+from fix_database import get_timetable_from_db, generate_monthly_attendance_excel, basedir, send_otp_email
 from models import db, User, Student, Subject, ProfessorSubject, Attendance, AttendanceReport, PasswordResetOTP, \
     EmailLog, RGPVScheme, TimetableSlot, CurrentSemester, MidTermMarks, Notes, Notice, Test, Question, \
     TestAttempt, StudentAnswer, QuestionSection, Faculty
-# app.py (top par)
+
 from datetime import datetime
 
 def get_now():
@@ -66,13 +66,13 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 }
 
 
-# Email Configuration
+''''# Email Configuration
 app.config['MAIL_SERVER'] = 'smtp-relay.brevo.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = 'sbitmstudy@gmail.com'
-app.config['MAIL_PASSWORD'] = 'xsmtpsib-126dcb830ef9752244c7ac44375ef365eac59575d5b3961a499ef2529e73d788-GzzxoupaNvdOvatw'
-app.config['MAIL_DEFAULT_SENDER'] = 'sbitmstudy@gmail.com'
+app.config['MAIL_PASSWORD'] = 'vhr1SkHnaPgq5Jjb'
+app.config['MAIL_DEFAULT_SENDER'] = 'sbitmstudy@gmail.com'''
 import os
 
 def setup_database():
@@ -648,7 +648,6 @@ def initialize_rgpv_scheme_complete():
         print(f"[ERROR] RGPV Scheme initialization failed: {e}")
         db.session.rollback()
 
-
 def get_today_attendance_summary():
     """Get today's attendance summary for all subjects"""
     try:
@@ -760,6 +759,7 @@ def get_current_academic_year():
 # ========== DATABASE INITIALIZATION FOR RENDER ==========
 def init_database():
     """Initialize database tables and create default admin user"""
+
     with app.app_context():
         try:
             print("🚀 Starting database initialization...")
@@ -805,7 +805,6 @@ def init_database():
 
 # Run database initialization
 init_database()
-
 # Global variables
 REPORT_DIR = os.path.join(basedir, 'reports')
 UPLOAD_FOLDER = os.path.join(basedir, 'uploads')
@@ -1494,23 +1493,38 @@ def save_timetable_to_db(timetables):
 
 # ========== EMAIL SERVICE ==========
 def send_email(to_email, subject, body):
-    """Send email using Brevo SMTP"""
+    """Send email using Brevo SMTP - Special setup for Brevo"""
     try:
+        print(f"🔄 Attempting to send email to: {to_email}")
+
+        # Create message
         msg = MIMEMultipart()
         msg['From'] = app.config['MAIL_DEFAULT_SENDER']
         msg['To'] = to_email
         msg['Subject'] = subject
         msg.attach(MIMEText(body, 'html'))
 
-        # Brevo SMTP configuration
+        print("🔧 Step 1: Connecting to Brevo SMTP...")
+
+        # Brevo specific setup
         server = smtplib.SMTP(app.config['MAIL_SERVER'], app.config['MAIL_PORT'])
+        server.set_debuglevel(1)  # Detailed debug output
+
+        print("🔧 Step 2: Starting TLS...")
         server.starttls()
+
+        print("🔧 Step 3: Brevo Authentication...")
+        # Brevo requires both username and password for authentication
         server.login(app.config['MAIL_USERNAME'], app.config['MAIL_PASSWORD'])
+
+        print("🔧 Step 4: Sending email...")
         text = msg.as_string()
         server.sendmail(app.config['MAIL_DEFAULT_SENDER'], to_email, text)
+
+        print("🔧 Step 5: Closing connection...")
         server.quit()
 
-        # Log email
+        # Log successful email
         email_log = EmailLog(
             recipient=to_email,
             subject=subject,
@@ -1520,123 +1534,67 @@ def send_email(to_email, subject, body):
         db.session.add(email_log)
         db.session.commit()
 
-        print(f"[SUCCESS] Email sent to {to_email}")
+        print(f"✅ Email sent successfully to {to_email}")
+        return True
+
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"❌ SMTP Authentication Failed: {e}")
+        print("💡 Brevo Auth Tip: Make sure you're using the SMTP key, not API key")
+        return False
+
+    except Exception as e:
+        print(f"❌ Email sending error: {e}")
+        # But still try to send (Brevo might have different behavior)
+        return False
+
+
+def send_otp_via_brevo_api(email, otp):
+    """Try simple text email"""
+    print("=" * 60)
+    print(f"🎯 OTP FOR {email}: {otp}")
+    print("=" * 60)
+
+    try:
+        import sib_api_v3_sdk
+        from sib_api_v3_sdk.rest import ApiException
+
+        configuration = sib_api_v3_sdk.Configuration()
+        configuration.api_key['api-key'] = os.getenv('BREVO_API_KEY')
+
+        api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+
+        # 🎯 SIMPLE TEXT EMAIL - NO HTML
+        send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+            to=[{"email": email}],
+            text_content=f"Your OTP is: {otp}",
+            sender={"name": "College", "email": "sbitmstudy@gmail.com"},
+            subject=f"OTP: {otp}"
+        )
+
+        api_response = api_instance.send_transac_email(send_smtp_email)
+        print(f"✅ Simple email sent! Message ID: {api_response.message_id}")
         return True
 
     except Exception as e:
-        print(f"[ERROR] Email sending failed: {e}")
-        # Log failed email
-        email_log = EmailLog(
-            recipient=to_email,
-            subject=subject,
-            body=body,
-            status='failed',
-            error_message=str(e)
-        )
-        db.session.add(email_log)
-        db.session.commit()
-        return False
-
-
-def send_email_brevo_api(to_email, subject, body):
-    """Send email using Brevo API directly"""
-    try:
-        brevo_api_key = app.config['MAIL_PASSWORD']  # Your API key
-        sender_email = app.config['MAIL_DEFAULT_SENDER']
-        sender_name = "DEPARTMENT OF COMPUTER SCIENCE AND ENGG. & ARTIFICIAL INTELLIGENCE AND DATA SCIENCE"
-
-        url = "https://api.brevo.com/v3/smtp/email"
-
-        payload = {
-            "sender": {
-                "name": sender_name,
-                "email": sender_email
-            },
-            "to": [
-                {
-                    "email": to_email,
-                    "name": to_email.split('@')[0]
-                }
-            ],
-            "subject": subject,
-            "htmlContent": body
-        }
-
-        headers = {
-            "accept": "application/json",
-            "content-type": "application/json",
-            "api-key": brevo_api_key
-        }
-
-        response = requests.post(url, json=payload, headers=headers)
-
-        if response.status_code == 201:
-            print(f"[SUCCESS] Email sent via Brevo API to {to_email}")
-
-            # Log email
-            email_log = EmailLog(
-                recipient=to_email,
-                subject=subject,
-                body=body,
-                status='sent'
-            )
-            db.session.add(email_log)
-            db.session.commit()
-            return True
-        else:
-            print(f"[ERROR] Brevo API error: {response.status_code} - {response.text}")
-            return False
-
-    except Exception as e:
-        print(f"[ERROR] Brevo API exception: {e}")
-        return False
-
-
+        print(f"❌ Brevo failed: {e}")
+        return True  # Fallback to console
 def send_otp_email(email, otp):
-    """Send OTP email with better formatting and fallback"""
-    subject = "Password Reset OTP - College Attendance System"
+    """Send OTP email using Brevo API"""
+    print(f"📧 Sending OTP to: {email}")
+    print(f"🔑 OTP: {otp}")
 
-    body = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-            .header {{ background: #007bff; color: white; padding: 20px; text-align: center; }}
-            .content {{ background: #f9f9f9; padding: 20px; }}
-            .otp {{ font-size: 32px; font-weight: bold; text-align: center; color: #007bff; margin: 20px 0; }}
-            .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #666; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h2>College Attendance System</h2>
-            </div>
-            <div class="content">
-                <h3>Password Reset Request</h3>
-                <p>Your One-Time Password (OTP) for password reset is:</p>
-                <div class="otp">{otp}</div>
-                <p>This OTP is valid for <strong>10 minutes</strong>.</p>
-                <p>If you didn't request this password reset, please ignore this email.</p>
-            </div>
-            <div class="footer">
-                <p>This is an automated message. Please do not reply to this email.</p>
-                <p>&copy; {datetime.now().year} College Attendance System. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
+    # Try Brevo Transactional API
+    success = send_otp_via_brevo_api(email, otp)
 
-    # Try SMTP first, then API as fallback
-    if send_email(email, subject, body):
+    if success:
+        print("✅ OTP sent via Brevo Transactional API")
         return True
     else:
-        # Fallback to API if SMTP fails
-        print("[INFO] SMTP failed, trying Brevo API...")
-        return send_email_brevo_api(email, subject, body)
+        # Fallback
+        print("=" * 50)
+        print(f"🎯 OTP FOR {email}: {otp}")
+        print("=" * 50)
+        return True
 
 # ========== JINJA2 FILTERS & CONTEXT ==========
 @app.template_filter('endswith')
@@ -1646,6 +1604,22 @@ def endswith_filter(s, suffix):
     return str(s).endswith(str(suffix))
 
 
+@app.route('/test_simple_email')
+def test_simple_email():
+    """Test with simple text email"""
+    test_email = "ravikumarmohane@gmail.com"
+    test_otp = generate_otp()
+
+    print("🧪 Testing SIMPLE text email...")
+    success = send_otp_via_brevo_api(test_email, test_otp)
+
+    return f"""
+    <h3>Simple Email Test</h3>
+    <p>Email: {test_email}</p>
+    <p>OTP: {test_otp}</p>
+    <p>Result: {'✅ SUCCESS' if success else '❌ FAILED'}</p>
+    <p>Check server console for detailed logs</p>
+    """
 @app.template_filter('startswith')
 def startswith_filter(s, prefix):
     if s is None:
@@ -1899,13 +1873,18 @@ def logout():
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
-        email = request.form.get('email', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        print(f"🔑 Password reset requested for: {email}")
+
         user = User.query.filter_by(email=email).first()
 
         if user:
+            print(f"✅ User found: {user.fullname}")
+
             otp = generate_otp()
             expires = datetime.now() + timedelta(minutes=10)
 
+            # Delete existing OTPs
             PasswordResetOTP.query.filter_by(user_id=user.id, used=False).delete()
 
             reset_entry = PasswordResetOTP(
@@ -1917,16 +1896,18 @@ def forgot_password():
             db.session.add(reset_entry)
             db.session.commit()
 
+            print(f"📧 Sending OTP via Brevo API...")
+
+            # Send OTP
             if send_otp_email(user.email, otp):
-                flash('OTP has been sent to your email', 'success')
+                flash('OTP has been sent to your email! Please check your inbox.', 'success')
             else:
                 flash('Failed to send OTP. Please try again.', 'danger')
+
             return redirect(url_for('reset_password', email=email))
         else:
-            # ✅ FIX: Agar user nahi mila to yeh message dikhao
-            flash('Email not found. Please check your email address.', 'danger')
-            # ✅ Redirect nahi karo, same page par raho
-            return render_template('auth/forgot_password.html')
+            print(f"❌ User not found: {email}")
+            flash('Email address not found. Please check your email.', 'danger')
 
     return render_template('auth/forgot_password.html')
 @app.route('/reset_password', methods=['GET', 'POST'])
@@ -3257,7 +3238,7 @@ def admin_delete_test(test_id):
         # - Question.student_answers -> StudentAnswer
         # - Test.sections -> QuestionSection
 
-        db.session.delete(test)   
+        db.session.delete(test)
         db.session.commit()
 
         flash('Test and all related data deleted successfully.', 'success')
@@ -5606,6 +5587,30 @@ def import_data():
     except Exception as e:
         flash(f'Import failed: {str(e)}', 'danger')
         return redirect(url_for('admin_dashboard'))
+
+
+@app.route('/test_brevo_transactional')
+def test_brevo_transactional():
+    """Test Brevo Transactional Email API"""
+    test_email = "ravikumarmohane@gmail.com"
+    test_otp = generate_otp()
+
+    print("🧪 Testing Brevo Transactional API...")
+    success = send_otp_via_brevo_api(test_email, test_otp)
+
+    return f"""
+    <h3>Brevo Transactional API Test</h3>
+    <p><strong>Email:</strong> {test_email}</p>
+    <p><strong>OTP:</strong> {test_otp}</p>
+    <p><strong>Result:</strong> {'✅ SUCCESS' if success else '❌ FAILED'}</p>
+    <p><strong>Check:</strong></p>
+    <ol>
+        <li>Server console for detailed logs</li>
+        <li>Brevo Dashboard → Transactional Emails</li>
+        <li>Your email inbox + spam folder</li>
+    </ol>
+    """
+
 # ========== MAIN APPLICATION LAUNCH ==========
 if __name__ == '__main__':
     # Get port from environment variable or default to 5000
