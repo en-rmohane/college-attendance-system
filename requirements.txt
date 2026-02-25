@@ -11,3 +11,4 @@ pandas
 psycopg[binary]==3.2.3
 requests==2.32.3
 pytz
+sib-api-v3-sdk
