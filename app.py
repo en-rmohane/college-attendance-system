@@ -3141,13 +3141,23 @@ def fix_student_accounts():
 
     students = Student.query.all()
     created_count = 0
+    fixed_count = 0
     error_count = 0
 
-    result = "<h3>Creating Student User Accounts</h3>"
+    result = "<h3>Synchronizing Student User Accounts (Case Normalization)</h3>"
 
     for student in students:
         try:
-            existing_user = User.query.filter_by(student_roll=student.roll).first()
+            # Normalize student roll in the Student table first
+            if student.roll and student.roll != student.roll.upper():
+                student.roll = student.roll.upper()
+                fixed_count += 1
+
+            # Find user by student_roll (case-insensitive check)
+            existing_user = User.query.filter(db.func.lower(User.student_roll) == student.roll.lower()).first()
+            if not existing_user:
+                # Also check by username as backup
+                existing_user = User.query.filter(db.func.lower(User.username) == student.roll.lower()).first()
 
             if not existing_user:
                 student_user = User(
@@ -3162,31 +3172,49 @@ def fix_student_accounts():
                 student_user.set_password(student.roll.upper())
                 db.session.add(student_user)
                 created_count += 1
-                result += f"<p>[OK] Created: {student.roll} - {student.name}</p>"
+                result += f"<p>[NEW] Created: {student.roll} - {student.name}</p>"
             else:
-                result += f"<p> Already exists: {student.roll}</p>"
+                # Fix existing user casing and password
+                needs_update = False
+                if existing_user.username != student.roll.upper():
+                    existing_user.username = student.roll.upper()
+                    needs_update = True
+                if existing_user.student_roll != student.roll.upper():
+                    existing_user.student_roll = student.roll.upper()
+                    needs_update = True
+                
+                # Always reset password to uppercase roll number if it's a student to be safe
+                existing_user.set_password(student.roll.upper())
+                needs_update = True
+
+                if needs_update:
+                    fixed_count += 1
+                    result += f"<p>[FIX] Updated casing/password: {student.roll}</p>"
+                else:
+                    result += f"<p>[OK] Already correct: {student.roll}</p>"
 
         except Exception as e:
             error_count += 1
-            result += f"<p>[ERROR] Error with {student.roll}: {str(e)}</p>"
+            result += f"<p style='color: red;'>[ERROR] Error with {student.roll}: {str(e)}</p>"
 
-    if created_count > 0:
+    if created_count > 0 or fixed_count > 0:
         db.session.commit()
-        result += f"<h4 style='color: green;'>[OK] SUCCESS: Created {created_count} student accounts!</h4>"
+        result += f"<h4 style='color: green;'>[OK] SUCCESS: Created {created_count} and Updated {fixed_count} student accounts!</h4>"
     else:
-        result += "<h4> No new accounts created (all already exist or errors)</h4>"
+        result += "<h4> No changes needed (all records already matched)</h4>"
 
     if error_count > 0:
-        result += f"<h4 style='color: red;'>[ERROR] ERRORS: {error_count} accounts failed</h4>"
+        result += f"<h4 style='color: red;'>[ERROR] ERRORS: {error_count} records failed</h4>"
 
     result += f"""
     <hr>
-    <h4>Login Instructions for Students:</h4>
+    <h4>Login Verification (Testing):</h4>
+    <p>Please try logging in with:</p>
     <ul>
-        <li><strong>Username:</strong> Roll Number (e.g., 0545CS231001)</li>
-        <li><strong>Password:</strong> Roll Number (e.g., 0545CS231001)</li>
+        <li><strong>Username:</strong> {students[0].roll if students else "Any Roll Number"}</li>
+        <li><strong>Password:</strong> {students[0].roll if students else "Same Roll Number"}</li>
     </ul>
-    <a href="/admin" class="btn btn-secondary">Back to Dashboard</a>
+    <a href="/admin" class="btn btn-secondary" style="padding: 10px 20px; background: #6c757d; color: white; border-radius: 5px; text-decoration: none;">Back to Dashboard</a>
     """
 
     return result
