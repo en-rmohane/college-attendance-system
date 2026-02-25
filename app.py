@@ -818,9 +818,10 @@ UPLOAD_FOLDER = os.path.join(basedir, 'uploads')
 NOTES_FOLDER = os.path.join(UPLOAD_FOLDER, 'notes')
 PROFILE_PHOTOS_FOLDER = os.path.join(UPLOAD_FOLDER, 'profile_photos')
 
-os.makedirs(REPORT_DIR, exist_ok=True)
-os.makedirs(NOTES_FOLDER, exist_ok=True)
-os.makedirs(PROFILE_PHOTOS_FOLDER, exist_ok=True)
+if not IS_VERCEL:
+    os.makedirs(REPORT_DIR, exist_ok=True)
+    os.makedirs(NOTES_FOLDER, exist_ok=True)
+    os.makedirs(PROFILE_PHOTOS_FOLDER, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'ppt', 'pptx', 'txt', 'jpg', 'png', 'jpeg', 'gif'}
 MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB
