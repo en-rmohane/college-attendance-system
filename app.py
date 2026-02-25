@@ -3004,7 +3004,7 @@ def admin_add_student():
         return redirect(url_for('admin_dashboard'))
 
     # Check if student already exists
-    if Student.query.filter_by(roll=roll).first():
+    if Student.query.filter(db.func.lower(Student.roll) == roll.lower()).first():
         flash(f'Student with Roll Number {roll} already exists', 'danger')
         return redirect(url_for('admin_dashboard'))
 
