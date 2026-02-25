@@ -55,7 +55,11 @@ def convert_to_utc(ist_dt):
     return ist_dt.astimezone(pytz.utc)
 
 # Initialize Flask app
-app = Flask(__name__)
+IS_VERCEL = os.environ.get('VERCEL') == '1'
+if IS_VERCEL:
+    app = Flask(__name__, instance_path='/tmp')
+else:
+    app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
 
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
@@ -96,6 +100,9 @@ def setup_database():
         return db_url
 
     # Local development - SQLite
+    if IS_VERCEL:
+        print("⚠️ WARNING: DATABASE_URL is not set on Vercel. App will use local SQLite which is READ-ONLY and will NOT save data.")
+    
     db_url = "sqlite:///college_attendance.db"
     print(f"✅ Database configured (local): {db_url}")
     return db_url
