@@ -3149,11 +3149,17 @@ def fix_student_accounts():
         return "Access denied"
 
     students = Student.query.all()
+    user_count = User.query.count()
     created_count = 0
     fixed_count = 0
     error_count = 0
 
-    result = "<h3>Synchronizing Student User Accounts (Case Normalization)</h3>"
+    result = f"<h3>Synchronizing Student User Accounts (Case Normalization)</h3>"
+    result += f"<p><strong>Total Students in DB:</strong> {len(students)}</p>"
+    result += f"<p><strong>Total Users in DB:</strong> {user_count}</p><hr>"
+
+    if not students:
+        result += "<p style='color: orange;'>⚠️ No students found in the Student table! Did you import them?</p>"
 
     for student in students:
         try:
