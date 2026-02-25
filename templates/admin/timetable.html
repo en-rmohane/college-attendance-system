@@ -79,16 +79,16 @@
                                 <div class="border p-3 rounded">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="branches" value="CSE"
-                                               id="cseCheck" checked>
+                                            id="cseCheck" checked>
                                         <label class="form-check-label" for="cseCheck">
                                             🖥️ Computer Science (CSE)
                                         </label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="branches" value="AD"
-                                               id="adCheck" checked>
-                                        <label class="form-check-label" for="adCheck">
-                                            📊 Data Analytics (AD)
+                                        <input class="form-check-input" type="checkbox" name="branches"
+                                            value="Artificial Intelligence and Data Science" id="aiDSCheck" checked>
+                                        <label class="form-check-label" for="aiDSCheck">
+                                            🤖 Artificial Intelligence and Data Science
                                         </label>
                                     </div>
                                 </div>
@@ -100,8 +100,8 @@
                                 <div class="border p-3 rounded">
                                     {% for year in [2, 3, 4] %}
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="years"
-                                               value="{{ year }}" id="year{{ year }}" checked>
+                                        <input class="form-check-input" type="checkbox" name="years" value="{{ year }}"
+                                            id="year{{ year }}" checked>
                                         <label class="form-check-label" for="year{{ year }}">
                                             Year {{ year }}
                                         </label>
@@ -117,7 +117,7 @@
                                     {% for sem in [3, 4, 5, 6] %}
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="semesters"
-                                               value="{{ sem }}" id="sem{{ sem }}" checked>
+                                            value="{{ sem }}" id="sem{{ sem }}" checked>
                                         <label class="form-check-label" for="sem{{ sem }}">
                                             Semester {{ sem }}
                                         </label>
@@ -130,15 +130,14 @@
                         <!-- GENERATE BUTTON -->
                         <div class="row mt-4">
                             <div class="col-12">
-                                <button type="submit"
-                                        class="btn btn-warning w-100 py-3 fs-5"
-                                        {% if not professors or professors|length == 0 or allotments_count == 0 %}disabled{% endif %}>
+                                <button type="submit" class="btn btn-warning w-100 py-3 fs-5" {% if not professors or
+                                    professors|length==0 or allotments_count==0 %}disabled{% endif %}>
                                     {% if not professors or professors|length == 0 %}
-                                        ❌ ADD PROFESSORS FIRST
+                                    ❌ ADD PROFESSORS FIRST
                                     {% elif allotments_count == 0 %}
-                                        ❌ ALLOT SUBJECTS FIRST
+                                    ❌ ALLOT SUBJECTS FIRST
                                     {% else %}
-                                        <i class="bi bi-play-fill"></i>&nbsp; GENERATE CUSTOM TIMETABLE
+                                    <i class="bi bi-play-fill"></i>&nbsp; GENERATE CUSTOM TIMETABLE
                                     {% endif %}
                                 </button>
                             </div>
@@ -155,7 +154,8 @@
                 <div class="card-body">
                     <div class="row text-center">
                         <div class="col-md-3 mb-2">
-                            <div class="border rounded p-3 {% if professors and professors|length > 0 %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
+                            <div
+                                class="border rounded p-3 {% if professors and professors|length > 0 %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
                                 <h4>{{ professors|length if professors else 0 }}</h4>
                                 <small>Professors</small>
                                 {% if not professors or professors|length == 0 %}
@@ -166,7 +166,8 @@
                             </div>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <div class="border rounded p-3 {% if allotments_count > 0 %}bg-success text-white{% else %}bg-warning text-dark{% endif %}">
+                            <div
+                                class="border rounded p-3 {% if allotments_count > 0 %}bg-success text-white{% else %}bg-warning text-dark{% endif %}">
                                 <h4>{{ allotments_count }}</h4>
                                 <small>Subject Allotments</small>
                                 {% if allotments_count == 0 %}
@@ -183,12 +184,13 @@
                             </div>
                         </div>
                         <div class="col-md-3 mb-2">
-                            <div class="border rounded p-3 {% if professors and professors|length > 0 and allotments_count > 0 %}bg-success text-white{% else %}bg-secondary text-white{% endif %}">
+                            <div
+                                class="border rounded p-3 {% if professors and professors|length > 0 and allotments_count > 0 %}bg-success text-white{% else %}bg-secondary text-white{% endif %}">
                                 <h4>
                                     {% if professors and professors|length > 0 and allotments_count > 0 %}
-                                        ✅
+                                    ✅
                                     {% else %}
-                                        ❌
+                                    ❌
                                     {% endif %}
                                 </h4>
                                 <small>Ready to Generate</small>
@@ -235,21 +237,21 @@
                                     <td>
                                         {% set prof_allotments = [] %}
                                         {% if allotments_info %}
-                                            {% for allotment in allotments_info %}
-                                                {% if allotment.prof.id == professor.id %}
-                                                    {% set _ = prof_allotments.append(allotment) %}
-                                                {% endif %}
-                                            {% endfor %}
+                                        {% for allotment in allotments_info %}
+                                        {% if allotment.prof.id == professor.id %}
+                                        {% set _ = prof_allotments.append(allotment) %}
+                                        {% endif %}
+                                        {% endfor %}
                                         {% endif %}
 
                                         {% if prof_allotments %}
-                                            {% for allotment in prof_allotments %}
-                                            <span class="badge bg-success me-1 mb-1">
-                                                {{ allotment.subj.code }} (Sem {{ allotment.subj.semester }})
-                                            </span>
-                                            {% endfor %}
+                                        {% for allotment in prof_allotments %}
+                                        <span class="badge bg-success me-1 mb-1">
+                                            {{ allotment.subj.code }} (Sem {{ allotment.subj.semester }})
+                                        </span>
+                                        {% endfor %}
                                         {% else %}
-                                            <span class="badge bg-danger">No subjects allotted</span>
+                                        <span class="badge bg-danger">No subjects allotted</span>
                                         {% endif %}
                                     </td>
                                 </tr>

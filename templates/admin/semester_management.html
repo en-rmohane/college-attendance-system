@@ -43,7 +43,8 @@
                                     <td><strong>{{ semester.branch }}</strong></td>
                                     <td>Year {{ semester.year }}</td>
                                     <td>
-                                        <span class="badge bg-{{ 'warning' if semester.semester_type == 'odd' else 'info' }}">
+                                        <span
+                                            class="badge bg-{{ 'warning' if semester.semester_type == 'odd' else 'info' }}">
                                             {{ semester.semester_type|upper }} Semester
                                         </span>
                                     </td>
@@ -54,15 +55,15 @@
                                     </td>
                                     <td>
                                         {% if semester.semester_type == 'odd' %}
-                                            {% set sem_mapping = {1: [1], 2: [3], 3: [5], 4: [7]} %}
-                                            {% for sem in sem_mapping.get(semester.year, []) %}
-                                            <span class="badge bg-success me-1">Sem {{ sem }}</span>
-                                            {% endfor %}
+                                        {% set sem_mapping = {1: [1], 2: [3], 3: [5], 4: [7]} %}
+                                        {% for sem in sem_mapping.get(semester.year, []) %}
+                                        <span class="badge bg-success me-1">Sem {{ sem }}</span>
+                                        {% endfor %}
                                         {% else %}
-                                            {% set sem_mapping = {1: [2], 2: [4], 3: [6], 4: [8]} %}
-                                            {% for sem in sem_mapping.get(semester.year, []) %}
-                                            <span class="badge bg-success me-1">Sem {{ sem }}</span>
-                                            {% endfor %}
+                                        {% set sem_mapping = {1: [2], 2: [4], 3: [6], 4: [8]} %}
+                                        {% for sem in sem_mapping.get(semester.year, []) %}
+                                        <span class="badge bg-success me-1">Sem {{ sem }}</span>
+                                        {% endfor %}
                                         {% endif %}
                                     </td>
                                     <td>
@@ -99,7 +100,8 @@
                                     </label>
                                     <select class="form-control" id="branch" name="branch" required>
                                         <option value="CSE">Computer Science (CSE)</option>
-                                        <option value="AD">Data Analytics (AD)</option>
+                                        <option value="Artificial Intelligence and Data Science">Artificial Intelligence
+                                            and Data Science</option>
                                     </select>
                                 </div>
                             </div>
@@ -134,8 +136,7 @@
                                     </label>
                                     <select class="form-control" id="academic_year" name="academic_year" required>
                                         {% for year in range(2020, 2031) %}
-                                        <option value="{{ year }}"
-                                            {% if year == 2024 %}selected{% endif %}>
+                                        <option value="{{ year }}" {% if year==2024 %}selected{% endif %}>
                                             {{ year }}-{{ year+1 }}
                                         </option>
                                         {% endfor %}
@@ -147,7 +148,7 @@
                         <div class="row mt-3">
                             <div class="col-12">
                                 <button type="submit" class="btn btn-success btn-lg w-100"
-                                        onclick="return confirm('Are you sure? This will update semester for selected branch and year.')">
+                                    onclick="return confirm('Are you sure? This will update semester for selected branch and year.')">
                                     <i class="bi bi-arrow-repeat"></i> Update Semester Configuration
                                 </button>
                                 <small class="form-text text-muted d-block mt-2 text-center">
@@ -250,10 +251,13 @@
                     <div class="alert alert-success mt-4">
                         <h6><i class="bi bi-stars"></i> Flexible Semester Management</h6>
                         <ul class="mb-0">
-                            <li>✅ <strong>Complete Control:</strong> Set Odd/Even semester independently for each branch and year</li>
+                            <li>✅ <strong>Complete Control:</strong> Set Odd/Even semester independently for each branch
+                                and year</li>
                             <li>✅ <strong>Session Flexibility:</strong> Handle shifted sessions without issues</li>
-                            <li>✅ <strong>No Date Dependency:</strong> Manual control - no automatic month-based changes</li>
-                            <li>✅ <strong>Independent Configurations:</strong> CSE 3rd Year can have Odd while AD 3rd Year has Even</li>
+                            <li>✅ <strong>No Date Dependency:</strong> Manual control - no automatic month-based changes
+                            </li>
+                            <li>✅ <strong>Independent Configurations:</strong> CSE 3rd Year can have Odd while AD 3rd
+                                Year has Even</li>
                         </ul>
                     </div>
                 </div>
@@ -263,20 +267,23 @@
 </div>
 
 <style>
-.card {
-    border: none;
-    border-radius: 10px;
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-}
-.card-header {
-    border-radius: 10px 10px 0 0 !important;
-}
-.badge {
-    font-size: 0.8em;
-}
-.table th {
-    border-top: none;
-    font-weight: 600;
-}
+    .card {
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+
+    .card-header {
+        border-radius: 10px 10px 0 0 !important;
+    }
+
+    .badge {
+        font-size: 0.8em;
+    }
+
+    .table th {
+        border-top: none;
+        font-weight: 600;
+    }
 </style>
 {% endblock %}

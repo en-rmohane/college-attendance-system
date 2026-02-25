@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,21 +14,26 @@
             border-left: 4px solid #007bff;
             transition: all 0.3s ease;
         }
+
         .notice-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
+
         .important-notice {
             border-left-color: #dc3545;
             background: linear-gradient(135deg, #fff 0%, #ffe6e6 100%);
         }
+
         .expired-notice {
             opacity: 0.7;
             background-color: #f8f9fa;
         }
+
         .badge-expired {
             background-color: #6c757d;
         }
+
         .form-section {
             background: #f8f9fa;
             border-radius: 10px;
@@ -36,6 +42,7 @@
         }
     </style>
 </head>
+
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -60,14 +67,15 @@
     <div class="container mt-4">
         <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
+            role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
         {% endwith %}
 
         <!-- Header -->
@@ -87,7 +95,7 @@
                         <div class="mb-3">
                             <label for="title" class="form-label">Notice Title *</label>
                             <input type="text" class="form-control" id="title" name="title" required
-                                   placeholder="Enter notice title">
+                                placeholder="Enter notice title">
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -110,7 +118,8 @@
                             <select class="form-select" id="branch" name="branch">
                                 <option value="">All Branches</option>
                                 <option value="CSE">Computer Science & Engineering (CSE)</option>
-                                <option value="AD">Artificial Intelligence & Data Science (AD)</option>
+                                <option value="Artificial Intelligence and Data Science">Artificial Intelligence and
+                                    Data Science</option>
                             </select>
                         </div>
                     </div>
@@ -131,7 +140,7 @@
                 <div class="mb-3">
                     <label for="message" class="form-label">Notice Message *</label>
                     <textarea class="form-control" id="message" name="message" rows="4" required
-                              placeholder="Enter detailed notice message..."></textarea>
+                        placeholder="Enter detailed notice message..."></textarea>
                     <small id="charCount" class="form-text text-muted">0 characters</small>
                 </div>
 
@@ -154,103 +163,104 @@
                 <h3><i class="fas fa-list text-primary"></i> All Notices</h3>
 
                 {% if notices_with_creators %}
-                    <div class="row">
-                        {% for item in notices_with_creators %}
-                            {% set notice = item.notice %}
-                            {% set creator_name = item.creator_name %}
+                <div class="row">
+                    {% for item in notices_with_creators %}
+                    {% set notice = item.notice %}
+                    {% set creator_name = item.creator_name %}
 
-                            <div class="col-md-6 mb-3">
-                                <div class="card notice-card
+                    <div class="col-md-6 mb-3">
+                        <div class="card notice-card
                                     {% if notice.is_important %}important-notice{% endif %}
                                     {% if notice.expires_at and notice.expires_at < datetime.now()
  %}expired-notice{% endif %}">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <h5 class="card-title">{{ notice.title }}</h5>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                                    <i class="fas fa-ellipsis-v"></i>
-                                                </button>
-                                                <ul class="dropdown-menu">
-                                                    <li>
-                                                        <form method="POST" action="{{ url_for('delete_notice', notice_id=notice.id) }}"
-                                                              onsubmit="return confirm('Are you sure you want to delete this notice?');">
-                                                            <button type="submit" class="dropdown-item text-danger">
-                                                                <i class="fas fa-trash"></i> Delete
-                                                            </button>
-                                                        </form>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </div>
-
-                                        <p class="card-text">{{ notice.message }}</p>
-
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div class="notice-meta">
-                                                <small class="text-muted">
-                                                    <i class="fas fa-user"></i>
-                                                    {{ creator_name }}
-                                                </small>
-                                                <br>
-                                                <small class="text-muted">
-                                                    <i class="fas fa-calendar"></i>
-                                                    {{ notice.created_at.strftime('%d %b %Y, %I:%M %p') }}
-                                                </small>
-                                            </div>
-
-                                            <div class="notice-badges">
-                                                {% if notice.is_important %}
-                                                    <span class="badge bg-danger">
-                                                        <i class="fas fa-exclamation-circle"></i> Important
-                                                    </span>
-                                                {% endif %}
-
-                                                {% if notice.expires_at and notice.expires_at < datetime.now()
- %}
-                                                    <span class="badge badge-expired">
-                                                        <i class="fas fa-clock"></i> Expired
-                                                    </span>
-                                                {% else %}
-                                                    <span class="badge bg-success">
-                                                        <i class="fas fa-eye"></i> Active
-                                                    </span>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-
-                                        <div class="mt-2">
-                                            <small class="text-muted">
-                                                <strong>Audience:</strong>
-                                                {{ notice.target_audience|title }}
-                                                {% if notice.branch %}
-                                                    • {{ notice.branch }} Branch
-                                                {% endif %}
-                                                {% if notice.year %}
-                                                    • Year {{ notice.year }}
-                                                {% endif %}
-                                            </small>
-                                            <br>
-                                            <small class="text-muted">
-                                                <strong>Expires:</strong>
-                                                {% if notice.expires_at %}
-                                                    {{ notice.expires_at.strftime('%d %b %Y') }}
-                                                {% else %}
-                                                    Never
-                                                {% endif %}
-                                            </small>
-                                        </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 class="card-title">{{ notice.title }}</h5>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                            data-bs-toggle="dropdown">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <form method="POST"
+                                                    action="{{ url_for('delete_notice', notice_id=notice.id) }}"
+                                                    onsubmit="return confirm('Are you sure you want to delete this notice?');">
+                                                    <button type="submit" class="dropdown-item text-danger">
+                                                        <i class="fas fa-trash"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </li>
+                                        </ul>
                                     </div>
                                 </div>
+
+                                <p class="card-text">{{ notice.message }}</p>
+
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="notice-meta">
+                                        <small class="text-muted">
+                                            <i class="fas fa-user"></i>
+                                            {{ creator_name }}
+                                        </small>
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="fas fa-calendar"></i>
+                                            {{ notice.created_at.strftime('%d %b %Y, %I:%M %p') }}
+                                        </small>
+                                    </div>
+
+                                    <div class="notice-badges">
+                                        {% if notice.is_important %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-exclamation-circle"></i> Important
+                                        </span>
+                                        {% endif %}
+
+                                        {% if notice.expires_at and notice.expires_at < datetime.now() %} <span
+                                            class="badge badge-expired">
+                                            <i class="fas fa-clock"></i> Expired
+                                            </span>
+                                            {% else %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-eye"></i> Active
+                                            </span>
+                                            {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        <strong>Audience:</strong>
+                                        {{ notice.target_audience|title }}
+                                        {% if notice.branch %}
+                                        • {{ notice.branch }} Branch
+                                        {% endif %}
+                                        {% if notice.year %}
+                                        • Year {{ notice.year }}
+                                        {% endif %}
+                                    </small>
+                                    <br>
+                                    <small class="text-muted">
+                                        <strong>Expires:</strong>
+                                        {% if notice.expires_at %}
+                                        {{ notice.expires_at.strftime('%d %b %Y') }}
+                                        {% else %}
+                                        Never
+                                        {% endif %}
+                                    </small>
+                                </div>
                             </div>
-                        {% endfor %}
+                        </div>
                     </div>
+                    {% endfor %}
+                </div>
                 {% else %}
-                    <div class="text-center py-5">
-                        <i class="fas fa-bullhorn fa-3x text-muted mb-3"></i>
-                        <h4 class="text-muted">No Notices Yet</h4>
-                        <p class="text-muted">Create your first notice using the form above.</p>
-                    </div>
+                <div class="text-center py-5">
+                    <i class="fas fa-bullhorn fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No Notices Yet</h4>
+                    <p class="text-muted">Create your first notice using the form above.</p>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -276,7 +286,7 @@
 
     <script>
         // Show/hide specific audience fields
-        document.getElementById('target_audience').addEventListener('change', function() {
+        document.getElementById('target_audience').addEventListener('change', function () {
             const specificFields = document.getElementById('specificAudienceFields');
             if (this.value === 'students') {
                 specificFields.style.display = 'block';
@@ -286,17 +296,18 @@
         });
 
         // Character counter for message
-        document.getElementById('message').addEventListener('input', function() {
+        document.getElementById('message').addEventListener('input', function () {
             const charCount = this.value.length;
             const counter = document.getElementById('charCount');
             counter.textContent = `${charCount} characters`;
         });
 
         // Auto-expand textarea
-        document.getElementById('message').addEventListener('input', function() {
+        document.getElementById('message').addEventListener('input', function () {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
         });
     </script>
 </body>
+
 </html>

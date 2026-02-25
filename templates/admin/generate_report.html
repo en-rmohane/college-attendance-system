@@ -12,26 +12,32 @@
         margin-bottom: 20px;
         border-left: 4px solid #007bff;
     }
+
     .section-title {
         color: #2c3e50;
         font-weight: 600;
         margin-bottom: 15px;
         font-size: 1.1rem;
     }
+
     .form-label {
         font-weight: 500;
         color: #495057;
     }
+
     .card-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     }
+
     .quick-action-btn {
         transition: all 0.3s ease;
     }
+
     .quick-action-btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
+
     .info-badge {
         background: #e3f2fd;
         color: #1976d2;
@@ -53,7 +59,8 @@
                                 <i class="bi bi-file-earmark-spreadsheet-fill me-2"></i>
                                 Generate Attendance Report
                             </h4>
-                            <p class="mb-0 text-white opacity-75">Create comprehensive attendance reports with multiple customization options</p>
+                            <p class="mb-0 text-white opacity-75">Create comprehensive attendance reports with multiple
+                                customization options</p>
                         </div>
                         <div class="col-auto">
                             <a href="{{ url_for('admin_reports') }}" class="btn btn-light btn-sm">
@@ -100,7 +107,8 @@
                                     <select id="branch" name="branch" class="form-select">
                                         <option value="">All Branches</option>
                                         <option value="CSE">Computer Science & Engineering (CSE)</option>
-                                        <option value="AD">AI & Data Science (AD)</option>
+                                        <option value="Artificial Intelligence and Data Science">Artificial Intelligence
+                                            and Data Science</option>
                                     </select>
                                 </div>
                             </div>
@@ -125,7 +133,8 @@
                                         <option value="7">Semester 7</option>
                                         <option value="8">Semester 8</option>
                                     </select>
-                                    <div class="form-text">Choose specific semester or "All" for complete year report</div>
+                                    <div class="form-text">Choose specific semester or "All" for complete year report
+                                    </div>
                                 </div>
 
                                 <div class="col-md-6">
@@ -133,14 +142,16 @@
                                     <select id="subject_ids" name="subject_ids" multiple class="form-select" size="5">
                                         <option value="all">📋 All Subjects (Complete Semester Report)</option>
                                         {% for subject in subjects %}
-                                            <option value="{{ subject.id }}" data-sem="{{ subject.semester }}">
-                                                {{ subject.code }} - {{ subject.name }} ({{ subject.branch }} Sem {{ subject.semester }})
-                                            </option>
+                                        <option value="{{ subject.id }}" data-sem="{{ subject.semester }}">
+                                            {{ subject.code }} - {{ subject.name }} ({{ subject.branch }} Sem {{
+                                            subject.semester }})
+                                        </option>
                                         {% endfor %}
                                     </select>
                                     <div class="form-text">
                                         <i class="bi bi-info-circle me-1"></i>
-                                        Hold <kbd>Ctrl</kbd> to select multiple subjects. "All Subjects" for complete report.
+                                        Hold <kbd>Ctrl</kbd> to select multiple subjects. "All Subjects" for complete
+                                        report.
                                     </div>
                                 </div>
                             </div>
@@ -165,19 +176,22 @@
                                 <div class="col-md-3">
                                     <label class="form-label">Quick Period (Optional)</label>
                                     <input id="lastN" name="last_n" type="number" min="1" max="365"
-                                           placeholder="Enter number of days" class="form-control" />
+                                        placeholder="Enter number of days" class="form-control" />
                                 </div>
 
                                 <div class="col-md-3">
                                     <label class="form-label">Quick Actions</label>
                                     <div class="btn-group w-100" role="group">
-                                        <button id="btn15" type="button" class="btn btn-outline-primary quick-action-btn">
+                                        <button id="btn15" type="button"
+                                            class="btn btn-outline-primary quick-action-btn">
                                             <i class="bi bi-calendar-week me-1"></i>15 Days
                                         </button>
-                                        <button id="btn30" type="button" class="btn btn-outline-primary quick-action-btn">
+                                        <button id="btn30" type="button"
+                                            class="btn btn-outline-primary quick-action-btn">
                                             <i class="bi bi-calendar-month me-1"></i>30 Days
                                         </button>
-                                        <button id="btn60" type="button" class="btn btn-outline-primary quick-action-btn">
+                                        <button id="btn60" type="button"
+                                            class="btn btn-outline-primary quick-action-btn">
                                             <i class="bi bi-calendar-range me-1"></i>60 Days
                                         </button>
                                     </div>
@@ -193,7 +207,8 @@
                             <div class="row g-3 align-items-center">
                                 <div class="col-md-6">
                                     <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" name="combine" id="combine" checked />
+                                        <input class="form-check-input" type="checkbox" name="combine" id="combine"
+                                            checked />
                                         <label class="form-check-label" for="combine">
                                             <strong>Combine into Single Workbook</strong>
                                         </label>
@@ -204,7 +219,8 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" name="include_percentage" id="include_percentage" checked />
+                                        <input class="form-check-input" type="checkbox" name="include_percentage"
+                                            id="include_percentage" checked />
                                         <label class="form-check-label" for="include_percentage">
                                             <strong>Include Percentage Calculation</strong>
                                         </label>
@@ -221,7 +237,8 @@
                             <div class="col-md-8">
                                 <div class="info-badge">
                                     <i class="bi bi-lightbulb-fill me-2"></i>
-                                    <strong>Pro Tip:</strong> For quick reports, select Academic Year → choose Semester → use Quick Actions for date range.
+                                    <strong>Pro Tip:</strong> For quick reports, select Academic Year → choose Semester
+                                    → use Quick Actions for date range.
                                 </div>
                             </div>
                             <div class="col-md-4 text-end">
@@ -241,39 +258,39 @@
 </div>
 
 <script>
-(function(){
-    // Helper to set last N days and populate dates
-    function setLastNDays(n){
-        if(!n || isNaN(n)) return;
-        document.getElementById('lastN').value = n;
-        const end = new Date();
-        const start = new Date();
-        start.setDate(end.getDate() - (n-1));
+    (function () {
+        // Helper to set last N days and populate dates
+        function setLastNDays(n) {
+            if (!n || isNaN(n)) return;
+            document.getElementById('lastN').value = n;
+            const end = new Date();
+            const start = new Date();
+            start.setDate(end.getDate() - (n - 1));
 
-        // Format yyyy-mm-dd
-        const fmt = d => d.toISOString().slice(0,10);
-        document.getElementById('startDate').value = fmt(start);
-        document.getElementById('endDate').value = fmt(end);
-    }
+            // Format yyyy-mm-dd
+            const fmt = d => d.toISOString().slice(0, 10);
+            document.getElementById('startDate').value = fmt(start);
+            document.getElementById('endDate').value = fmt(end);
+        }
 
-    // Quick action buttons
-    document.getElementById('btn15').addEventListener('click', () => setLastNDays(15));
-    document.getElementById('btn30').addEventListener('click', () => setLastNDays(30));
-    document.getElementById('btn60').addEventListener('click', () => setLastNDays(60));
+        // Quick action buttons
+        document.getElementById('btn15').addEventListener('click', () => setLastNDays(15));
+        document.getElementById('btn30').addEventListener('click', () => setLastNDays(30));
+        document.getElementById('btn60').addEventListener('click', () => setLastNDays(60));
 
-    // Dynamic subject filtering based on year and branch
-    const acadSel = document.getElementById('acadYear');
-    const branchSel = document.getElementById('branch');
-    const subjectSel = document.getElementById('subject_ids');
-    const semesterSel = document.getElementById('semester');
+        // Dynamic subject filtering based on year and branch
+        const acadSel = document.getElementById('acadYear');
+        const branchSel = document.getElementById('branch');
+        const subjectSel = document.getElementById('subject_ids');
+        const semesterSel = document.getElementById('semester');
 
-    async function updateSubjects() {
-        const year = acadSel.value;
-        const branch = branchSel.value;
+        async function updateSubjects() {
+            const year = acadSel.value;
+            const branch = branchSel.value;
 
-        if (!year) {
-            // Reset to all subjects if no year selected
-            subjectSel.innerHTML = `
+            if (!year) {
+                // Reset to all subjects if no year selected
+                subjectSel.innerHTML = `
                 <option value="all">📋 All Subjects (Complete Semester Report)</option>
                 {% for subject in subjects %}
                     <option value="{{ subject.id }}" data-sem="{{ subject.semester }}">
@@ -281,29 +298,29 @@
                     </option>
                 {% endfor %}
             `;
-            return;
-        }
+                return;
+            }
 
-        try {
-            const res = await fetch(`/get_subjects_by_year/${year}?branch=${encodeURIComponent(branch || '')}`);
-            if (!res.ok) throw new Error('Failed to fetch subjects');
+            try {
+                const res = await fetch(`/get_subjects_by_year/${year}?branch=${encodeURIComponent(branch || '')}`);
+                if (!res.ok) throw new Error('Failed to fetch subjects');
 
-            const data = await res.json();
+                const data = await res.json();
 
-            // Clear and repopulate subject dropdown
-            subjectSel.innerHTML = '<option value="all">📋 All Subjects (Complete Semester Report)</option>';
+                // Clear and repopulate subject dropdown
+                subjectSel.innerHTML = '<option value="all">📋 All Subjects (Complete Semester Report)</option>';
 
-            (data.subjects || []).forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.id;
-                opt.textContent = `${s.code} - ${s.name} (${s.branch} Sem ${s.semester})`;
-                opt.dataset.sem = s.semester;
-                subjectSel.appendChild(opt);
-            });
-        } catch (err) {
-            console.warn('Failed to get subjects:', err);
-            // Fallback to all subjects
-            subjectSel.innerHTML = `
+                (data.subjects || []).forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = `${s.code} - ${s.name} (${s.branch} Sem ${s.semester})`;
+                    opt.dataset.sem = s.semester;
+                    subjectSel.appendChild(opt);
+                });
+            } catch (err) {
+                console.warn('Failed to get subjects:', err);
+                // Fallback to all subjects
+                subjectSel.innerHTML = `
                 <option value="all">📋 All Subjects (Complete Semester Report)</option>
                 {% for subject in subjects %}
                     <option value="{{ subject.id }}" data-sem="{{ subject.semester }}">
@@ -311,74 +328,74 @@
                     </option>
                 {% endfor %}
             `;
-        }
-    }
-
-    // Event listeners for dynamic updates
-    acadSel.addEventListener('change', updateSubjects);
-    branchSel.addEventListener('change', updateSubjects);
-
-    // Auto-select semester when subject is selected
-    subjectSel.addEventListener('change', function() {
-        const selectedOption = this.selectedOptions[0];
-        if (selectedOption && selectedOption.dataset.sem) {
-            const sem = selectedOption.dataset.sem;
-            semesterSel.value = sem;
-        }
-    });
-
-    // Form validation
-    document.getElementById('genForm').addEventListener('submit', function(e) {
-        const subjectIds = Array.from(subjectSel.selectedOptions).map(opt => opt.value);
-        const acadYear = acadSel.value;
-        const lastN = document.getElementById('lastN').value;
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-
-        // Basic validation
-        if (!acadYear && !lastN && !(startDate && endDate)) {
-            e.preventDefault();
-            showAlert('Please select at least: Academic Year OR enter date range OR specify period days.', 'warning');
-            return false;
-        }
-
-        // Date range validation
-        if (startDate && endDate) {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            if (start > end) {
-                e.preventDefault();
-                showAlert('Invalid date range: Start date cannot be after End date.', 'warning');
-                return false;
             }
         }
 
-        // Subject selection validation (if not using "all")
-        if (!subjectIds.includes('all') && subjectIds.length === 0) {
-            e.preventDefault();
-            showAlert('Please select at least one subject or choose "All Subjects".', 'warning');
-            return false;
-        }
+        // Event listeners for dynamic updates
+        acadSel.addEventListener('change', updateSubjects);
+        branchSel.addEventListener('change', updateSubjects);
 
-        return true;
-    });
+        // Auto-select semester when subject is selected
+        subjectSel.addEventListener('change', function () {
+            const selectedOption = this.selectedOptions[0];
+            if (selectedOption && selectedOption.dataset.sem) {
+                const sem = selectedOption.dataset.sem;
+                semesterSel.value = sem;
+            }
+        });
 
-    // Helper function to show alerts
-    function showAlert(message, type = 'info') {
-        // Remove existing alerts
-        const existingAlert = document.querySelector('.alert-dismissible');
-        if (existingAlert) {
-            existingAlert.remove();
-        }
+        // Form validation
+        document.getElementById('genForm').addEventListener('submit', function (e) {
+            const subjectIds = Array.from(subjectSel.selectedOptions).map(opt => opt.value);
+            const acadYear = acadSel.value;
+            const lastN = document.getElementById('lastN').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
 
-        const alertClass = {
-            'warning': 'alert-warning',
-            'info': 'alert-info',
-            'success': 'alert-success',
-            'danger': 'alert-danger'
-        }[type] || 'alert-info';
+            // Basic validation
+            if (!acadYear && !lastN && !(startDate && endDate)) {
+                e.preventDefault();
+                showAlert('Please select at least: Academic Year OR enter date range OR specify period days.', 'warning');
+                return false;
+            }
 
-        const alertHtml = `
+            // Date range validation
+            if (startDate && endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                if (start > end) {
+                    e.preventDefault();
+                    showAlert('Invalid date range: Start date cannot be after End date.', 'warning');
+                    return false;
+                }
+            }
+
+            // Subject selection validation (if not using "all")
+            if (!subjectIds.includes('all') && subjectIds.length === 0) {
+                e.preventDefault();
+                showAlert('Please select at least one subject or choose "All Subjects".', 'warning');
+                return false;
+            }
+
+            return true;
+        });
+
+        // Helper function to show alerts
+        function showAlert(message, type = 'info') {
+            // Remove existing alerts
+            const existingAlert = document.querySelector('.alert-dismissible');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+
+            const alertClass = {
+                'warning': 'alert-warning',
+                'info': 'alert-info',
+                'success': 'alert-success',
+                'danger': 'alert-danger'
+            }[type] || 'alert-info';
+
+            const alertHtml = `
             <div class="alert ${alertClass} alert-dismissible fade show mt-3" role="alert">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>
                 ${message}
@@ -386,13 +403,13 @@
             </div>
         `;
 
-        document.querySelector('.card-body').insertAdjacentHTML('beforeend', alertHtml);
-    }
+            document.querySelector('.card-body').insertAdjacentHTML('beforeend', alertHtml);
+        }
 
-    // Initialize form with current date as end date
-    document.getElementById('endDate').value = new Date().toISOString().slice(0,10);
+        // Initialize form with current date as end date
+        document.getElementById('endDate').value = new Date().toISOString().slice(0, 10);
 
-})();
+    })();
 </script>
 
 {% endblock %}

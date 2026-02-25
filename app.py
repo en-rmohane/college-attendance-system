@@ -851,22 +851,22 @@ WORKING_DAYS = {
 }
 
 COMMON_SUBJECTS_MAP = {
-    "Data Structures": {"CSE": "CS303", "AD": "AD303", "is_lab": False, "weekly_slots": 3},
-    "Data Structure Lab": {"CSE": "CS303P", "AD": "AD303P", "is_lab": True, "weekly_slots": 1},
-    "Object Oriented Programming": {"CSE": "CS305", "AD": "AD305", "is_lab": False, "weekly_slots": 3},
-    "OOP Lab": {"CSE": "CS305P", "AD": "AD305P", "is_lab": True, "weekly_slots": 1},
-    "Digital Systems": {"CSE": "CS304", "AD": "AD304", "is_lab": False, "weekly_slots": 2},
-    "Digital Systems Lab": {"CSE": "CS304P", "AD": "AD304P", "is_lab": True, "weekly_slots": 1},
-    "Mathematics-III": {"CSE": "BT401", "AD": "BT401", "is_lab": False, "weekly_slots": 3},
-    "Theory of Computation": {"CSE": "CS501", "AD": "AD501", "is_lab": False, "weekly_slots": 2},
-    "Database Management Systems": {"CSE": "CS502", "AD": "AD402", "is_lab": False, "weekly_slots": 2},
-    "DBMS Lab": {"CSE": "CS502P", "AD": "AD402P", "is_lab": True, "weekly_slots": 1},
-    "Machine Learning": {"CSE": "CS601", "AD": "AD502", "is_lab": False, "weekly_slots": 2},
-    "Machine Learning Lab": {"CSE": "CS601P", "AD": "AD502P", "is_lab": True, "weekly_slots": 1},
-    "Computer Networks": {"CSE": "CS602", "AD": "AD602", "is_lab": False, "weekly_slots": 2},
-    "Computer Networks Lab": {"CSE": "CS602P", "AD": "AD602P", "is_lab": True, "weekly_slots": 1},
-    "Deep Learning": {"CSE": "CS601", "AD": "AD601", "is_lab": False, "weekly_slots": 2},
-    "Deep Learning Lab": {"CSE": "CS601P", "AD": "AD601P", "is_lab": True, "weekly_slots": 1}
+    "Data Structures": {"CSE": "CS303", "Artificial Intelligence and Data Science": "AD303", "is_lab": False, "weekly_slots": 3},
+    "Data Structure Lab": {"CSE": "CS303P", "Artificial Intelligence and Data Science": "AD303P", "is_lab": True, "weekly_slots": 1},
+    "Object Oriented Programming": {"CSE": "CS305", "Artificial Intelligence and Data Science": "AD305", "is_lab": False, "weekly_slots": 3},
+    "OOP Lab": {"CSE": "CS305P", "Artificial Intelligence and Data Science": "AD305P", "is_lab": True, "weekly_slots": 1},
+    "Digital Systems": {"CSE": "CS304", "Artificial Intelligence and Data Science": "AD304", "is_lab": False, "weekly_slots": 2},
+    "Digital Systems Lab": {"CSE": "CS304P", "Artificial Intelligence and Data Science": "AD304P", "is_lab": True, "weekly_slots": 1},
+    "Mathematics-III": {"CSE": "BT401", "Artificial Intelligence and Data Science": "BT401", "is_lab": False, "weekly_slots": 3},
+    "Theory of Computation": {"CSE": "CS501", "Artificial Intelligence and Data Science": "AD501", "is_lab": False, "weekly_slots": 2},
+    "Database Management Systems": {"CSE": "CS502", "Artificial Intelligence and Data Science": "AD402", "is_lab": False, "weekly_slots": 2},
+    "DBMS Lab": {"CSE": "CS502P", "Artificial Intelligence and Data Science": "AD402P", "is_lab": True, "weekly_slots": 1},
+    "Machine Learning": {"CSE": "CS601", "Artificial Intelligence and Data Science": "AD502", "is_lab": False, "weekly_slots": 2},
+    "Machine Learning Lab": {"CSE": "CS601P", "Artificial Intelligence and Data Science": "AD502P", "is_lab": True, "weekly_slots": 1},
+    "Computer Networks": {"CSE": "CS602", "Artificial Intelligence and Data Science": "AD602", "is_lab": False, "weekly_slots": 2},
+    "Computer Networks Lab": {"CSE": "CS602P", "Artificial Intelligence and Data Science": "AD602P", "is_lab": True, "weekly_slots": 1},
+    "Deep Learning": {"CSE": "CS601", "Artificial Intelligence and Data Science": "AD601", "is_lab": False, "weekly_slots": 2},
+    "Deep Learning Lab": {"CSE": "CS601P", "Artificial Intelligence and Data Science": "AD601P", "is_lab": True, "weekly_slots": 1}
 }
 
 
@@ -1160,7 +1160,7 @@ def allocate_common_subjects_optimized(timetables, branches, years, semesters):
             print(f"[UPDATE] Allocating theory: {common_name} ({weekly_slots} slots)")
 
             cse_subject = Subject.query.filter_by(code=details["CSE"], semester=semester).first()
-            ad_subject = Subject.query.filter_by(code=details["AD"], semester=semester).first()
+            ad_subject = Subject.query.filter_by(code=details["Artificial Intelligence and Data Science"], semester=semester).first()
             professor = get_professor_for_common_subject(cse_subject.id, ad_subject.id)
 
             if not cse_subject or not ad_subject or not professor:
@@ -1206,7 +1206,7 @@ def allocate_common_subjects_optimized(timetables, branches, years, semesters):
             print(f"[UPDATE] Allocating lab: {common_name}")
 
             cse_subject = Subject.query.filter_by(code=details["CSE"], semester=semester).first()
-            ad_subject = Subject.query.filter_by(code=details["AD"], semester=semester).first()
+            ad_subject = Subject.query.filter_by(code=details["Artificial Intelligence and Data Science"], semester=semester).first()
             professor = get_professor_for_common_subject(cse_subject.id, ad_subject.id)
 
             if not cse_subject or not ad_subject or not professor:
@@ -1291,7 +1291,7 @@ def generate_smart_timetable(branches, years, semesters):
                     key = f"{branch}_{year}_{semester}"
                     timetable = {
                         'college_name': 'Shri Balaji Institute of Technology & Management, Betul (M.P.)',
-                        'department': f'Department of {"Computer Science and Engineering" if branch == "CSE" else "Data Analytics"}',
+                        'department': f'Department of {"Computer Science and Engineering" if branch == "CSE" else "Artificial Intelligence and Data Science"}',
                         'branch': branch,
                         'year': year,
                         'semester': semester,
@@ -1330,7 +1330,7 @@ def generate_smart_timetable(branches, years, semesters):
                     for subject, allotment in subjects_with_professors:
                         is_common = False
                         for common_details in COMMON_SUBJECTS_MAP.values():
-                            if subject.code in [common_details["CSE"], common_details["AD"]]:
+                            if subject.code in [common_details.get("CSE"), common_details.get("Artificial Intelligence and Data Science")]:
                                 is_common = True
                                 break
 
@@ -5359,7 +5359,7 @@ def generate_timetable():
 @app.route('/timetable/combined')
 @login_required
 def view_combined_timetable():
-    branches = request.args.get('branches', 'CSE,AD').split(',')
+    branches = request.args.get('branches', 'CSE,Artificial Intelligence and Data Science').split(',')
     years = [int(y) for y in request.args.get('years', '3').split(',')]
     semesters = [int(s) for s in request.args.get('semesters', '5,6').split(',')]
 

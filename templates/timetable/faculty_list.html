@@ -18,13 +18,15 @@
             <!-- Search and Filter -->
             <div class="row mb-4">
                 <div class="col-md-6">
-                    <input type="text" class="form-control" id="searchInput" placeholder="Search faculty by name, specialization...">
+                    <input type="text" class="form-control" id="searchInput"
+                        placeholder="Search faculty by name, specialization...">
                 </div>
                 <div class="col-md-3">
                     <select class="form-select" id="branchFilter">
                         <option value="">All Branches</option>
                         <option value="CSE">CSE</option>
-                        <option value="AD">AD</option>
+                        <option value="Artificial Intelligence and Data Science">Artificial Intelligence and Data
+                            Science</option>
                     </select>
                 </div>
                 <div class="col-md-3">
@@ -73,7 +75,7 @@
                             </td>
                             <td>
                                 <a href="{{ url_for('faculty_timetable', faculty_id=faculty.id) }}"
-                                   class="btn btn-outline-primary btn-sm">
+                                    class="btn btn-outline-primary btn-sm">
                                     <i class="bi bi-calendar-check"></i> View Schedule
                                 </a>
                             </td>
@@ -95,47 +97,48 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('searchInput');
-    const branchFilter = document.getElementById('branchFilter');
-    const facultyRows = document.querySelectorAll('.faculty-row');
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('searchInput');
+        const branchFilter = document.getElementById('branchFilter');
+        const facultyRows = document.querySelectorAll('.faculty-row');
 
-    function filterFaculties() {
-        const searchTerm = searchInput.value.toLowerCase();
-        const branchValue = branchFilter.value;
+        function filterFaculties() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const branchValue = branchFilter.value;
 
-        facultyRows.forEach(row => {
-            const facultyName = row.cells[0].textContent.toLowerCase();
-            const specialization = row.cells[2].textContent.toLowerCase();
-            const branches = row.dataset.branches;
+            facultyRows.forEach(row => {
+                const facultyName = row.cells[0].textContent.toLowerCase();
+                const specialization = row.cells[2].textContent.toLowerCase();
+                const branches = row.dataset.branches;
 
-            const matchesSearch = facultyName.includes(searchTerm) || specialization.includes(searchTerm);
-            const matchesBranch = !branchValue || branches.includes(branchValue);
+                const matchesSearch = facultyName.includes(searchTerm) || specialization.includes(searchTerm);
+                const matchesBranch = !branchValue || branches.includes(branchValue);
 
-            row.style.display = (matchesSearch && matchesBranch) ? '' : 'none';
+                row.style.display = (matchesSearch && matchesBranch) ? '' : 'none';
+            });
+        }
+
+        searchInput.addEventListener('input', filterFaculties);
+        branchFilter.addEventListener('change', filterFaculties);
+    });
+
+    function clearFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('branchFilter').value = '';
+        document.querySelectorAll('.faculty-row').forEach(row => {
+            row.style.display = '';
         });
     }
-
-    searchInput.addEventListener('input', filterFaculties);
-    branchFilter.addEventListener('change', filterFaculties);
-});
-
-function clearFilters() {
-    document.getElementById('searchInput').value = '';
-    document.getElementById('branchFilter').value = '';
-    document.querySelectorAll('.faculty-row').forEach(row => {
-        row.style.display = '';
-    });
-}
 </script>
 
 <style>
-.faculty-row:hover {
-    background-color: #f8f9fa;
-    cursor: pointer;
-}
-.badge {
-    font-size: 0.75em;
-}
+    .faculty-row:hover {
+        background-color: #f8f9fa;
+        cursor: pointer;
+    }
+
+    .badge {
+        font-size: 0.75em;
+    }
 </style>
 {% endblock %}

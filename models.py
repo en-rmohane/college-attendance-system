@@ -16,7 +16,7 @@ class User(db.Model, UserMixin):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='student')
-    branch = db.Column(db.String(10), nullable=True)
+    branch = db.Column(db.String(100), nullable=True)
     student_roll = db.Column(db.String(20), unique=True, nullable=True)
 
     # extra useful fields (pehle waale waapas daal diye)
@@ -40,7 +40,7 @@ class Student(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     roll = db.Column(db.String(20), unique=True, nullable=False)
     name = db.Column(db.String(100), nullable=False)
-    branch = db.Column(db.String(10), nullable=False)
+    branch = db.Column(db.String(100), nullable=False)
     year = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
     is_active = db.Column(db.Boolean, default=True)
@@ -50,7 +50,7 @@ class CurrentSemester(db.Model):
     __tablename__ = 'current_semester'
 
     id = db.Column(db.Integer, primary_key=True)
-    branch = db.Column(db.String(10), nullable=False)
+    branch = db.Column(db.String(100), nullable=False)
     year = db.Column(db.Integer, nullable=False)
     semester_type = db.Column(db.String(10), nullable=False)
     academic_year = db.Column(db.Integer, nullable=False)
@@ -67,7 +67,7 @@ class Subject(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(20), nullable=False)
     name = db.Column(db.String(100), nullable=False)
-    branch = db.Column(db.String(10), nullable=False)
+    branch = db.Column(db.String(100), nullable=False)
     semester = db.Column(db.Integer, nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
@@ -196,7 +196,7 @@ class Notice(db.Model):
     message = db.Column(db.Text, nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     target_audience = db.Column(db.String(20), nullable=False, default='all')
-    branch = db.Column(db.String(10), nullable=True)
+    branch = db.Column(db.String(100), nullable=True)
     year = db.Column(db.Integer, nullable=True)
     is_important = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
@@ -211,7 +211,7 @@ class RGPVScheme(db.Model):
     __tablename__ = 'rgpv_schemes'
 
     id = db.Column(db.Integer, primary_key=True)
-    branch = db.Column(db.String(10), nullable=False)
+    branch = db.Column(db.String(100), nullable=False)
     year = db.Column(db.Integer, nullable=False)
     semester = db.Column(db.Integer, nullable=False)
     subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False)
@@ -230,7 +230,7 @@ class TimetableSlot(db.Model):
     __tablename__ = 'timetable_slots'
 
     id = db.Column(db.Integer, primary_key=True)
-    branch = db.Column(db.String(10), nullable=False)
+    branch = db.Column(db.String(100), nullable=False)
     year = db.Column(db.Integer, nullable=False)
     semester = db.Column(db.Integer, nullable=False)
     day_of_week = db.Column(db.Integer, nullable=False)
@@ -537,91 +537,91 @@ def initialize_rgpv_scheme_complete():
         {'branch': 'CSE', 'year': 4, 'semester': 8, 'code': 'CS805', 'name': 'Major Project-II', 'lectures': 0,
          'tutorials': 0, 'practical': 8, 'credits': 4},
 
-        # ======================= AD BRANCH (AI & Data Science) =======================
+        # ======================= Artificial Intelligence and Data Science BRANCH =======================
         # ---------- 3rd Semester (AD) ----------
-        {'branch': 'AD', 'year': 2, 'semester': 3, 'code': 'AD301', 'name': 'Technical Communication', 'lectures': 3,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 2, 'semester': 3, 'code': 'AD301', 'name': 'Technical Communication', 'lectures': 3,
          'tutorials': 1, 'practical': 0, 'credits': 4},
-        {'branch': 'AD', 'year': 2, 'semester': 3, 'code': 'AD302',
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 2, 'semester': 3, 'code': 'AD302',
          'name': 'Probability and Statistics for Data Science', 'lectures': 3, 'tutorials': 1, 'practical': 0,
          'credits': 4},
-        {'branch': 'AD', 'year': 2, 'semester': 3, 'code': 'AD303', 'name': 'Data Structures', 'lectures': 3,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 2, 'semester': 3, 'code': 'AD303', 'name': 'Data Structures', 'lectures': 3,
          'tutorials': 0, 'practical': 2, 'credits': 4},
-        {'branch': 'AD', 'year': 2, 'semester': 3, 'code': 'AD304', 'name': 'Artificial Intelligence', 'lectures': 3,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 2, 'semester': 3, 'code': 'AD304', 'name': 'Artificial Intelligence', 'lectures': 3,
          'tutorials': 0, 'practical': 2, 'credits': 4},
-        {'branch': 'AD', 'year': 2, 'semester': 3, 'code': 'AD305',
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 2, 'semester': 3, 'code': 'AD305',
          'name': 'Object Oriented Programming & Methodology', 'lectures': 3, 'tutorials': 0, 'practical': 2,
          'credits': 4},
-        {'branch': 'AD', 'year': 2, 'semester': 3, 'code': 'AD306',
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 2, 'semester': 3, 'code': 'AD306',
          'name': 'Computer Workshop/Introduction to Python', 'lectures': 0, 'tutorials': 0, 'practical': 4,
          'credits': 2},
 
         # ---------- 4th Semester (AD) ----------
-        {'branch': 'AD', 'year': 2, 'semester': 4, 'code': 'BT401', 'name': 'Mathematics III', 'lectures': 3,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 2, 'semester': 4, 'code': 'BT401', 'name': 'Mathematics III', 'lectures': 3,
          'tutorials': 1, 'practical': 0, 'credits': 4},
-        {'branch': 'AD', 'year': 2, 'semester': 4, 'code': 'AD402', 'name': 'Database Management Systems',
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 2, 'semester': 4, 'code': 'AD402', 'name': 'Database Management Systems',
          'lectures': 4, 'tutorials': 0, 'practical': 2, 'credits': 5},
-        {'branch': 'AD', 'year': 2, 'semester': 4, 'code': 'AD403',
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 2, 'semester': 4, 'code': 'AD403',
          'name': 'Software Engineering with Agile Methodology', 'lectures': 4, 'tutorials': 0, 'practical': 2,
          'credits': 5},
-        {'branch': 'AD', 'year': 2, 'semester': 4, 'code': 'AD404', 'name': 'Data Science', 'lectures': 3,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 2, 'semester': 4, 'code': 'AD404', 'name': 'Data Science', 'lectures': 3,
          'tutorials': 0, 'practical': 2, 'credits': 4},
-        {'branch': 'AD', 'year': 2, 'semester': 4, 'code': 'AD405', 'name': 'Operating Systems', 'lectures': 3,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 2, 'semester': 4, 'code': 'AD405', 'name': 'Operating Systems', 'lectures': 3,
          'tutorials': 0, 'practical': 2, 'credits': 4},
-        {'branch': 'AD', 'year': 2, 'semester': 4, 'code': 'AD406',
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 2, 'semester': 4, 'code': 'AD406',
          'name': 'Data Analytics using tools', 'lectures': 0, 'tutorials': 0, 'practical': 4, 'credits': 2},
 
         # ---------- 5th Semester (AD) ----------
-        {'branch': 'AD', 'year': 3, 'semester': 5, 'code': 'AD501', 'name': 'Theory of Computation', 'lectures': 3,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 3, 'semester': 5, 'code': 'AD501', 'name': 'Theory of Computation', 'lectures': 3,
          'tutorials': 0, 'practical': 2, 'credits': 4},
-        {'branch': 'AD', 'year': 3, 'semester': 5, 'code': 'AD502', 'name': 'Machine Learning', 'lectures': 3,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 3, 'semester': 5, 'code': 'AD502', 'name': 'Machine Learning', 'lectures': 3,
          'tutorials': 0, 'practical': 2, 'credits': 4},
-        {'branch': 'AD', 'year': 3, 'semester': 5, 'code': 'AD503', 'name': 'Departmental Elective', 'lectures': 3,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 3, 'semester': 5, 'code': 'AD503', 'name': 'Departmental Elective', 'lectures': 3,
          'tutorials': 1, 'practical': 0, 'credits': 4},
-        {'branch': 'AD', 'year': 3, 'semester': 5, 'code': 'AD504', 'name': 'Open Elective', 'lectures': 3,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 3, 'semester': 5, 'code': 'AD504', 'name': 'Open Elective', 'lectures': 3,
          'tutorials': 0, 'practical': 0, 'credits': 3},
-        {'branch': 'AD', 'year': 3, 'semester': 5, 'code': 'AD505', 'name': 'Departmental Elective Lab',
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 3, 'semester': 5, 'code': 'AD505', 'name': 'Departmental Elective Lab',
          'lectures': 0, 'tutorials': 0, 'practical': 4, 'credits': 2},
-        {'branch': 'AD', 'year': 3, 'semester': 5, 'code': 'AD506', 'name': 'Linux Lab', 'lectures': 0,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 3, 'semester': 5, 'code': 'AD506', 'name': 'Linux Lab', 'lectures': 0,
          'tutorials': 0, 'practical': 4, 'credits': 2},
 
         # ---------- 6th Semester (AD) ----------
-        {'branch': 'AD', 'year': 3, 'semester': 6, 'code': 'AD601', 'name': 'Deep Learning', 'lectures': 2,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 3, 'semester': 6, 'code': 'AD601', 'name': 'Deep Learning', 'lectures': 2,
          'tutorials': 1, 'practical': 2, 'credits': 4},
-        {'branch': 'AD', 'year': 3, 'semester': 6, 'code': 'AD602', 'name': 'Computer Networks', 'lectures': 2,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 3, 'semester': 6, 'code': 'AD602', 'name': 'Computer Networks', 'lectures': 2,
          'tutorials': 1, 'practical': 2, 'credits': 4},
-        {'branch': 'AD', 'year': 3, 'semester': 6, 'code': 'AD603', 'name': 'Departmental Elective', 'lectures': 4,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 3, 'semester': 6, 'code': 'AD603', 'name': 'Departmental Elective', 'lectures': 4,
          'tutorials': 0, 'practical': 0, 'credits': 4},
-        {'branch': 'AD', 'year': 3, 'semester': 6, 'code': 'AD604', 'name': 'Open Elective', 'lectures': 4,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 3, 'semester': 6, 'code': 'AD604', 'name': 'Open Elective', 'lectures': 4,
          'tutorials': 0, 'practical': 0, 'credits': 4},
-        {'branch': 'AD', 'year': 3, 'semester': 6, 'code': 'AD605', 'name': 'Departmental Elective Lab',
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 3, 'semester': 6, 'code': 'AD605', 'name': 'Departmental Elective Lab',
          'lectures': 0, 'tutorials': 0, 'practical': 6, 'credits': 3},
-        {'branch': 'AD', 'year': 3, 'semester': 6, 'code': 'AD606', 'name': 'Open Elective Lab', 'lectures': 0,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 3, 'semester': 6, 'code': 'AD606', 'name': 'Open Elective Lab', 'lectures': 0,
          'tutorials': 0, 'practical': 6, 'credits': 3},
 
         # ---------- 7th Semester (AD) ----------
-        {'branch': 'AD', 'year': 4, 'semester': 7, 'code': 'AD701', 'name': 'AI for Computer Vision', 'lectures': 2,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 4, 'semester': 7, 'code': 'AD701', 'name': 'AI for Computer Vision', 'lectures': 2,
          'tutorials': 1, 'practical': 2, 'credits': 4},
-        {'branch': 'AD', 'year': 4, 'semester': 7, 'code': 'AD702', 'name': 'Departmental Elective', 'lectures': 3,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 4, 'semester': 7, 'code': 'AD702', 'name': 'Departmental Elective', 'lectures': 3,
          'tutorials': 1, 'practical': 0, 'credits': 4},
-        {'branch': 'AD', 'year': 4, 'semester': 7, 'code': 'AD703', 'name': 'Open Elective', 'lectures': 3,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 4, 'semester': 7, 'code': 'AD703', 'name': 'Open Elective', 'lectures': 3,
          'tutorials': 0, 'practical': 0, 'credits': 3},
-        {'branch': 'AD', 'year': 4, 'semester': 7, 'code': 'AD704', 'name': 'Departmental Elective Lab',
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 4, 'semester': 7, 'code': 'AD704', 'name': 'Departmental Elective Lab',
          'lectures': 0, 'tutorials': 0, 'practical': 6, 'credits': 3},
-        {'branch': 'AD', 'year': 4, 'semester': 7, 'code': 'AD705', 'name': 'Open Elective Lab', 'lectures': 0,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 4, 'semester': 7, 'code': 'AD705', 'name': 'Open Elective Lab', 'lectures': 0,
          'tutorials': 0, 'practical': 6, 'credits': 3},
-        {'branch': 'AD', 'year': 4, 'semester': 7, 'code': 'AD706', 'name': 'Major Project-I', 'lectures': 0,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 4, 'semester': 7, 'code': 'AD706', 'name': 'Major Project-I', 'lectures': 0,
          'tutorials': 0, 'practical': 8, 'credits': 4},
 
         # ---------- 8th Semester (AD) ----------
-        {'branch': 'AD', 'year': 4, 'semester': 8, 'code': 'AD801', 'name': 'Big Data', 'lectures': 2,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 4, 'semester': 8, 'code': 'AD801', 'name': 'Big Data', 'lectures': 2,
          'tutorials': 1, 'practical': 2, 'credits': 4},
-        {'branch': 'AD', 'year': 4, 'semester': 8, 'code': 'AD802', 'name': 'Departmental Elective', 'lectures': 3,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 4, 'semester': 8, 'code': 'AD802', 'name': 'Departmental Elective', 'lectures': 3,
          'tutorials': 1, 'practical': 0, 'credits': 4},
-        {'branch': 'AD', 'year': 4, 'semester': 8, 'code': 'AD803', 'name': 'Open Elective', 'lectures': 3,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 4, 'semester': 8, 'code': 'AD803', 'name': 'Open Elective', 'lectures': 3,
          'tutorials': 0, 'practical': 0, 'credits': 3},
-        {'branch': 'AD', 'year': 4, 'semester': 8, 'code': 'AD804',
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 4, 'semester': 8, 'code': 'AD804',
          'name': 'Departmental/Open Elective Lab', 'lectures': 0, 'tutorials': 0, 'practical': 6, 'credits': 3},
-        {'branch': 'AD', 'year': 4, 'semester': 8, 'code': 'AD805', 'name': 'Major Project-II', 'lectures': 0,
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 4, 'semester': 8, 'code': 'AD805', 'name': 'Major Project-II', 'lectures': 0,
          'tutorials': 0, 'practical': 8, 'credits': 4},
     ]
 
