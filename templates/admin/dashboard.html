@@ -12,7 +12,8 @@
                             <h2 class="text-white mb-2">
                                 <i class="bi bi-speedometer2 me-3"></i>Admin Dashboard
                             </h2>
-                            <p class="text-white-50 mb-0 fs-5">Welcome back, {{ current_user.fullname }}! Here's your system overview.</p>
+                            <p class="text-white-50 mb-0 fs-5">Welcome back, {{ current_user.fullname }}! Here's your
+                                system overview.</p>
                         </div>
                         <div class="col-md-4 text-end">
                             {% if current_semester %}
@@ -20,7 +21,8 @@
                                 <div class="text-white fw-bold fs-6 mb-1">
                                     <i class="bi bi-calendar-check me-2"></i>Current Session
                                 </div>
-                                <div class="text-white fs-5 fw-bold">{{ current_semester.academic_year }} {{ current_semester.semester_type|upper }}</div>
+                                <div class="text-white fs-5 fw-bold">{{ current_semester.academic_year }} {{
+                                    current_semester.semester_type|upper }}</div>
                                 <div class="text-white small mt-1">
                                     <i class="bi bi-list-ul me-1"></i>
                                     {% for sem in active_semesters %}
@@ -136,7 +138,8 @@
                     <div class="row g-3">
                         <!-- Timetable -->
                         <div class="col-xl-2 col-md-4 col-6">
-                            <a href="{{ url_for('admin_timetable') }}" class="card action-card border-0 text-decoration-none">
+                            <a href="{{ url_for('admin_timetable') }}"
+                                class="card action-card border-0 text-decoration-none">
                                 <div class="card-body text-center p-4">
                                     <div class="icon-shape icon-lg bg-warning text-white rounded-3 mb-3 mx-auto">
                                         <i class="bi bi-calendar-week fs-3"></i>
@@ -149,7 +152,8 @@
 
                         <!-- Manage Semester -->
                         <div class="col-xl-2 col-md-4 col-6">
-                            <a href="{{ url_for('admin_semester_management') }}" class="card action-card border-0 text-decoration-none">
+                            <a href="{{ url_for('admin_semester_management') }}"
+                                class="card action-card border-0 text-decoration-none">
                                 <div class="card-body text-center p-4">
                                     <div class="icon-shape icon-lg bg-danger text-white rounded-3 mb-3 mx-auto">
                                         <i class="bi bi-calendar-range fs-3"></i>
@@ -162,7 +166,8 @@
 
                         <!-- Test Management -->
                         <div class="col-xl-2 col-md-4 col-6">
-                            <a href="{{ url_for('admin_tests') }}" class="card action-card border-0 text-decoration-none">
+                            <a href="{{ url_for('admin_tests') }}"
+                                class="card action-card border-0 text-decoration-none">
                                 <div class="card-body text-center p-4">
                                     <div class="icon-shape icon-lg bg-indigo text-white rounded-3 mb-3 mx-auto">
                                         <i class="bi bi-pencil-square fs-3"></i>
@@ -175,7 +180,8 @@
 
                         <!-- Reports -->
                         <div class="col-xl-2 col-md-4 col-6">
-                            <a href="{{ url_for('admin_reports') }}" class="card action-card border-0 text-decoration-none">
+                            <a href="{{ url_for('admin_reports') }}"
+                                class="card action-card border-0 text-decoration-none">
                                 <div class="card-body text-center p-4">
                                     <div class="icon-shape icon-lg bg-info text-white rounded-3 mb-3 mx-auto">
                                         <i class="bi bi-file-earmark-text fs-3"></i>
@@ -188,7 +194,8 @@
 
                         <!-- Add Professor -->
                         <div class="col-xl-2 col-md-4 col-6">
-                            <a href="#" class="card action-card border-0 text-decoration-none" data-bs-toggle="modal" data-bs-target="#addProfessorModal">
+                            <a href="#" class="card action-card border-0 text-decoration-none" data-bs-toggle="modal"
+                                data-bs-target="#addProfessorModal">
                                 <div class="card-body text-center p-4">
                                     <div class="icon-shape icon-lg bg-primary text-white rounded-3 mb-3 mx-auto">
                                         <i class="bi bi-person-plus fs-3"></i>
@@ -201,7 +208,8 @@
 
                         <!-- Add Subject -->
                         <div class="col-xl-2 col-md-4 col-6">
-                            <a href="#" class="card action-card border-0 text-decoration-none" data-bs-toggle="modal" data-bs-target="#addSubjectModal">
+                            <a href="#" class="card action-card border-0 text-decoration-none" data-bs-toggle="modal"
+                                data-bs-target="#addSubjectModal">
                                 <div class="card-body text-center p-4">
                                     <div class="icon-shape icon-lg bg-success text-white rounded-3 mb-3 mx-auto">
                                         <i class="bi bi-journal-plus fs-3"></i>
@@ -212,9 +220,25 @@
                             </a>
                         </div>
 
+                        <!-- Add Student -->
+                        <div class="col-xl-2 col-md-4 col-6">
+                            <a href="#" class="card action-card border-0 text-decoration-none" data-bs-toggle="modal"
+                                data-bs-target="#addStudentModal">
+                                <div class="card-body text-center p-4">
+                                    <div class="icon-shape icon-lg bg-primary text-white rounded-3 mb-3 mx-auto"
+                                        style="background-color: #0d6efd !important;">
+                                        <i class="bi bi-person-plus-fill fs-3"></i>
+                                    </div>
+                                    <h6 class="fw-bold text-dark mb-1">Add Student</h6>
+                                    <small class="text-muted">New student</small>
+                                </div>
+                            </a>
+                        </div>
+
                         <!-- Notices -->
                         <div class="col-xl-2 col-md-4 col-6">
-                            <a href="{{ url_for('admin_notices') }}" class="card action-card border-0 text-decoration-none">
+                            <a href="{{ url_for('admin_notices') }}"
+                                class="card action-card border-0 text-decoration-none">
                                 <div class="card-body text-center p-4">
                                     <div class="icon-shape icon-lg bg-purple text-white rounded-3 mb-3 mx-auto">
                                         <i class="bi bi-megaphone fs-3"></i>
@@ -274,14 +298,17 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-center">
-                                        {% set prof_allotments = allotments_info|selectattr('prof.id', 'equalto', professor.id)|list %}
+                                        {% set prof_allotments = allotments_info|selectattr('prof.id', 'equalto',
+                                        professor.id)|list %}
                                         <span class="badge bg-success text-white fw-bold border-0">
                                             <i class="bi bi-link-45deg me-1"></i>{{ prof_allotments|length }}
                                         </span>
                                     </td>
                                     <td class="text-end">
-                                        <form method="POST" action="{{ url_for('delete_professor', prof_id=professor.id) }}"
-                                              class="d-inline" onsubmit="return confirm('Delete professor {{ professor.fullname }}?');">
+                                        <form method="POST"
+                                            action="{{ url_for('delete_professor', prof_id=professor.id) }}"
+                                            class="d-inline"
+                                            onsubmit="return confirm('Delete professor {{ professor.fullname }}?');">
                                             <button type="submit" class="btn btn-sm btn-danger text-white">
                                                 <i class="bi bi-trash"></i>
                                             </button>
@@ -299,7 +326,8 @@
                         </div>
                         <h6 class="text-muted">No Professors</h6>
                         <p class="text-muted small">Add your first professor to get started</p>
-                        <button class="btn btn-primary btn-sm text-white" data-bs-toggle="modal" data-bs-target="#addProfessorModal">
+                        <button class="btn btn-primary btn-sm text-white" data-bs-toggle="modal"
+                            data-bs-target="#addProfessorModal">
                             <i class="bi bi-person-plus me-1"></i>Add Professor
                         </button>
                     </div>
@@ -319,7 +347,8 @@
                 </div>
                 <div class="card-body">
                     <!-- Allotment Form -->
-                    <form method="POST" action="{{ url_for('admin_allot_subject') }}" class="mb-4 p-4 bg-light rounded-3 border">
+                    <form method="POST" action="{{ url_for('admin_allot_subject') }}"
+                        class="mb-4 p-4 bg-light rounded-3 border">
                         <div class="row g-3 align-items-end">
                             <div class="col-md-5">
                                 <label class="form-label fw-bold text-dark mb-2">
@@ -346,7 +375,8 @@
                                 </select>
                             </div>
                             <div class="col-md-2">
-                                <button type="submit" class="btn btn-warning w-100 shadow-sm text-white fw-bold" {% if not subjects %}disabled{% endif %}>
+                                <button type="submit" class="btn btn-warning w-100 shadow-sm text-white fw-bold" {% if
+                                    not subjects %}disabled{% endif %}>
                                     <i class="bi bi-plus-circle me-1"></i>Allot
                                 </button>
                             </div>
@@ -374,7 +404,8 @@
                                         <div class="d-flex align-items-center">
                                             <div class="flex-grow-1">
                                                 <div class="fw-bold text-dark">{{ allotment.prof.fullname }}</div>
-                                                <small class="text-muted">{{ allotment.subj.code }} - {{ allotment.subj.name|truncate(20) }}</small>
+                                                <small class="text-muted">{{ allotment.subj.code }} - {{
+                                                    allotment.subj.name|truncate(20) }}</small>
                                             </div>
                                         </div>
                                     </td>
@@ -384,9 +415,9 @@
                                         </span>
                                     </td>
                                     <td class="text-end">
-                                        <form method="POST" action="{{ url_for('remove_allotment', allot_id=allotment.id) }}"
-                                              class="d-inline"
-                                              onsubmit="return confirm('Remove this allotment?');">
+                                        <form method="POST"
+                                            action="{{ url_for('remove_allotment', allot_id=allotment.id) }}"
+                                            class="d-inline" onsubmit="return confirm('Remove this allotment?');">
                                             <button type="submit" class="btn btn-sm btn-danger text-white">
                                                 <i class="bi bi-trash"></i>
                                             </button>
@@ -438,7 +469,8 @@
                                 <div class="card-header bg-transparent border-0 py-3">
                                     <div class="d-flex justify-content-between align-items-start mb-2">
                                         <h6 class="fw-bold text-dark mb-0">{{ stat.subject_code }}</h6>
-                                        <span class="badge {% if stat.percentage >= 75 %}bg-success{% elif stat.percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %} text-white fw-bold">
+                                        <span
+                                            class="badge {% if stat.percentage >= 75 %}bg-success{% elif stat.percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %} text-white fw-bold">
                                             {{ stat.percentage }}%
                                         </span>
                                     </div>
@@ -525,24 +557,29 @@
                                                 <i class="bi bi-file-earmark-text"></i>
                                             </div>
                                             <div>
-                                                <h6 class="mb-0 fw-bold text-dark">{{ report.date.strftime('%d %b %Y') }}</h6>
+                                                <h6 class="mb-0 fw-bold text-dark">{{ report.date.strftime('%d %b %Y')
+                                                    }}</h6>
                                                 <small class="text-muted">
                                                     {% if report.subject_id %}
-                                                        {% set subj = all_subjects|selectattr('id', 'equalto', report.subject_id)|first %}
-                                                        {{ subj.code if subj else 'N/A' }}
+                                                    {% set subj = all_subjects|selectattr('id', 'equalto',
+                                                    report.subject_id)|first %}
+                                                    {{ subj.code if subj else 'N/A' }}
                                                     {% else %}
-                                                        All Subjects Report
+                                                    All Subjects Report
                                                     {% endif %}
                                                 </small>
                                             </div>
                                         </div>
                                     </td>
                                     <td>
-                                        {% set prof = professors|selectattr('id', 'equalto', report.professor_id)|first %}
-                                        <span class="text-dark fw-medium">{{ prof.fullname if prof else 'Admin' }}</span>
+                                        {% set prof = professors|selectattr('id', 'equalto', report.professor_id)|first
+                                        %}
+                                        <span class="text-dark fw-medium">{{ prof.fullname if prof else 'Admin'
+                                            }}</span>
                                     </td>
                                     <td class="text-center">
-                                        <span class="badge bg-{{ 'success' if report.report_path else 'secondary' }} text-white fw-bold">
+                                        <span
+                                            class="badge bg-{{ 'success' if report.report_path else 'secondary' }} text-white fw-bold">
                                             {% if report.report_path %}
                                             <i class="bi bi-check-circle me-1"></i>Generated
                                             {% else %}
@@ -552,7 +589,8 @@
                                     </td>
                                     <td class="text-end">
                                         {% if report.report_path %}
-                                        <a href="{{ url_for('download_report', report_id=report.id) }}" class="btn btn-sm btn-success text-white fw-bold">
+                                        <a href="{{ url_for('download_report', report_id=report.id) }}"
+                                            class="btn btn-sm btn-success text-white fw-bold">
                                             <i class="bi bi-download me-1"></i>Download
                                         </a>
                                         {% endif %}
@@ -595,19 +633,23 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-dark">Username</label>
-                            <input type="text" name="username" class="form-control border bg-white" required placeholder="Enter username">
+                            <input type="text" name="username" class="form-control border bg-white" required
+                                placeholder="Enter username">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-dark">Full Name</label>
-                            <input type="text" name="name" class="form-control border bg-white" required placeholder="Full name">
+                            <input type="text" name="name" class="form-control border bg-white" required
+                                placeholder="Full name">
                         </div>
                         <div class="col-12">
                             <label class="form-label fw-bold text-dark">Email</label>
-                            <input type="email" name="email" class="form-control border bg-white" required placeholder="email@college.com">
+                            <input type="email" name="email" class="form-control border bg-white" required
+                                placeholder="email@college.com">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-dark">Password</label>
-                            <input type="password" name="password" class="form-control border bg-white" required placeholder="••••••••">
+                            <input type="password" name="password" class="form-control border bg-white" required
+                                placeholder="••••••••">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-dark">Branch</label>
@@ -627,7 +669,61 @@
     </div>
 </div>
 
-<!-- Add Subject Modal -->
+<!-- Add Student Modal -->
+<div class="modal fade" id="addStudentModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white border-0">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-person-plus-fill me-2"></i>Add New Student
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_add_student') }}">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Roll Number</label>
+                            <input type="text" name="roll" class="form-control border bg-white" required
+                                placeholder="e.g. 0545CS231001">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Full Name</label>
+                            <input type="text" name="name" class="form-control border bg-white" required
+                                placeholder="Student name">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Branch</label>
+                            <select name="branch" class="form-select border bg-white" required>
+                                <option value="CSE">Computer Science (CSE)</option>
+                                <option value="AD">Data Analytics (AD)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Year</label>
+                            <select name="year" class="form-select border bg-white" required>
+                                <option value="1">1st Year</option>
+                                <option value="2">2nd Year</option>
+                                <option value="3">3rd Year</option>
+                                <option value="4">4th Year</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-info py-2 small mb-0">
+                                <i class="bi bi-info-circle me-1"></i> Student will be able to login using their
+                                <strong>Roll Number</strong> as both username and password.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary text-white fw-bold">Add Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 <div class="modal fade" id="addSubjectModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
@@ -642,11 +738,13 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-dark">Subject Code</label>
-                            <input type="text" name="code" class="form-control border bg-white" required placeholder="e.g., CS-501">
+                            <input type="text" name="code" class="form-control border bg-white" required
+                                placeholder="e.g., CS-501">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-dark">Subject Name</label>
-                            <input type="text" name="name" class="form-control border bg-white" required placeholder="Subject name">
+                            <input type="text" name="name" class="form-control border bg-white" required
+                                placeholder="Subject name">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-bold text-dark">Branch</label>
@@ -675,62 +773,76 @@
 </div>
 
 <style>
-.bg-gradient-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-}
-.card-hover {
-    transition: all 0.3s ease;
-    border: 1px solid transparent;
-}
-.card-hover:hover {
-    transform: translateY(-5px);
-    border-color: #e9ecef;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
-}
-.action-card {
-    transition: all 0.3s ease;
-    border: 1px solid #f8f9fa;
-}
-.action-card:hover {
-    transform: translateY(-3px);
-    border-color: #dee2e6;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-}
-.icon-shape {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 60px;
-    height: 60px;
-}
-.icon-shape.icon-sm {
-    width: 40px;
-    height: 40px;
-}
-.icon-shape.icon-lg {
-    width: 80px;
-    height: 80px;
-}
-.bg-purple {
-    background-color: #6f42c1 !important;
-}
-.bg-indigo {
-    background-color: #6610f2 !important;
-}
-.table > :not(caption) > * > * {
-    border-bottom-width: 0;
-}
-.border-bottom {
-    border-bottom: 1px solid #f8f9fa !important;
-}
-.text-dark {
-    color: #212529 !important;
-}
-.fw-bold {
-    font-weight: 600 !important;
-}
-.badge {
-    font-weight: 600 !important;
-}
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+
+    .card-hover {
+        transition: all 0.3s ease;
+        border: 1px solid transparent;
+    }
+
+    .card-hover:hover {
+        transform: translateY(-5px);
+        border-color: #e9ecef;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .action-card {
+        transition: all 0.3s ease;
+        border: 1px solid #f8f9fa;
+    }
+
+    .action-card:hover {
+        transform: translateY(-3px);
+        border-color: #dee2e6;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .icon-shape {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 60px;
+        height: 60px;
+    }
+
+    .icon-shape.icon-sm {
+        width: 40px;
+        height: 40px;
+    }
+
+    .icon-shape.icon-lg {
+        width: 80px;
+        height: 80px;
+    }
+
+    .bg-purple {
+        background-color: #6f42c1 !important;
+    }
+
+    .bg-indigo {
+        background-color: #6610f2 !important;
+    }
+
+    .table> :not(caption)>*>* {
+        border-bottom-width: 0;
+    }
+
+    .border-bottom {
+        border-bottom: 1px solid #f8f9fa !important;
+    }
+
+    .text-dark {
+        color: #212529 !important;
+    }
+
+    .fw-bold {
+        font-weight: 600 !important;
+    }
+
+    .badge {
+        font-weight: 600 !important;
+    }
 </style>
 {% endblock %}

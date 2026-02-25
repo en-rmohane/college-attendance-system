@@ -2974,6 +2974,67 @@ def add_professor():
     flash(f'Professor {name} added successfully!', 'success')
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/admin/add_student', methods=['POST'])
+@login_required
+def admin_add_student():
+    if current_user.role != 'admin':
+        flash('Access denied', 'danger')
+        return redirect(url_for('login'))
+
+    roll = request.form.get('roll', '').strip()
+    name = request.form.get('name', '').strip()
+    branch = request.form.get('branch', 'CSE')
+    try:
+        year = int(request.form.get('year', 1))
+    except ValueError:
+        flash('Invalid year selected', 'danger')
+        return redirect(url_for('admin_dashboard'))
+
+    if not all([roll, name, branch, year]):
+        flash('All fields are required', 'danger')
+        return redirect(url_for('admin_dashboard'))
+
+    # Check if student already exists
+    if Student.query.filter_by(roll=roll).first():
+        flash(f'Student with Roll Number {roll} already exists', 'danger')
+        return redirect(url_for('admin_dashboard'))
+
+    try:
+        # 1. Create Student record
+        new_student = Student(
+            roll=roll,
+            name=name,
+            branch=branch,
+            year=year
+        )
+        db.session.add(new_student)
+
+        # 2. Create User record for login
+        # Check if user already exists (unlikely if student doesn't, but for safety)
+        existing_user = User.query.filter_by(username=roll).first()
+        if not existing_user:
+            student_user = User(
+                username=roll,
+                fullname=name,
+                email=f"{roll.lower()}@college.com",
+                role='student',
+                branch=branch,
+                student_roll=roll,
+                email_verified=True
+            )
+            student_user.set_password(roll) # Default password is roll number
+            db.session.add(student_user)
+        
+        db.session.commit()
+        flash(f'Student {name} added successfully! They can now login with Roll Number as password.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error adding student: {str(e)}', 'danger')
+        print(f"[ERROR] Add Student: {e}")
+
+    return redirect(url_for('admin_dashboard'))
+
+
 from sqlalchemy import or_   # 👈 Top par (baaki imports ke saath) ek baar add kar dena
 
 from sqlalchemy import or_

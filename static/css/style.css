@@ -9,12 +9,14 @@
     --secondary-navy: #1e293b;
     --accent-gold: #fbbf24;
     --text-main: #f8fafc;
+    --text-label: #cbd5e1;
     --text-muted: #94a3b8;
     --glass-bg: rgba(255, 255, 255, 0.05);
     --glass-border: rgba(255, 255, 255, 0.1);
     --success-green: #10b981;
     --error-red: #ef4444;
 }
+
 
 body {
     background: radial-gradient(circle at top right, var(--secondary-navy), var(--primary-navy));
@@ -72,9 +74,17 @@ body {
 
 /* Animations */
 @keyframes float {
-    0% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-    100% { transform: translateY(0px); }
+    0% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+
+    100% {
+        transform: translateY(0px);
+    }
 }
 
 .floating {
@@ -86,5 +96,6 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: calc(100vh - 80px); /* Adjust for navbar if needed */
+    min-height: calc(100vh - 80px);
+    /* Adjust for navbar if needed */
 }
