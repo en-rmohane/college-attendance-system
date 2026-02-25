@@ -35,10 +35,18 @@ app.config['MAIL_DEFAULT_SENDER'] = 'your-email@gmail.com'
 
 # Database configuration
 basedir = os.path.abspath(os.path.dirname(__file__))
-instance_dir = os.path.join(basedir, 'instance')
-os.makedirs(instance_dir, exist_ok=True)
-db_path = os.path.join(instance_dir, 'college_attendance.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+IS_VERCEL = os.environ.get('VERCEL') == '1'
+
+if not IS_VERCEL:
+    instance_dir = os.path.join(basedir, 'instance')
+    os.makedirs(instance_dir, exist_ok=True)
+    db_path = os.path.join(instance_dir, 'college_attendance.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+else:
+    # On Vercel, we only use the remote DATABASE_URL set in app.py
+    # This file's app.config might not be used, but we keep it safe
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///')
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
@@ -55,9 +63,12 @@ UPLOAD_FOLDER = os.path.join(basedir, 'uploads')
 NOTES_FOLDER = os.path.join(UPLOAD_FOLDER, 'notes')
 PROFILE_PHOTOS_FOLDER = os.path.join(UPLOAD_FOLDER, 'profile_photos')
 
-os.makedirs(REPORT_DIR, exist_ok=True)
-os.makedirs(NOTES_FOLDER, exist_ok=True)
-os.makedirs(PROFILE_PHOTOS_FOLDER, exist_ok=True)
+if not IS_VERCEL:
+    os.makedirs(REPORT_DIR, exist_ok=True)
+    os.makedirs(NOTES_FOLDER, exist_ok=True)
+    os.makedirs(PROFILE_PHOTOS_FOLDER, exist_ok=True)
+else:
+    print("ℹ️ Running on Vercel: Skipping directory creation for reports/uploads")
 
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'ppt', 'pptx', 'txt', 'jpg', 'png', 'jpeg', 'gif'}
 MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB
