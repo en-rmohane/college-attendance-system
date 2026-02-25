@@ -3003,7 +3003,7 @@ def admin_add_student():
         flash('All fields are required', 'danger')
         return redirect(url_for('admin_dashboard'))
 
-    # Check if student already exists
+    # Check if student already exists (case-insensitive)
     if Student.query.filter(db.func.lower(Student.roll) == roll.lower()).first():
         flash(f'Student with Roll Number {roll} already exists', 'danger')
         return redirect(url_for('admin_dashboard'))
@@ -4416,9 +4416,10 @@ def student_dashboard():
         flash('Access denied', 'danger')
         return redirect(url_for('login'))
 
-    student = Student.query.filter_by(roll=current_user.student_roll).first()
+    student = Student.query.filter(db.func.lower(Student.roll) == current_user.student_roll.lower()).first()
     if not student:
-        flash('Student record not found', 'danger')
+        print(f"[DEBUG] Student record NOT FOUND for roll: {current_user.student_roll}")
+        flash('Student record not found. Please contact administration.', 'danger')
         return redirect(url_for('logout'))
 
     # Get current semesters
