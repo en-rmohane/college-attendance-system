@@ -248,6 +248,22 @@
                                 </div>
                             </a>
                         </div>
+
+                        <!-- Sync Students -->
+                        <div class="col-xl-2 col-md-4 col-6">
+                            <a href="{{ url_for('fix_student_accounts') }}"
+                                class="card action-card border-0 text-decoration-none"
+                                onclick="return confirm('Sync student accounts now? This will create login credentials for all students who don\'t have them.');">
+                                <div class="card-body text-center p-4">
+                                    <div class="icon-shape icon-lg bg-info text-white rounded-3 mb-3 mx-auto"
+                                        style="background-color: #0dcaf0 !important;">
+                                        <i class="bi bi-arrow-repeat fs-3"></i>
+                                    </div>
+                                    <h6 class="fw-bold text-dark mb-1">Sync Students</h6>
+                                    <small class="text-muted">Account fix</small>
+                                </div>
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>

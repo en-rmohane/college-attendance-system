@@ -739,15 +739,15 @@ def ensure_student_accounts():
             continue
 
         student_user = User(
-            username=student.roll,
+            username=student.roll.upper(),
             fullname=student.name,
             email=f"{student.roll.lower()}@college.com",
             role='student',
             branch=student.branch,
-            student_roll=student.roll,
+            student_roll=student.roll.upper(),
             email_verified=True
         )
-        student_user.set_password(student.roll)
+        student_user.set_password(student.roll.upper())
         db.session.add(student_user)
         created_count += 1
 
@@ -1846,9 +1846,9 @@ def login():
         login_input = request.form.get('email', '').strip()
         password = request.form.get('password', '')
 
-        user = User.query.filter_by(email=login_input).first()
+        user = User.query.filter(db.func.lower(User.email) == login_input.lower()).first()
         if not user:
-            user = User.query.filter_by(username=login_input).first()
+            user = User.query.filter(db.func.lower(User.username) == login_input.lower()).first()
 
         if user and user.check_password(password):
             if not user.email_verified and user.role != 'admin' and user.role != 'student':
@@ -3014,15 +3014,15 @@ def admin_add_student():
         existing_user = User.query.filter_by(username=roll).first()
         if not existing_user:
             student_user = User(
-                username=roll,
+                username=roll.upper(),
                 fullname=name,
                 email=f"{roll.lower()}@college.com",
                 role='student',
                 branch=branch,
-                student_roll=roll,
+                student_roll=roll.upper(),
                 email_verified=True
             )
-            student_user.set_password(roll) # Default password is roll number
+            student_user.set_password(roll.upper()) # Default password is roll number
             db.session.add(student_user)
         
         db.session.commit()
@@ -3151,15 +3151,15 @@ def fix_student_accounts():
 
             if not existing_user:
                 student_user = User(
-                    username=student.roll,
+                    username=student.roll.upper(),
                     fullname=student.name,
                     email=f"{student.roll.lower()}@college.com",
                     role='student',
                     branch=student.branch,
-                    student_roll=student.roll,
+                    student_roll=student.roll.upper(),
                     email_verified=True
                 )
-                student_user.set_password(student.roll)
+                student_user.set_password(student.roll.upper())
                 db.session.add(student_user)
                 created_count += 1
                 result += f"<p>[OK] Created: {student.roll} - {student.name}</p>"
