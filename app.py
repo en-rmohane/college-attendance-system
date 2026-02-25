@@ -1845,26 +1845,35 @@ def login():
     if request.method == 'POST':
         login_input = request.form.get('email', '').strip()
         password = request.form.get('password', '')
+        
+        print(f"[DEBUG] Login attempt for: '{login_input}'")
 
         user = User.query.filter(db.func.lower(User.email) == login_input.lower()).first()
         if not user:
             user = User.query.filter(db.func.lower(User.username) == login_input.lower()).first()
 
-        if user and user.check_password(password):
-            if not user.email_verified and user.role != 'admin' and user.role != 'student':
-                flash('Please verify your email before logging in', 'warning')
-                return redirect(url_for('login'))
+        if user:
+            print(f"[DEBUG] User found: {user.username} (Role: {user.role})")
+            if user.check_password(password):
+                print(f"[DEBUG] Password correct for {user.username}")
+                if not user.email_verified and user.role != 'admin' and user.role != 'student':
+                    flash('Please verify your email before logging in', 'warning')
+                    return redirect(url_for('login'))
 
-            login_user(user)
-            flash(f'Welcome back, {user.fullname}!', 'success')
+                login_user(user)
+                flash(f'Welcome back, {user.fullname}!', 'success')
 
-            if user.role == 'admin':
-                return redirect(url_for('admin_dashboard'))
-            elif user.role == 'professor':
-                return redirect(url_for('prof_dashboard'))
+                if user.role == 'admin':
+                    return redirect(url_for('admin_dashboard'))
+                elif user.role == 'professor':
+                    return redirect(url_for('prof_dashboard'))
+                else:
+                    return redirect(url_for('student_dashboard'))
             else:
-                return redirect(url_for('student_dashboard'))
+                print(f"[DEBUG] Password INCORRECT for {user.username}")
+                flash('Invalid email/username or password', 'danger')
         else:
+            print(f"[DEBUG] No user found for: '{login_input}'")
             flash('Invalid email/username or password', 'danger')
 
     return render_template('login.html')
