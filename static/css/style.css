@@ -1,0 +1,90 @@
+/* 
+   College Attendance System - Premium Design System
+   Theme: Modern Academic / Tech
+   Colors: Navy, Gold, White, Glassmorphism
+*/
+
+:root {
+    --primary-navy: #0f172a;
+    --secondary-navy: #1e293b;
+    --accent-gold: #fbbf24;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --success-green: #10b981;
+    --error-red: #ef4444;
+}
+
+body {
+    background: radial-gradient(circle at top right, var(--secondary-navy), var(--primary-navy));
+    color: var(--text-main);
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+    margin: 0;
+    overflow-x: hidden;
+}
+
+/* Glassmorphism Classes */
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-input {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    color: white !important;
+    padding: 12px 16px;
+    transition: all 0.3s ease;
+}
+
+.glass-input:focus {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.2);
+    outline: none;
+}
+
+/* Buttons */
+.btn-premium {
+    background: linear-gradient(135deg, var(--accent-gold), #f59e0b);
+    color: var(--primary-navy);
+    border: none;
+    border-radius: 12px;
+    padding: 12px 24px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.btn-premium:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(251, 191, 36, 0.4);
+    color: var(--primary-navy);
+}
+
+/* Animations */
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+}
+
+.floating {
+    animation: float 4s ease-in-out infinite;
+}
+
+/* Responsive Login Container */
+.login-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 80px); /* Adjust for navbar if needed */
+}
