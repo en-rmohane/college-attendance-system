@@ -1853,7 +1853,9 @@ def login():
             user = User.query.filter(db.func.lower(User.username) == login_input.lower()).first()
 
         if user:
-            print(f"[DEBUG] User found: {user.username} (Role: {user.role})")
+            print(f"[DEBUG] User found: '{user.username}' (Input: '{login_input}')")
+            
+            # Check password normally
             if user.check_password(password):
                 print(f"[DEBUG] Password correct for {user.username}")
                 if not user.email_verified and user.role != 'admin' and user.role != 'student':
@@ -1870,7 +1872,14 @@ def login():
                 else:
                     return redirect(url_for('student_dashboard'))
             else:
-                print(f"[DEBUG] Password INCORRECT for {user.username}")
+                # Password incorrect - let's check if it would have worked with uppercase roll number
+                # This helps diagnose if the student is typing lowercase password
+                if user.role == 'student' and user.student_roll:
+                    if password.upper() == user.student_roll.upper():
+                        print(f"[DEBUG] Password INCORRECT, but matches UPPERCASE of student roll: {user.student_roll}")
+                    else:
+                        print(f"[DEBUG] Password INCORRECT for {user.username}. Typed length: {len(password)}")
+
                 flash('Invalid email/username or password', 'danger')
         else:
             print(f"[DEBUG] No user found for: '{login_input}'")
@@ -3005,13 +3014,13 @@ def admin_add_student():
 
     # Check if student already exists (case-insensitive)
     if Student.query.filter(db.func.lower(Student.roll) == roll.lower()).first():
-        flash(f'Student with Roll Number {roll} already exists', 'danger')
+        flash(f'Student with Roll Number {roll.upper()} already exists', 'danger')
         return redirect(url_for('admin_dashboard'))
 
     try:
         # 1. Create Student record
         new_student = Student(
-            roll=roll,
+            roll=roll.upper(), # <--- FORCE UPPERCASE
             name=name,
             branch=branch,
             year=year
@@ -3019,8 +3028,8 @@ def admin_add_student():
         db.session.add(new_student)
 
         # 2. Create User record for login
-        # Check if user already exists (unlikely if student doesn't, but for safety)
-        existing_user = User.query.filter_by(username=roll).first()
+        # Check if user already exists (case-insensitive)
+        existing_user = User.query.filter(db.func.lower(User.username) == roll.lower()).first()
         if not existing_user:
             student_user = User(
                 username=roll.upper(),
@@ -3031,11 +3040,16 @@ def admin_add_student():
                 student_roll=roll.upper(),
                 email_verified=True
             )
-            student_user.set_password(roll.upper()) # Default password is roll number
+            student_user.set_password(roll.upper()) # Default password is UPPERCASE roll
             db.session.add(student_user)
+        else:
+            # Re-sync existing user if they match by username
+            existing_user.username = roll.upper()
+            existing_user.student_roll = roll.upper()
+            existing_user.set_password(roll.upper())
         
         db.session.commit()
-        flash(f'Student {name} added successfully! They can now login with Roll Number as password.', 'success')
+        flash(f'Student {name} added successfully! Login with {roll.upper()}', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error adding student: {str(e)}', 'danger')
@@ -3044,9 +3058,8 @@ def admin_add_student():
     return redirect(url_for('admin_dashboard'))
 
 
-from sqlalchemy import or_   # 👈 Top par (baaki imports ke saath) ek baar add kar dena
 
-from sqlalchemy import or_
+# ========== ADMIN ACTIONS CONTINUE ==========
 
 @app.route('/admin/delete_professor/<int:prof_id>', methods=['POST'])
 @login_required
