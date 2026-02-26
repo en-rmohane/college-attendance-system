@@ -96,15 +96,15 @@ def setup_database():
             else:
                 db_url += "?sslmode=require"
 
-        print(f"✅ Database configured: {db_url[:60]}...")
+        print(f"OK Database configured: {db_url[:60]}...")
         return db_url
 
     # Local development - SQLite
     if IS_VERCEL:
-        print("⚠️ WARNING: DATABASE_URL is not set on Vercel. App will use local SQLite which is READ-ONLY and will NOT save data.")
+        print("WARNING: DATABASE_URL is not set on Vercel. App will use local SQLite which is READ-ONLY and will NOT save data.")
     
     db_url = "sqlite:///college_attendance.db"
-    print(f"✅ Database configured (local): {db_url}")
+    print(f"OK Database configured (local): {db_url}")
     return db_url
 
 app.config["SQLALCHEMY_DATABASE_URI"] = setup_database()
@@ -642,10 +642,10 @@ def initialize_rgpv_scheme_complete():
                         db.session.add(scheme)
                         added_count += 1
                 else:
-                    print(f"⚠️  Skipping invalid scheme data: {scheme_data}")
+                    print(f"[WARNING]  Skipping invalid scheme data: {scheme_data}")
 
             except Exception as e:
-                print(f"⚠️  Error processing scheme {scheme_data}: {e}")
+                print(f"[WARNING]  Error processing scheme {scheme_data}: {e}")
                 continue
 
         db.session.commit()
@@ -769,11 +769,11 @@ def init_database():
 
     with app.app_context():
         try:
-            print("🚀 Starting database initialization...")
+            print("Starting database initialization...")
 
             # Create all tables
             db.create_all()
-            print("✓ Database tables created successfully")
+            print("[OK] Database tables created successfully")
 
             # Create default admin user if not exists
             if not User.query.filter_by(role='admin').first():
@@ -788,12 +788,12 @@ def init_database():
                     is_active=True
                 )
                 db.session.add(admin)
-                print("✓ Default admin user created")
+                print("[OK] Default admin user created")
 
             # Load initial data if needed
             subject_count = Subject.query.count()
             if subject_count == 0:
-                print("✓ Loading initial data...")
+                print("[OK] Loading initial data...")
                 preload_subjects()  # This function is now defined above
                 load_students_from_files()  # This function is now defined above
                 ensure_student_accounts()
@@ -802,10 +802,10 @@ def init_database():
                 migrate_test_system()
 
             db.session.commit()
-            print("✅ Database initialization completed successfully!")
+            print("Database initialization completed successfully!")
 
         except Exception as e:
-            print(f"❌ Database initialization failed: {str(e)}")
+            print(f"Database initialization failed: {str(e)}")
             import traceback
             traceback.print_exc()
 
@@ -1503,7 +1503,7 @@ def save_timetable_to_db(timetables):
 def send_email(to_email, subject, body):
     """Send email using Brevo SMTP - Special setup for Brevo"""
     try:
-        print(f"🔄 Attempting to send email to: {to_email}")
+        print(f"[RETRY] Attempting to send email to: {to_email}")
 
         # Create message
         msg = MIMEMultipart()
@@ -1512,24 +1512,24 @@ def send_email(to_email, subject, body):
         msg['Subject'] = subject
         msg.attach(MIMEText(body, 'html'))
 
-        print("🔧 Step 1: Connecting to Brevo SMTP...")
+        print("[FIX] Step 1: Connecting to Brevo SMTP...")
 
         # Brevo specific setup
         server = smtplib.SMTP(app.config['MAIL_SERVER'], app.config['MAIL_PORT'])
         server.set_debuglevel(1)  # Detailed debug output
 
-        print("🔧 Step 2: Starting TLS...")
+        print("[FIX] Step 2: Starting TLS...")
         server.starttls()
 
-        print("🔧 Step 3: Brevo Authentication...")
+        print("[FIX] Step 3: Brevo Authentication...")
         # Brevo requires both username and password for authentication
         server.login(app.config['MAIL_USERNAME'], app.config['MAIL_PASSWORD'])
 
-        print("🔧 Step 4: Sending email...")
+        print("[FIX] Step 4: Sending email...")
         text = msg.as_string()
         server.sendmail(app.config['MAIL_DEFAULT_SENDER'], to_email, text)
 
-        print("🔧 Step 5: Closing connection...")
+        print("[FIX] Step 5: Closing connection...")
         server.quit()
 
         # Log successful email
@@ -1542,16 +1542,16 @@ def send_email(to_email, subject, body):
         db.session.add(email_log)
         db.session.commit()
 
-        print(f"✅ Email sent successfully to {to_email}")
+        print(f"[OK] Email sent successfully to {to_email}")
         return True
 
     except smtplib.SMTPAuthenticationError as e:
-        print(f"❌ SMTP Authentication Failed: {e}")
-        print("💡 Brevo Auth Tip: Make sure you're using the SMTP key, not API key")
+        print(f"[ERROR] SMTP Authentication Failed: {e}")
+        print("[TIP] Brevo Auth Tip: Make sure you're using the SMTP key, not API key")
         return False
 
     except Exception as e:
-        print(f"❌ Email sending error: {e}")
+        print(f"[ERROR] Email sending error: {e}")
         # But still try to send (Brevo might have different behavior)
         return False
 
@@ -1559,7 +1559,7 @@ def send_email(to_email, subject, body):
 def send_otp_via_brevo_api(email, otp):
     """Try simple text email"""
     print("=" * 60)
-    print(f"🎯 OTP FOR {email}: {otp}")
+    print(f"[GOAL] OTP FOR {email}: {otp}")
     print("=" * 60)
 
     try:
@@ -1571,7 +1571,7 @@ def send_otp_via_brevo_api(email, otp):
 
         api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
 
-        # 🎯 SIMPLE TEXT EMAIL - NO HTML
+        # [GOAL] SIMPLE TEXT EMAIL - NO HTML
         send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
             to=[{"email": email}],
             text_content=f"Your OTP is: {otp}",
@@ -1580,27 +1580,27 @@ def send_otp_via_brevo_api(email, otp):
         )
 
         api_response = api_instance.send_transac_email(send_smtp_email)
-        print(f"✅ Simple email sent! Message ID: {api_response.message_id}")
+        print(f"[OK] Simple email sent! Message ID: {api_response.message_id}")
         return True
 
     except Exception as e:
-        print(f"❌ Brevo failed: {e}")
+        print(f"[ERROR] Brevo failed: {e}")
         return True  # Fallback to console
 def send_otp_email(email, otp):
     """Send OTP email using Brevo API"""
-    print(f"📧 Sending OTP to: {email}")
-    print(f"🔑 OTP: {otp}")
+    print(f"[EMAIL] Sending OTP to: {email}")
+    print(f"[KEY] OTP: {otp}")
 
     # Try Brevo Transactional API
     success = send_otp_via_brevo_api(email, otp)
 
     if success:
-        print("✅ OTP sent via Brevo Transactional API")
+        print("[OK] OTP sent via Brevo Transactional API")
         return True
     else:
         # Fallback
         print("=" * 50)
-        print(f"🎯 OTP FOR {email}: {otp}")
+        print(f"[GOAL] OTP FOR {email}: {otp}")
         print("=" * 50)
         return True
 
@@ -1618,14 +1618,14 @@ def test_simple_email():
     test_email = "ravikumarmohane@gmail.com"
     test_otp = generate_otp()
 
-    print("🧪 Testing SIMPLE text email...")
+    print("[TEST] Testing SIMPLE text email...")
     success = send_otp_via_brevo_api(test_email, test_otp)
 
     return f"""
     <h3>Simple Email Test</h3>
     <p>Email: {test_email}</p>
     <p>OTP: {test_otp}</p>
-    <p>Result: {'✅ SUCCESS' if success else '❌ FAILED'}</p>
+    <p>Result: {'[OK] SUCCESS' if success else '[ERROR] FAILED'}</p>
     <p>Check server console for detailed logs</p>
     """
 @app.template_filter('startswith')
@@ -1900,12 +1900,12 @@ def logout():
 def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
-        print(f"🔑 Password reset requested for: {email}")
+        print(f"[KEY] Password reset requested for: {email}")
 
         user = User.query.filter_by(email=email).first()
 
         if user:
-            print(f"✅ User found: {user.fullname}")
+            print(f"[OK] User found: {user.fullname}")
 
             otp = generate_otp()
             expires = datetime.now() + timedelta(minutes=10)
@@ -1922,7 +1922,7 @@ def forgot_password():
             db.session.add(reset_entry)
             db.session.commit()
 
-            print(f"📧 Sending OTP via Brevo API...")
+            print(f"[EMAIL] Sending OTP via Brevo API...")
 
             # Send OTP
             if send_otp_email(user.email, otp):
@@ -1932,7 +1932,7 @@ def forgot_password():
 
             return redirect(url_for('reset_password', email=email))
         else:
-            print(f"❌ User not found: {email}")
+            print(f"[ERROR] User not found: {email}")
             flash('Email address not found. Please check your email.', 'danger')
 
     return render_template('auth/forgot_password.html')
@@ -3172,7 +3172,7 @@ def fix_student_accounts():
     result += f"<p><strong>Total Users in DB:</strong> {user_count}</p><hr>"
 
     if not students:
-        result += "<p style='color: orange;'>⚠️ No students found in the Student table! Did you import them?</p>"
+        result += "<p style='color: orange;'>[WARNING] No students found in the Student table! Did you import them?</p>"
 
     for student in students:
         try:
@@ -4082,7 +4082,7 @@ def create_test():
             # Calculate end time in UTC
             end_time_utc = start_time_utc + timedelta(minutes=duration)
 
-            print(f"⏰ TIME CONVERSION DEBUG:")
+            print(f"[TIME] TIME CONVERSION DEBUG:")
             print(f"  Professor entered: {start_time_naive} (assumed IST)")
             print(f"  As IST: {start_time_ist}")
             print(f"  Stored as UTC: {start_time_utc}")
@@ -4149,7 +4149,7 @@ def create_test():
 
     except Exception as e:
         db.session.rollback()
-        print(f"❌ ERROR in create_test: {str(e)}")
+        print(f"[ERROR] ERROR in create_test: {str(e)}")
         import traceback
         traceback.print_exc()
         flash(f'Error creating test: {str(e)}', 'danger')
@@ -4775,7 +4775,7 @@ def start_test_smart(test_id):
         flash('Test time has expired', 'warning')
         return redirect(url_for('student_tests'))
 
-    # ✅ CRITICAL FIX: Add this return statement
+    # [OK] CRITICAL FIX: Add this return statement
     return render_template('student/test_page_smart.html',
                            test=test,
                            questions=questions,
@@ -5069,7 +5069,7 @@ def debug_templates():
 
     result = "<h3>Template Files Status</h3>"
     for file, exists in files.items():
-        status = "✅ EXISTS" if exists else "❌ MISSING"
+        status = "[OK] EXISTS" if exists else "[ERROR] MISSING"
         result += f"<p>{file}: {status}</p>"
 
     return result
@@ -5091,15 +5091,15 @@ def debug_simple_test(test_id):
 
 @app.route('/urgent/test')
 def urgent_test():
-    return "🚨 URGENT TEST - ROUTES WORKING!"
+    return "[ALERT] URGENT TEST - ROUTES WORKING!"
 
 @app.route('/urgent/instructions/<int:test_id>')
 def urgent_instructions(test_id):
-    return f"📝 URGENT INSTRUCTIONS - Test {test_id}"
+    return f"[INFO] URGENT INSTRUCTIONS - Test {test_id}"
 
 @app.route('/urgent/start/<int:test_id>')
 def urgent_start(test_id):
-    return f"🎯 URGENT START - Test {test_id}"
+    return f"[GOAL] URGENT START - Test {test_id}"
 @app.route('/admin/fix_all_attempt_marks/<int:test_id>')
 @login_required
 def fix_all_attempt_marks(test_id):
@@ -5345,7 +5345,7 @@ def generate_timetable():
             else:
                 flash("Database save failed!", "danger")
         else:
-            flash("Timetable generation failed — Check subject allotment & professor availability.", "danger")
+            flash("Timetable generation failed - Check subject allotment & professor availability.", "danger")
 
     except Exception as e:
         print(f"[ERROR] Timetable generation crash: {e}")
@@ -5554,6 +5554,8 @@ def migrate_data():
         postgres_url = os.environ.get('DATABASE_URL')
         if postgres_url.startswith('postgres://'):
             postgres_url = postgres_url.replace('postgres://', 'postgresql+psycopg://', 1)
+        elif postgres_url.startswith('postgresql://'):
+            postgres_url = postgres_url.replace('postgresql://', 'postgresql+psycopg://', 1)
         postgres_engine = create_engine(postgres_url)
 
         # List of tables to migrate
@@ -5571,10 +5573,10 @@ def migrate_data():
                 # Write to PostgreSQL
                 df.to_sql(table, postgres_engine, if_exists='replace', index=False)
 
-                migrated_tables.append(f"✅ {table}: {len(df)} records")
+                migrated_tables.append(f"[OK] {table}: {len(df)} records")
 
             except Exception as e:
-                migrated_tables.append(f"❌ {table}: {str(e)}")
+                migrated_tables.append(f"[ERROR] {table}: {str(e)}")
 
         # Update database configuration to use PostgreSQL
         app.config['SQLALCHEMY_DATABASE_URI'] = postgres_url
@@ -5633,7 +5635,7 @@ def import_data():
                             user.set_password('temp123')  # Set temporary password
                             db.session.add(user)
                     db.session.commit()
-                    results.append(f"✅ Users: {len(records)} imported")
+                    results.append(f"[OK] Users: {len(records)} imported")
 
                 elif table_name == 'student':
                     for record in records:
@@ -5647,7 +5649,7 @@ def import_data():
                             )
                             db.session.add(student)
                     db.session.commit()
-                    results.append(f"✅ Students: {len(records)} imported")
+                    results.append(f"[OK] Students: {len(records)} imported")
 
                 elif table_name == 'subject':
                     for record in records:
@@ -5662,7 +5664,7 @@ def import_data():
                             )
                             db.session.add(subject)
                     db.session.commit()
-                    results.append(f"✅ Subjects: {len(records)} imported")
+                    results.append(f"[OK] Subjects: {len(records)} imported")
 
                 elif table_name == 'professor_subject':
                     for record in records:
@@ -5683,12 +5685,12 @@ def import_data():
                                 )
                                 db.session.add(allotment)
                     db.session.commit()
-                    results.append(f"✅ Professor Subjects: {len(records)} imported")
+                    results.append(f"[OK] Professor Subjects: {len(records)} imported")
 
                 # Add more tables as needed...
 
             except Exception as e:
-                results.append(f"❌ {table_name}: Error - {str(e)}")
+                results.append(f"[ERROR] {table_name}: Error - {str(e)}")
                 db.session.rollback()
 
         # Create admin notice
@@ -5721,18 +5723,18 @@ def test_brevo_transactional():
     test_email = "ravikumarmohane@gmail.com"
     test_otp = generate_otp()
 
-    print("🧪 Testing Brevo Transactional API...")
+    print("[TEST] Testing Brevo Transactional API...")
     success = send_otp_via_brevo_api(test_email, test_otp)
 
     return f"""
     <h3>Brevo Transactional API Test</h3>
     <p><strong>Email:</strong> {test_email}</p>
     <p><strong>OTP:</strong> {test_otp}</p>
-    <p><strong>Result:</strong> {'✅ SUCCESS' if success else '❌ FAILED'}</p>
+    <p><strong>Result:</strong> {'[OK] SUCCESS' if success else '[ERROR] FAILED'}</p>
     <p><strong>Check:</strong></p>
     <ol>
         <li>Server console for detailed logs</li>
-        <li>Brevo Dashboard → Transactional Emails</li>
+        <li>Brevo Dashboard -> Transactional Emails</li>
         <li>Your email inbox + spam folder</li>
     </ol>
     """

@@ -1,214 +1,189 @@
-# postgres_import.py - FIXED VERSION
+# postgres_import.py - IDEMPOTENT VERSION
 import json
 import os
 from datetime import datetime
+from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from app import app, db
-from models import User, Student, Subject, ProfessorSubject, CurrentSemester, RGPVScheme, TimetableSlot, Test, Question, \
-    TestAttempt, StudentAnswer, Notice
-
+from models import (User, Student, Subject, ProfessorSubject, CurrentSemester, 
+                    RGPVScheme, TimetableSlot, Test, Question, TestAttempt, 
+                    StudentAnswer, Notice, Attendance, AttendanceReport, 
+                    QuestionSection, Faculty)
 
 def parse_datetime(dt_str):
-    """Convert string to datetime object"""
-    if not dt_str:
+    if not dt_str or dt_str == 'None':
         return None
+    formats = ['%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d']
+    for fmt in formats:
+        try:
+            return datetime.strptime(dt_str, fmt)
+        except ValueError:
+            continue
+    return None
+
+def safe_add(obj):
     try:
-        # Multiple format handle karo
-        formats = [
-            '%Y-%m-%d %H:%M:%S.%f',
-            '%Y-%m-%d %H:%M:%S',
-            '%Y-%m-%d'
-        ]
-
-        for fmt in formats:
-            try:
-                return datetime.strptime(dt_str, fmt)
-            except ValueError:
-                continue
-        return None
-    except:
-        return None
-
+        db.session.add(obj)
+        db.session.flush()
+        return True
+    except IntegrityError:
+        db.session.rollback()
+        return False
 
 def import_to_postgres():
-    print("🚀 Starting PostgreSQL Import...")
+    print("Starting IDEMPOTENT PostgreSQL Import...")
+    if not os.path.exists('transfer_data.json'):
+        print("Error: transfer_data.json not found!")
+        return
 
     with app.app_context():
-        # Load transfer data
         with open('transfer_data.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
 
-        imported_counts = {}
+        user_map = {}
+        student_map = {}
+        subject_map = {}
+        faculty_map = {}
+        test_map = {}
 
-        # 1. IMPORT USERS (Skip existing)
-        users_data = data.get('users', [])
-        user_count = 0
-        for user_data in users_data:
-            if not User.query.filter_by(email=user_data['email']).first():
-                user = User(
-                    username=user_data['username'],
-                    fullname=user_data['fullname'],
-                    email=user_data['email'],
-                    role=user_data['role'],
-                    branch=user_data['branch'],
-                    student_roll=user_data.get('student_roll'),
-                    email_verified=user_data.get('email_verified', True),
-                    is_active=user_data.get('is_active', True),
-                    profile_photo=user_data.get('profile_photo'),
-                    created_at=parse_datetime(user_data.get('created_at'))
+        # 1. USERS
+        print("Importing Users...")
+        for u in data.get('users', []):
+            existing = User.query.filter(or_(User.email == u['email'], User.username == u['username'])).first()
+            if not existing:
+                new_u = User(
+                    username=u['username'], fullname=u['fullname'], email=u['email'],
+                    role=u['role'], branch=u.get('branch'), student_roll=u.get('student_roll'),
+                    email_verified=u.get('email_verified', True), is_active=u.get('is_active', True),
+                    profile_photo=u.get('profile_photo'), created_at=parse_datetime(u.get('created_at'))
                 )
-                # Set temporary password
-                user.set_password('temp123')
-                db.session.add(user)
-                user_count += 1
-
+                if u.get('password_hash'): new_u.password_hash = u['password_hash']
+                else: new_u.set_password('temp123')
+                if safe_add(new_u): user_map[u['id']] = new_u.id
+            else:
+                user_map[u['id']] = existing.id
         db.session.commit()
-        imported_counts['users'] = user_count
-        print(f"✅ Users imported: {user_count}")
 
-        # 2. IMPORT STUDENTS
-        students_data = data.get('students', [])
-        student_count = 0
-        for student_data in students_data:
-            if not Student.query.filter_by(roll=student_data['roll']).first():
-                student = Student(
-                    roll=student_data['roll'],
-                    name=student_data['name'],
-                    branch=student_data['branch'],
-                    year=student_data['year'],
-                    created_at=parse_datetime(student_data.get('created_at')),
-                    is_active=student_data.get('is_active', True)
+        # 2. STUDENTS
+        print("Importing Students...")
+        for s in data.get('students', []):
+            existing = Student.query.filter_by(roll=s['roll']).first()
+            if not existing:
+                new_s = Student(
+                    roll=s['roll'], name=s['name'], branch=s['branch'], year=s['year'],
+                    created_at=parse_datetime(s.get('created_at')), is_active=s.get('is_active', True)
                 )
-                db.session.add(student)
-                student_count += 1
-
+                if safe_add(new_s): student_map[s['id']] = new_s.id
+            else:
+                student_map[s['id']] = existing.id
         db.session.commit()
-        imported_counts['students'] = student_count
-        print(f"✅ Students imported: {student_count}")
 
-        # 3. IMPORT SUBJECTS
-        subjects_data = data.get('subjects', [])
-        subject_count = 0
-        for subject_data in subjects_data:
-            if not Subject.query.filter_by(code=subject_data['code'], branch=subject_data['branch']).first():
-                subject = Subject(
-                    code=subject_data['code'],
-                    name=subject_data['name'],
-                    branch=subject_data['branch'],
-                    semester=subject_data['semester'],
-                    is_active=subject_data.get('is_active', True),
-                    created_at=parse_datetime(subject_data.get('created_at'))
+        # 3. SUBJECTS
+        print("Importing Subjects...")
+        for sub in data.get('subjects', []):
+            existing = Subject.query.filter_by(code=sub['code'], branch=sub['branch'], semester=sub['semester']).first()
+            if not existing:
+                new_sub = Subject(
+                    code=sub['code'], name=sub['name'], branch=sub['branch'],
+                    semester=sub['semester'], is_active=sub.get('is_active', True),
+                    created_at=parse_datetime(sub.get('created_at'))
                 )
-                db.session.add(subject)
-                subject_count += 1
-
+                if safe_add(new_sub): subject_map[sub['id']] = new_sub.id
+            else:
+                subject_map[sub['id']] = existing.id
         db.session.commit()
-        imported_counts['subjects'] = subject_count
-        print(f"✅ Subjects imported: {subject_count}")
 
-        # 4. IMPORT PROFESSOR SUBJECTS (With proper ID mapping)
-        prof_subjects_data = data.get('professor_subjects', [])
-        prof_subject_count = 0
-
-        for ps_data in prof_subjects_data:
-            try:
-                # Find professor by original ID (if exists) or get first professor
-                original_prof_id = ps_data['professor_id']
-                professor = User.query.filter_by(id=original_prof_id, role='professor').first()
-
-                if not professor:
-                    # Koi bhi professor use karo
-                    professor = User.query.filter_by(role='professor').first()
-
-                # Find subject by original ID or code
-                original_subject_id = ps_data['subject_id']
-                subject = Subject.query.filter_by(id=original_subject_id).first()
-
-                if professor and subject:
-                    if not ProfessorSubject.query.filter_by(professor_id=professor.id, subject_id=subject.id).first():
-                        prof_subject = ProfessorSubject(
-                            professor_id=professor.id,
-                            subject_id=subject.id,
-                            created_at=parse_datetime(ps_data.get('created_at'))
-                        )
-                        db.session.add(prof_subject)
-                        prof_subject_count += 1
-            except Exception as e:
-                print(f"⚠️  Skipping professor_subject: {e}")
-                continue
-
-        db.session.commit()
-        imported_counts['professor_subjects'] = prof_subject_count
-        print(f"✅ Professor Subjects imported: {prof_subject_count}")
-
-        # 5. IMPORT CURRENT SEMESTER
-        current_semester_data = data.get('current_semester', [])
-        cs_count = 0
-        for cs_data in current_semester_data:
-            if not CurrentSemester.query.filter_by(
-                    branch=cs_data['branch'],
-                    year=cs_data['year'],
-                    is_active=True
-            ).first():
-                cs = CurrentSemester(
-                    branch=cs_data['branch'],
-                    year=cs_data['year'],
-                    semester_type=cs_data['semester_type'],
-                    academic_year=cs_data['academic_year'],
-                    is_active=cs_data.get('is_active', True),
-                    created_at=parse_datetime(cs_data.get('created_at'))
+        # 4. FACULTY
+        print("Importing Faculty...")
+        for f in data.get('faculties', []):
+            existing = Faculty.query.filter_by(email=f['email']).first()
+            if not existing:
+                new_f = Faculty(
+                    name=f['name'], email=f['email'], phone=f.get('phone'),
+                    designation=f['designation'], branches=f['branches'],
+                    is_active=f.get('is_active', True), created_at=parse_datetime(f.get('created_at'))
                 )
-                db.session.add(cs)
-                cs_count += 1
-
+                if safe_add(new_f): faculty_map[f['id']] = new_f.id
+            else:
+                faculty_map[f['id']] = existing.id
         db.session.commit()
-        imported_counts['current_semester'] = cs_count
-        print(f"✅ Current Semester records: {cs_count}")
 
-        # 6. IMPORT TESTS
-        tests_data = data.get('tests', [])
-        test_count = 0
-        for test_data in tests_data:
-            # Find subject by original ID
-            original_subject_id = test_data['subject_id']
-            subject = Subject.query.filter_by(id=original_subject_id).first()
+        # 5. PROFESSOR SUBJECTS
+        print("Linking Professors to Subjects...")
+        for ps in data.get('professor_subjects', []):
+            prof_id = user_map.get(ps['professor_id'])
+            subj_id = subject_map.get(ps['subject_id'])
+            if prof_id and subj_id:
+                if not ProfessorSubject.query.filter_by(professor_id=prof_id, subject_id=subj_id).first():
+                    safe_add(ProfessorSubject(professor_id=prof_id, subject_id=subj_id))
+        db.session.commit()
 
-            # Find professor by original ID
-            original_prof_id = test_data['professor_id']
-            professor = User.query.filter_by(id=original_prof_id, role='professor').first()
-
-            if subject and professor:
-                if not Test.query.filter_by(title=test_data['title'], subject_id=subject.id).first():
-                    test = Test(
-                        title=test_data['title'],
-                        description=test_data.get('description'),
-                        subject_id=subject.id,
-                        professor_id=professor.id,
-                        total_marks=test_data.get('total_marks', 100),
-                        duration_minutes=test_data.get('duration_minutes', 60),
-                        available_from=parse_datetime(test_data.get('available_from')),
-                        available_until=parse_datetime(test_data.get('available_until')),
-                        start_time=parse_datetime(test_data.get('start_time')),
-                        end_time=parse_datetime(test_data.get('end_time')),
-                        is_active=test_data.get('is_active', True),
-                        instructions=test_data.get('instructions'),
-                        status=test_data.get('status', 'draft'),
-                        security_code=test_data.get('security_code'),
-                        require_security_code=test_data.get('require_security_code', False),
-                        created_at=parse_datetime(test_data.get('created_at'))
+        # 6. TESTS & QUESTIONS
+        print("Importing Tests and Questions...")
+        for t in data.get('tests', []):
+            subj_id = subject_map.get(t['subject_id'])
+            prof_id = user_map.get(t['professor_id'])
+            if subj_id and prof_id:
+                existing_t = Test.query.filter_by(title=t['title'], subject_id=subj_id).first()
+                if not existing_t:
+                    new_t = Test(
+                        title=t['title'], description=t.get('description'), subject_id=subj_id,
+                        professor_id=prof_id, total_marks=t['total_marks'], duration_minutes=t['duration_minutes'],
+                        security_code=t.get('security_code'), require_security_code=t.get('require_security_code', False),
+                        available_from=parse_datetime(t.get('available_from')), available_until=parse_datetime(t.get('available_until')),
+                        start_time=parse_datetime(t.get('start_time')), end_time=parse_datetime(t.get('end_time')),
+                        auto_submit=t.get('auto_submit', True), prevent_tab_switch=t.get('prevent_tab_switch', True),
+                        allow_retake=t.get('allow_retake', False), is_active=t.get('is_active', True),
+                        status=t.get('status', 'draft'), created_at=parse_datetime(t.get('created_at'))
                     )
-                    db.session.add(test)
-                    test_count += 1
+                    if safe_add(new_t): test_map[t['id']] = new_t.id
+                else:
+                    test_map[t['id']] = existing_t.id
+        
+        for q in data.get('questions', []):
+            t_id = test_map.get(q['test_id'])
+            if t_id:
+                db.session.add(Question(
+                    test_id=t_id, question_type=q['question_type'], question_text=q['question_text'],
+                    option_a=q.get('option_a'), option_b=q.get('option_b'), option_c=q.get('option_c'), 
+                    option_d=q.get('option_d'), correct_answer=q.get('correct_answer'),
+                    marks=q.get('marks', 1), question_order=q.get('question_order', 0)
+                ))
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
 
+        # 7. ATTENDANCE
+        print("Importing Attendance...")
+        for a in data.get('attendance', []):
+            s_id = student_map.get(a['student_id'])
+            sub_id = subject_map.get(a['subject_id'])
+            if s_id and sub_id:
+                dt = parse_datetime(a['date']).date() if a['date'] else None
+                if dt:
+                    safe_add(Attendance(student_id=s_id, subject_id=sub_id, date=dt, status=a['status']))
         db.session.commit()
-        imported_counts['tests'] = test_count
-        print(f"✅ Tests imported: {test_count}")
 
-        print("\n🎯 IMPORT SUMMARY:")
-        for table, count in imported_counts.items():
-            print(f"   {table}: {count} records")
+        # 8. NOTICES
+        print("Importing Notices...")
+        for n in data.get('notices', []):
+            creator_id = user_map.get(n['created_by'])
+            if creator_id:
+                safe_add(Notice(
+                    title=n['title'], message=n['message'], created_by=creator_id,
+                    target_audience=n['target_audience'], branch=n.get('branch'),
+                    year=n.get('year'), is_important=n.get('is_important', False),
+                    created_at=parse_datetime(n.get('created_at'))
+                ))
+        db.session.commit()
 
-        print("\n✅ PostgreSQL Import Completed!")
-
+        print("\nCOMPREHENSIVE IMPORT SUMMARY:")
+        print(f"   Users matched/imported: {len(user_map)}")
+        print(f"   Students matched/imported: {len(student_map)}")
+        print(f"   Subjects matched/imported: {len(subject_map)}")
+        print(f"   Tests matched/imported: {len(test_map)}")
+        print("\nPostgreSQL Import Completed Idempotently!")
 
 if __name__ == '__main__':
     import_to_postgres()

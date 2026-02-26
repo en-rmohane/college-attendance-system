@@ -6,7 +6,7 @@ from datetime import datetime
 
 
 def transfer_data_direct():
-    print("🚀 Starting Direct Data Transfer to Render...")
+    print("Starting Direct Data Transfer to Render...")
 
     local_db_path = "instance/college_attendance.db"
 
@@ -32,7 +32,7 @@ def transfer_data_direct():
         'attendance_reports'
     ]
 
-    print(f"📊 Transferring data from {len(tables_to_transfer)} important tables...")
+    print(f"Transferring data from {len(tables_to_transfer)} important tables...")
 
     transfer_data = {}
 
@@ -42,9 +42,9 @@ def transfer_data_direct():
             rows = local_cursor.fetchall()
             table_data = [dict(row) for row in rows]
             transfer_data[table] = table_data
-            print(f"✅ {table}: {len(table_data)} records found")
+            print(f"OK {table}: {len(table_data)} records found")
         except Exception as e:
-            print(f"❌ Error reading {table}: {e}")
+            print(f"Error reading {table}: {e}")
 
     local_conn.close()
 
@@ -52,18 +52,18 @@ def transfer_data_direct():
     with open('transfer_data.json', 'w', encoding='utf-8') as f:
         json.dump(transfer_data, f, indent=2, default=str)
 
-    print(f"\n📁 Data saved to transfer_data.json")
-    print("📋 Now upload this file to your Render app and run the import")
+    print(f"\nData saved to transfer_data.json")
+    print("Now upload this file to your Render app and run the import")
 
     # Show summary
-    print("\n📊 IMPORTANT DATA SUMMARY:")
+    print("\nIMPORTANT DATA SUMMARY:")
     total_records = 0
     for table, data in transfer_data.items():
         if len(data) > 0:  # Only show tables with data
-            print(f"   📦 {table}: {len(data)} records")
+            print(f"   Package {table}: {len(data)} records")
             total_records += len(data)
 
-    print(f"\n🎯 TOTAL: {total_records} records across {len(transfer_data)} tables")
+    print(f"\nTOTAL: {total_records} records across {len(transfer_data)} tables")
 
 
 if __name__ == '__main__':
