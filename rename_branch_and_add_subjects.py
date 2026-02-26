@@ -68,7 +68,7 @@ def bulk_update_and_add_subjects():
             ("CS602P", "Computer Networks Lab", "CSE", 3, 6, True),
             ("CS603(A)", "Advanced Computer Architecture", "CSE", 3, 6, False),
             ("CS603(B)", "Computer Graphics & Visualization", "CSE", 3, 6, False),
-            ("CS603(C)", "Compiler Design", "CSE", 3, 6, False),
+            ("CS603", "Compiler Design", "CSE", 3, 6, False),
             ("CS604(A)", "Knowledge Management", "CSE", 3, 6, False),
             ("CS604(B)", "Project Management", "CSE", 3, 6, False),
             ("CS604(C)", "Rural Technology & Community Development", "CSE", 3, 6, False),
