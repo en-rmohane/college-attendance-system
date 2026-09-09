@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Transport Applications - ERP Portal{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{{ url_for('transport_routes') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <h2 class="fw-bold mb-0"><i class="bi bi-envelope-paper-fill text-warning me-2"></i>Student Transport Applications</h2>
+            </div>
+            <p class="text-muted mb-0 ms-4 ps-2">Review student self-service applications for college bus facility and approve bus passes</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('transport_allocations') }}" class="btn btn-outline-primary">
+                <i class="bi bi-pass me-1"></i> Active Bus Passes
+            </a>
+        </div>
+    </div>
+
+    <!-- Applications Table -->
+    <div class="card shadow-sm border-0 rounded-3">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-list-check text-warning me-2"></i>Pending & Past Applications</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Applied Date</th>
+                        <th>Student Details</th>
+                        <th>Requested Route</th>
+                        <th>Pickup Stop</th>
+                        <th>Stop Fee</th>
+                        <th>Status</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications %}
+                    <tr>
+                        <td class="ps-4">
+                            <span class="small text-muted">{{ app.application_date.strftime('%d %b %Y, %I:%M %p') }}</span>
+                        </td>
+                        <td>
+                            <strong class="text-dark">{{ app.student.name }}</strong>
+                            <div class="small text-muted">{{ app.student.roll }} &bull; {{ app.student.branch }} (Yr {{ app.student.year }})</div>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary me-1">{{ app.route.route_number }}</span>
+                            <span>{{ app.route.route_name }}</span>
+                        </td>
+                        <td>
+                            <strong>{{ app.stop.stop_name }}</strong>
+                            <div class="small text-muted">Pickup: {{ app.stop.morning_pickup_time }}</div>
+                        </td>
+                        <td>
+                            <strong class="text-success">₹{{ "{:,.0f}".format(app.stop.stop_fee) }}</strong>
+                        </td>
+                        <td>
+                            {% if app.status == 'Pending' %}
+                            <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending Review</span>
+                            {% elif app.status == 'Approved' %}
+                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Approved</span>
+                            {% else %}
+                            <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejected</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            {% if app.status == 'Pending' %}
+                            <form method="POST" action="{{ url_for('transport_process_application', app_id=app.id) }}" class="d-inline">
+                                <input type="hidden" name="action" value="approve">
+                                <button type="submit" class="btn btn-success btn-sm me-1" title="Approve & Generate Pass">
+                                    <i class="bi bi-check-lg me-1"></i> Approve
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('transport_process_application', app_id=app.id) }}" class="d-inline">
+                                <input type="hidden" name="action" value="reject">
+                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Reject Application" onclick="return confirm('Reject this application?');">
+                                    <i class="bi bi-x-lg"></i> Reject
+                                </button>
+                            </form>
+                            {% else %}
+                            <span class="text-muted small">Processed</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox display-4 d-block mb-2 text-muted"></i>
+                            No transport applications received yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

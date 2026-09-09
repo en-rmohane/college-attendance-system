@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Fee Structures | Accountant Portal{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-sliders text-primary me-2"></i>Fee Structure Management</h2>
+            <p class="text-muted mb-0">Define course tuition fees, development fees, due dates, and daily late fee rules</p>
+        </div>
+        <a href="{{ url_for('accountant_dashboard') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Dashboard
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Existing Fee Structures List -->
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3 border-0">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-table text-primary me-2"></i>Current Fee Structures</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Branch</th>
+                                    <th>Year</th>
+                                    <th>Tuition Fee</th>
+                                    <th>Other Fees</th>
+                                    <th>Total Fee</th>
+                                    <th>Due Date</th>
+                                    <th>Late Fee/Day</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fs in structures %}
+                                <tr>
+                                    <td class="fw-bold"><span class="badge bg-primary">{{ fs.branch }}</span></td>
+                                    <td class="fw-bold">Year {{ fs.year }}</td>
+                                    <td>₹{{ "{:,.2f}".format(fs.tuition_fee) }}</td>
+                                    <td class="text-muted">₹{{ "{:,.2f}".format(fs.development_fee + fs.exam_fee + fs.other_charges) }}</td>
+                                    <td class="fw-bold text-success">₹{{ "{:,.2f}".format(fs.total_fee) }}</td>
+                                    <td class="small">{{ fs.due_date.strftime('%d %b %Y') if fs.due_date else 'N/A' }}</td>
+                                    <td class="text-danger fw-semibold">₹{{ fs.late_fee_per_day }}/day</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="editStructure('{{ fs.branch }}', {{ fs.year }}, {{ fs.tuition_fee }}, {{ fs.development_fee }}, {{ fs.exam_fee }}, {{ fs.other_charges }}, {{ fs.late_fee_per_day }}, '{{ fs.due_date.strftime('%Y-%m-%d') if fs.due_date else '' }}')">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add/Edit Form -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white py-3 border-0">
+                    <h5 class="fw-bold mb-0" id="formTitle"><i class="bi bi-plus-circle me-2"></i>Add / Update Fee Structure</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form action="{{ url_for('accountant_fee_structures') }}" method="POST">
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label for="branch" class="form-label fw-semibold">Branch</label>
+                                <select class="form-select" id="fsBranch" name="branch">
+                                    <option value="CSE">CSE</option>
+                                    <option value="AD">AD</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label for="year" class="form-label fw-semibold">Year</label>
+                                <select class="form-select" id="fsYear" name="year">
+                                    <option value="1">1st Year</option>
+                                    <option value="2">2nd Year</option>
+                                    <option value="3">3rd Year</option>
+                                    <option value="4">4th Year</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="tuition_fee" class="form-label fw-semibold">Tuition Fee (₹)</label>
+                            <input type="number" step="500" class="form-control" id="fsTuition" name="tuition_fee" value="45000" required>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label for="development_fee" class="form-label fw-semibold">Dev Fee (₹)</label>
+                                <input type="number" step="100" class="form-control" id="fsDev" name="development_fee" value="5000">
+                            </div>
+                            <div class="col-6">
+                                <label for="exam_fee" class="form-label fw-semibold">Exam Fee (₹)</label>
+                                <input type="number" step="100" class="form-control" id="fsExam" name="exam_fee" value="3000">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="other_charges" class="form-label fw-semibold">Other Charges (Lab/Library) (₹)</label>
+                            <input type="number" step="100" class="form-control" id="fsOther" name="other_charges" value="2000">
+                        </div>
+
+                        <div class="row g-2 mb-4">
+                            <div class="col-6">
+                                <label for="due_date" class="form-label fw-semibold">Fee Due Date</label>
+                                <input type="date" class="form-control" id="fsDueDate" name="due_date" value="2026-09-30">
+                            </div>
+                            <div class="col-6">
+                                <label for="late_fee_per_day" class="form-label fw-semibold text-danger">Late Fine (₹/Day)</label>
+                                <input type="number" step="10" class="form-control text-danger fw-bold" id="fsLateRate" name="late_fee_per_day" value="50">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 fw-bold py-2">
+                            <i class="bi bi-check-circle me-1"></i> Save Fee Structure
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function editStructure(branch, year, tuition, dev, exam, other, lateRate, dueDate) {
+    document.getElementById('fsBranch').value = branch;
+    document.getElementById('fsYear').value = year;
+    document.getElementById('fsTuition').value = tuition;
+    document.getElementById('fsDev').value = dev;
+    document.getElementById('fsExam').value = exam;
+    document.getElementById('fsOther').value = other;
+    document.getElementById('fsLateRate').value = lateRate;
+    document.getElementById('fsDueDate').value = dueDate;
+    document.getElementById('formTitle').innerHTML = '<i class="bi bi-pencil-square me-2"></i>Update Fee Structure (' + branch + ' Year ' + year + ')';
+}
+</script>
+{% endblock %}

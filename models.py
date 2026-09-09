@@ -662,3 +662,404 @@ def initialize_rgpv_scheme_complete():
         print("ℹ RGPV scheme already up to date")
 
     return added_count
+
+
+class FeeStructure(db.Model):
+    __tablename__ = 'fee_structures'
+
+    id = db.Column(db.Integer, primary_key=True)
+    branch = db.Column(db.String(100), nullable=False)  # 'CSE', 'AD', 'ALL'
+    year = db.Column(db.Integer, nullable=False)        # 1, 2, 3, 4
+    academic_year = db.Column(db.Integer, nullable=False, default=2026)
+    tuition_fee = db.Column(db.Float, nullable=False, default=45000.0)
+    development_fee = db.Column(db.Float, nullable=False, default=5000.0)
+    exam_fee = db.Column(db.Float, nullable=False, default=3000.0)
+    other_charges = db.Column(db.Float, nullable=False, default=2000.0)
+    total_fee = db.Column(db.Float, nullable=False, default=55000.0)
+    due_date = db.Column(db.Date, nullable=True)
+    late_fee_per_day = db.Column(db.Float, nullable=False, default=50.0)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    def __repr__(self):
+        return f"<FeeStructure {self.branch} Year {self.year} Total: ₹{self.total_fee}>"
+
+
+class StudentFeeRecord(db.Model):
+    __tablename__ = 'student_fee_records'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    year = db.Column(db.Integer, nullable=False)        # 1, 2, 3, 4
+    academic_year = db.Column(db.Integer, nullable=False, default=2026)
+    total_fee = db.Column(db.Float, nullable=False, default=55000.0)
+    discount = db.Column(db.Float, nullable=False, default=0.0)
+    paid_amount = db.Column(db.Float, nullable=False, default=0.0)
+    remaining_balance = db.Column(db.Float, nullable=False, default=55000.0)
+    status = db.Column(db.String(20), nullable=False, default='Pending') # Paid, Partial, Pending, Overdue
+    due_date = db.Column(db.Date, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+
+    student = db.relationship('Student', backref=db.backref('fee_records', lazy=True))
+
+    def update_balance(self):
+        effective_total = self.total_fee - self.discount
+        self.remaining_balance = max(0.0, effective_total - self.paid_amount)
+        if self.remaining_balance <= 0:
+            self.status = 'Paid'
+        elif self.paid_amount > 0:
+            self.status = 'Partial'
+        else:
+            self.status = 'Pending'
+
+
+class FeePayment(db.Model):
+    __tablename__ = 'fee_payments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    receipt_no = db.Column(db.String(50), unique=True, nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    academic_year = db.Column(db.Integer, nullable=False, default=2026)
+    amount_paid = db.Column(db.Float, nullable=False)
+    late_fee_paid = db.Column(db.Float, nullable=False, default=0.0)
+    payment_mode = db.Column(db.String(50), nullable=False, default='UPI') # UPI, Card, Net Banking, Cash, Cheque, DD
+    transaction_id = db.Column(db.String(100), nullable=True)
+    payment_date = db.Column(db.DateTime, default=datetime.now)
+    status = db.Column(db.String(20), nullable=False, default='Success')
+    collected_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    remarks = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    student = db.relationship('Student', backref=db.backref('payments', lazy=True))
+    collector = db.relationship('User', backref=db.backref('collected_payments', lazy=True))
+
+
+# ==================== ENTERPRISE ERP FEE MANAGEMENT MODELS ====================
+
+class AcademicYear(db.Model):
+    __tablename__ = 'academic_years'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)  # e.g. "2025-26", "2026-27"
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    is_current = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+
+class FeeHead(db.Model):
+    __tablename__ = 'fee_heads'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)  # Tuition Fee, Exam Fee, etc.
+    code = db.Column(db.String(50), unique=True, nullable=False)
+    is_mandatory = db.Column(db.Boolean, default=True)
+    is_taxable = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+
+class FeeStructureItem(db.Model):
+    __tablename__ = 'fee_structure_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    fee_structure_id = db.Column(db.Integer, db.ForeignKey('fee_structures.id'), nullable=False)
+    fee_head_id = db.Column(db.Integer, db.ForeignKey('fee_heads.id'), nullable=False)
+    amount = db.Column(db.Float, nullable=False, default=0.0)
+
+    fee_structure = db.relationship('FeeStructure', backref=db.backref('items', lazy=True, cascade='all, delete-orphan'))
+    fee_head = db.relationship('FeeHead', backref=db.backref('structure_items', lazy=True))
+
+
+class FeeDemand(db.Model):
+    __tablename__ = 'fee_demands'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    academic_year_id = db.Column(db.Integer, db.ForeignKey('academic_years.id'), nullable=True)
+    fee_head_id = db.Column(db.Integer, db.ForeignKey('fee_heads.id'), nullable=True)
+    year = db.Column(db.Integer, nullable=False, default=1)
+    original_amount = db.Column(db.Float, nullable=False)
+    discount_amount = db.Column(db.Float, nullable=False, default=0.0)
+    net_amount = db.Column(db.Float, nullable=False)
+    paid_amount = db.Column(db.Float, nullable=False, default=0.0)
+    pending_amount = db.Column(db.Float, nullable=False)
+    due_date = db.Column(db.Date, nullable=True)
+    status = db.Column(db.String(20), nullable=False, default='Pending') # Pending, Partial, Paid, Overdue, Cancelled, Waived
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    student = db.relationship('Student', backref=db.backref('demands', lazy=True))
+    fee_head = db.relationship('FeeHead', backref=db.backref('demands', lazy=True))
+    academic_year_rel = db.relationship('AcademicYear', backref=db.backref('demands', lazy=True))
+
+
+class FeeInstallment(db.Model):
+    __tablename__ = 'fee_installments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    academic_year_id = db.Column(db.Integer, db.ForeignKey('academic_years.id'), nullable=True)
+    installment_no = db.Column(db.Integer, nullable=False)
+    title = db.Column(db.String(100), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    paid_amount = db.Column(db.Float, nullable=False, default=0.0)
+    due_date = db.Column(db.Date, nullable=False)
+    late_fee_amount = db.Column(db.Float, nullable=False, default=0.0)
+    status = db.Column(db.String(20), nullable=False, default='Upcoming') # Upcoming, Pending, Partial, Paid, Overdue
+
+    student = db.relationship('Student', backref=db.backref('installments', lazy=True))
+
+
+class FeeLedger(db.Model):
+    __tablename__ = 'fee_ledger'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    entry_date = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    entry_type = db.Column(db.String(50), nullable=False) # DEMAND, PAYMENT, DISCOUNT, LATE_FEE, WAIVER, REFUND, REVERSAL
+    debit = db.Column(db.Float, nullable=False, default=0.0)
+    credit = db.Column(db.Float, nullable=False, default=0.0)
+    balance = db.Column(db.Float, nullable=False, default=0.0)
+    reference_no = db.Column(db.String(100), nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    remarks = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    student = db.relationship('Student', backref=db.backref('ledger_entries', lazy=True))
+    user = db.relationship('User', backref=db.backref('ledger_actions', lazy=True))
+
+
+class PaymentAllocation(db.Model):
+    __tablename__ = 'payment_allocations'
+
+    id = db.Column(db.Integer, primary_key=True)
+    payment_id = db.Column(db.Integer, db.ForeignKey('fee_payments.id'), nullable=False)
+    demand_id = db.Column(db.Integer, db.ForeignKey('fee_demands.id'), nullable=False)
+    allocated_amount = db.Column(db.Float, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    payment = db.relationship('FeePayment', backref=db.backref('allocations', lazy=True))
+    demand = db.relationship('FeeDemand', backref=db.backref('allocations', lazy=True))
+
+
+class PaymentGatewayTransaction(db.Model):
+    __tablename__ = 'payment_gateway_transactions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.String(100), unique=True, nullable=False)
+    payment_id = db.Column(db.String(100), nullable=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    gateway_name = db.Column(db.String(50), nullable=False, default='Simulated')
+    amount = db.Column(db.Float, nullable=False)
+    currency = db.Column(db.String(10), default='INR')
+    signature = db.Column(db.String(255), nullable=True)
+    status = db.Column(db.String(20), nullable=False, default='Initiated') # Initiated, Success, Failed, WebhookReceived
+    raw_payload = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+
+class LateFeeRule(db.Model):
+    __tablename__ = 'late_fee_rules'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    rule_type = db.Column(db.String(20), nullable=False, default='DAILY') # FIXED, DAILY, PERCENTAGE, SLAB
+    grace_period_days = db.Column(db.Integer, nullable=False, default=5)
+    rate_amount = db.Column(db.Float, nullable=False, default=50.0) # Rs 50/day or 2% or Rs 500 flat
+    max_late_fee = db.Column(db.Float, nullable=False, default=5000.0)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+
+class LateFeeWaiver(db.Model):
+    __tablename__ = 'late_fee_waivers'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    reason = db.Column(db.Text, nullable=False)
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    student = db.relationship('Student', backref=db.backref('late_fee_waivers', lazy=True))
+    approver = db.relationship('User', backref=db.backref('approved_waivers', lazy=True))
+
+
+class DiscountScholarship(db.Model):
+    __tablename__ = 'discount_scholarships'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    title = db.Column(db.String(150), nullable=False)
+    type = db.Column(db.String(50), nullable=False, default='Scholarship') # Merit, Scholarship, Staff Ward, Concession
+    amount = db.Column(db.Float, nullable=False)
+    reason = db.Column(db.Text, nullable=True)
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    student = db.relationship('Student', backref=db.backref('discounts', lazy=True))
+    approver = db.relationship('User', backref=db.backref('approved_discounts', lazy=True))
+
+
+class RefundRecord(db.Model):
+    __tablename__ = 'refund_records'
+
+    id = db.Column(db.Integer, primary_key=True)
+    payment_id = db.Column(db.Integer, db.ForeignKey('fee_payments.id'), nullable=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    refund_type = db.Column(db.String(50), nullable=False, default='Cancellation') # Full, Partial, Excess, Cancellation
+    reason = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='Approved') # Requested, Approved, Processed, Rejected
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    student = db.relationship('Student', backref=db.backref('refunds', lazy=True))
+    payment = db.relationship('FeePayment', backref=db.backref('refunds', lazy=True))
+    approver = db.relationship('User', backref=db.backref('approved_refunds', lazy=True))
+
+
+class AuditLog(db.Model):
+    __tablename__ = 'audit_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    role = db.Column(db.String(50), nullable=True)
+    action = db.Column(db.String(100), nullable=False)
+    entity = db.Column(db.String(100), nullable=False)
+    entity_id = db.Column(db.String(100), nullable=True)
+    old_value = db.Column(db.Text, nullable=True)
+    new_value = db.Column(db.Text, nullable=True)
+    ip_address = db.Column(db.String(50), nullable=True)
+    timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
+
+    user = db.relationship('User', backref=db.backref('audit_logs', lazy=True))
+
+
+class NoDuesCertificate(db.Model):
+    __tablename__ = 'no_dues_certificates'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    certificate_no = db.Column(db.String(50), unique=True, nullable=False)
+    academic_year_name = db.Column(db.String(50), nullable=False, default='2025-26')
+    status = db.Column(db.String(20), nullable=False, default='CLEARED') # CLEARED, PENDING
+    issued_date = db.Column(db.DateTime, default=datetime.now)
+    issued_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    student = db.relationship('Student', backref=db.backref('no_dues_certs', lazy=True))
+
+
+# ==================== TRANSPORT & BUS MANAGEMENT MODELS ====================
+
+class BusRoute(db.Model):
+    __tablename__ = 'bus_routes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    route_number = db.Column(db.String(50), unique=True, nullable=False)  # e.g., "R-01", "ROUTE-A"
+    route_name = db.Column(db.String(100), nullable=False)  # e.g., "Betul to College via Kothi Bazar"
+    start_point = db.Column(db.String(100), nullable=False)
+    end_point = db.Column(db.String(100), nullable=False, default="College Campus")
+    vehicle_number = db.Column(db.String(50), nullable=False)  # e.g., "MP-48-B-1234"
+    driver_name = db.Column(db.String(100), nullable=False)
+    driver_phone = db.Column(db.String(20), nullable=False)
+    incharge_name = db.Column(db.String(100), nullable=True)
+    incharge_phone = db.Column(db.String(20), nullable=True)
+    capacity = db.Column(db.Integer, nullable=False, default=45)
+    default_annual_fee = db.Column(db.Float, nullable=False, default=12000.0)
+    morning_departure_time = db.Column(db.String(20), nullable=True, default="07:45 AM")
+    evening_departure_time = db.Column(db.String(20), nullable=True, default="05:15 PM")
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    stops = db.relationship('BusStop', backref='route', lazy=True, cascade='all, delete-orphan', order_by='BusStop.sequence_order')
+    passes = db.relationship('BusPass', backref='route', lazy=True)
+
+
+class BusStop(db.Model):
+    __tablename__ = 'bus_stops'
+
+    id = db.Column(db.Integer, primary_key=True)
+    route_id = db.Column(db.Integer, db.ForeignKey('bus_routes.id'), nullable=False)
+    stop_name = db.Column(db.String(100), nullable=False)
+    morning_pickup_time = db.Column(db.String(20), nullable=False)  # e.g., "08:15 AM"
+    evening_drop_time = db.Column(db.String(20), nullable=False)   # e.g., "05:45 PM"
+    stop_fee = db.Column(db.Float, nullable=False, default=12000.0)
+    sequence_order = db.Column(db.Integer, nullable=False, default=1)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    passes = db.relationship('BusPass', backref='stop', lazy=True)
+
+
+class BusPass(db.Model):
+    __tablename__ = 'bus_passes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    pass_number = db.Column(db.String(50), unique=True, nullable=False)  # e.g., "BP-2026-0042"
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    route_id = db.Column(db.Integer, db.ForeignKey('bus_routes.id'), nullable=False)
+    stop_id = db.Column(db.Integer, db.ForeignKey('bus_stops.id'), nullable=False)
+    academic_year_id = db.Column(db.Integer, db.ForeignKey('academic_years.id'), nullable=True)
+    academic_year_name = db.Column(db.String(50), nullable=False, default="2025-26")
+    
+    pass_type = db.Column(db.String(50), nullable=False, default="Annual")  # Annual, Semester
+    issue_date = db.Column(db.Date, nullable=False, default=datetime.now)
+    valid_upto = db.Column(db.Date, nullable=False)
+    
+    fee_amount = db.Column(db.Float, nullable=False, default=12000.0)
+    paid_amount = db.Column(db.Float, nullable=False, default=0.0)
+    fee_status = db.Column(db.String(20), nullable=False, default="Pending")  # Pending, Partial, Paid
+    
+    status = db.Column(db.String(20), nullable=False, default="Active")  # Active, Suspended, Expired, Cancelled
+    qr_token = db.Column(db.String(100), unique=True, nullable=False)
+    remarks = db.Column(db.Text, nullable=True)
+    issued_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    student = db.relationship('Student', backref=db.backref('bus_passes', lazy=True))
+    issuer = db.relationship('User', backref=db.backref('issued_bus_passes', lazy=True))
+    academic_year_rel = db.relationship('AcademicYear', backref=db.backref('bus_passes', lazy=True))
+
+
+class BusAttendance(db.Model):
+    __tablename__ = 'bus_attendances'
+
+    id = db.Column(db.Integer, primary_key=True)
+    bus_pass_id = db.Column(db.Integer, db.ForeignKey('bus_passes.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    route_id = db.Column(db.Integer, db.ForeignKey('bus_routes.id'), nullable=False)
+    attendance_date = db.Column(db.Date, nullable=False, default=datetime.now)
+    trip_type = db.Column(db.String(20), nullable=False, default="Pickup")  # Pickup, Drop
+    status = db.Column(db.String(20), nullable=False, default="Boarded")    # Boarded, Absent
+    recorded_at = db.Column(db.DateTime, default=datetime.now)
+    recorded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    bus_pass = db.relationship('BusPass', backref=db.backref('attendance_records', lazy=True))
+    student = db.relationship('Student', backref=db.backref('bus_attendances', lazy=True))
+    route_rel = db.relationship('BusRoute', backref=db.backref('attendances', lazy=True))
+
+
+class TransportApplication(db.Model):
+    __tablename__ = 'transport_applications'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    route_id = db.Column(db.Integer, db.ForeignKey('bus_routes.id'), nullable=False)
+    stop_id = db.Column(db.Integer, db.ForeignKey('bus_stops.id'), nullable=False)
+    academic_year_id = db.Column(db.Integer, db.ForeignKey('academic_years.id'), nullable=True)
+    application_date = db.Column(db.DateTime, default=datetime.now)
+    status = db.Column(db.String(20), nullable=False, default="Pending")  # Pending, Approved, Rejected
+    admin_remarks = db.Column(db.Text, nullable=True)
+    processed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    processed_at = db.Column(db.DateTime, nullable=True)
+
+    student = db.relationship('Student', backref=db.backref('transport_applications', lazy=True))
+    route = db.relationship('BusRoute', backref=db.backref('applications', lazy=True))
+    stop = db.relationship('BusStop', backref=db.backref('applications', lazy=True))
+
+
+

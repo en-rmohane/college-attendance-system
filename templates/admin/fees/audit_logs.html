@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Financial Audit Trail | Super Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-shield-check text-primary me-2"></i>Financial Audit Logs</h2>
+            <p class="text-muted mb-0">Immutable, traceable record of all financial mutations, waivers, discounts, and fee structure changes</p>
+        </div>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Admin Dashboard
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>User / Role</th>
+                            <th>Action</th>
+                            <th>Entity</th>
+                            <th>Entity ID</th>
+                            <th>Details / Values</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for l in logs %}
+                        <tr>
+                            <td class="small font-monospace">{{ l.timestamp.strftime('%d %b %Y, %I:%M:%S %p') }}</td>
+                            <td>
+                                <strong class="d-block text-dark">{{ l.user.fullname if l.user else 'System' }}</strong>
+                                <span class="badge bg-secondary small">{{ l.role or 'system' }}</span>
+                            </td>
+                            <td><span class="badge bg-primary font-monospace">{{ l.action }}</span></td>
+                            <td class="fw-semibold">{{ l.entity }}</td>
+                            <td class="font-monospace text-muted">{{ l.entity_id or 'N/A' }}</td>
+                            <td class="small text-truncate" style="max-width: 250px;">
+                                {% if l.new_value %}
+                                <strong class="text-success">New:</strong> {{ l.new_value }}
+                                {% endif %}
+                            </td>
+                            <td class="small text-muted font-monospace">{{ l.ip_address or '127.0.0.1' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+
+{% block title %}Fees & Payments | Student Portal{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-wallet2 text-primary me-2"></i>Fee Details & Online Payment</h2>
+            <p class="text-muted mb-0">Student: <strong>{{ student.name }}</strong> (Roll: {{ student.roll }} | Branch: {{ student.branch }})</p>
+        </div>
+        <a href="{{ url_for('student_dashboard') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Dashboard
+        </a>
+    </div>
+
+    <!-- Payment Under Verification Banner (12 Hours) -->
+    {% set pending_verifications = payments|selectattr('status', 'equalto', 'Pending Verification')|list %}
+    {% if pending_verifications %}
+    <div class="alert alert-info border-0 shadow-sm mb-4" role="alert" style="background-color: #e0f2fe; border-left: 5px solid #0284c7 !important;">
+        <div class="d-flex align-items-center">
+            <div class="spinner-border spinner-border-sm text-info me-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div>
+                <h5 class="fw-bold text-dark mb-1"><i class="bi bi-clock-history text-primary me-2"></i>Fee Payment Verification in Progress (Max 12 Hours)</h5>
+                <p class="mb-0 text-secondary">
+                    Aapka online payment submit ho gaya hai. Accountant ke dwara payment verify aur approve karne ke baad aapka fee status <strong>"Paid"</strong> update ho jayega. <strong>Is process me lagbhag 12 hours tak ka samay lag sakta hai.</strong>
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Late Fee Warning Alert -->
+    {% if late_fee_info %}
+    {% for late in late_fee_info %}
+    <div class="alert alert-warning alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-exclamation-triangle-fill fs-3 text-warning me-3"></i>
+            <div>
+                <h5 class="fw-bold mb-1">Late Fee Notice (Year {{ late.year }})</h5>
+                <p class="mb-0">
+                    Payment is past the due date by <strong>{{ late.days_late }} days</strong>. 
+                    A late fee of <strong>₹{{ late.rate }}/day</strong> (Total: <strong class="text-danger">₹{{ late.amount }}</strong>) will apply to overdue payments. Please clear your dues promptly to avoid further charges.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Overall Summary KPI Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 bg-primary text-white h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-white-50 text-uppercase fw-bold small">Total Course Fee</span>
+                            <h2 class="fw-bold mt-2 mb-0">₹{{ "{:,.2f}".format(total_fee_all_years) }}</h2>
+                        </div>
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3">
+                            <i class="bi bi-journal-text fs-2 text-white"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 bg-success text-white h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-white-50 text-uppercase fw-bold small">Total Fee Paid</span>
+                            <h2 class="fw-bold mt-2 mb-0">₹{{ "{:,.2f}".format(total_paid_all_years) }}</h2>
+                        </div>
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3">
+                            <i class="bi bi-check-circle-fill fs-2 text-white"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 {% if total_balance_all_years > 0 %}bg-danger{% else %}bg-secondary{% endif %} text-white h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-white-50 text-uppercase fw-bold small">Remaining Balance</span>
+                            <h2 class="fw-bold mt-2 mb-0">₹{{ "{:,.2f}".format(total_balance_all_years) }}</h2>
+                        </div>
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3">
+                            <i class="bi bi-clock-history fs-2 text-white"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Year-wise Fee Breakdown -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-0">
+            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-layers text-primary me-2"></i>Academic Year Fee Breakdown</h5>
+            {% if total_balance_all_years > 0 %}
+            <button class="btn btn-primary btn-sm px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#payFeeModal">
+                <i class="bi bi-credit-card me-1"></i> Pay Fee Online
+            </button>
+            {% endif %}
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Year</th>
+                            <th>Academic Year</th>
+                            <th>Total Fee</th>
+                            <th>Discount / Scholarship</th>
+                            <th>Paid Amount</th>
+                            <th>Remaining Balance</th>
+                            <th>Due Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rec in fee_records %}
+                        <tr>
+                            <td class="fw-bold">Year {{ rec.year }}</td>
+                            <td>{{ rec.academic_year }}</td>
+                            <td class="fw-semibold">₹{{ "{:,.2f}".format(rec.total_fee) }}</td>
+                            <td class="text-success">₹{{ "{:,.2f}".format(rec.discount) }}</td>
+                            <td class="text-success fw-bold">₹{{ "{:,.2f}".format(rec.paid_amount) }}</td>
+                            <td class="fw-bold {% if rec.remaining_balance > 0 %}text-danger{% else %}text-muted{% endif %}">
+                                ₹{{ "{:,.2f}".format(rec.remaining_balance) }}
+                            </td>
+                            <td>{{ rec.due_date.strftime('%d %b %Y') if rec.due_date else 'N/A' }}</td>
+                            <td>
+                                {% if rec.status == 'Paid' %}
+                                <span class="badge bg-success-subtle text-success px-3 py-2 border border-success">
+                                    <i class="bi bi-check-circle me-1"></i> Fully Paid
+                                </span>
+                                {% elif rec.status == 'Partial' %}
+                                <span class="badge bg-warning-subtle text-dark px-3 py-2 border border-warning">
+                                    <i class="bi bi-dash-circle me-1"></i> Partially Paid
+                                </span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger px-3 py-2 border border-danger">
+                                    <i class="bi bi-exclamation-circle me-1"></i> Pending
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if rec.remaining_balance > 0 %}
+                                <button class="btn btn-sm btn-outline-primary fw-semibold" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#payFeeModal" 
+                                        onclick="selectYearForPayment({{ rec.year }}, {{ rec.remaining_balance }})">
+                                    <i class="bi bi-cash-coin me-1"></i> Pay
+                                </button>
+                                {% else %}
+                                <span class="text-muted small"><i class="bi bi-check-all text-success fs-5"></i></span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fee Payment History & Receipts -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3 border-0">
+            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-receipt-cutoff text-primary me-2"></i>Payment Receipts & Transaction History</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if payments %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Receipt No.</th>
+                            <th>Date & Time</th>
+                            <th>Year</th>
+                            <th>Amount Paid</th>
+                            <th>Late Fee</th>
+                            <th>Payment Mode</th>
+                            <th>Transaction ID</th>
+                            <th>Status</th>
+                            <th>Receipt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in payments %}
+                        <tr>
+                            <td class="fw-bold text-primary">{{ p.receipt_no }}</td>
+                            <td>{{ p.payment_date.strftime('%d %b %Y, %I:%M %p') }}</td>
+                            <td>Year {{ p.year }}</td>
+                            <td class="fw-bold text-success">₹{{ "{:,.2f}".format(p.amount_paid) }}</td>
+                            <td class="text-muted">₹{{ "{:,.2f}".format(p.late_fee_paid) }}</td>
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    <i class="bi bi-credit-card-2-front me-1"></i> {{ p.payment_mode }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if p.status == 'Pending Verification' %}
+                                <span class="badge bg-warning text-dark border border-warning px-2 py-1">
+                                    <i class="bi bi-clock-history me-1"></i> Under Verification (Max 12h)
+                                </span>
+                                {% elif p.status == 'Success' %}
+                                <span class="badge bg-success px-2 py-1">
+                                    <i class="bi bi-check-circle-fill me-1"></i> Paid / Approved
+                                </span>
+                                {% elif p.status == 'Rejected' %}
+                                <span class="badge bg-danger px-2 py-1">
+                                    <i class="bi bi-x-circle-fill me-1"></i> Rejected
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary px-2 py-1">{{ p.status }}</span>
+                                {% endif %}
+                            </td>
+                                <a href="{{ url_for('student_fee_receipt', payment_id=p.id) }}" 
+                                   class="btn btn-sm btn-light border text-dark fw-semibold" target="_blank">
+                                    <i class="bi bi-download me-1 text-primary"></i> Receipt
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-4 text-center text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                <p class="mb-0">No fee transactions found yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Pay Fee Modal -->
+<div class="modal fade" id="payFeeModal" tabindex="-1" aria-labelledby="payFeeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold" id="payFeeModalLabel"><i class="bi bi-credit-card-fill me-2"></i>Online Fee Payment</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('student_pay_fee') }}" method="POST">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label for="payYear" class="form-label fw-semibold">Select Academic Year</label>
+                        <select class="form-select" id="payYear" name="year" onchange="updatePayableAmount()">
+                            {% for rec in fee_records %}
+                            {% if rec.remaining_balance > 0 %}
+                            <option value="{{ rec.year }}" data-balance="{{ rec.remaining_balance }}">
+                                Year {{ rec.year }} (Balance: ₹{{ "{:,.2f}".format(rec.remaining_balance) }})
+                            </option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="amountPaid" class="form-label fw-semibold">Enter Amount to Pay (₹)</label>
+                        <input type="number" step="100" min="100" class="form-control form-control-lg fw-bold text-primary" id="amountPaid" name="amount_paid" required>
+                        <div class="form-text">You can pay the full amount or a partial fee.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Select Payment Method</label>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="payment_mode" id="modeUPI" value="UPI" checked onclick="togglePaymentFields('UPI')">
+                                <label class="btn btn-outline-primary w-100 py-2 fw-semibold" for="modeUPI">
+                                    <i class="bi bi-qr-code d-block fs-4 mb-1"></i> UPI / QR
+                                </label>
+                            </div>
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="payment_mode" id="modeCard" value="Card" onclick="togglePaymentFields('Card')">
+                                <label class="btn btn-outline-primary w-100 py-2 fw-semibold" for="modeCard">
+                                    <i class="bi bi-credit-card d-block fs-4 mb-1"></i> Card
+                                </label>
+                            </div>
+                            <div class="col-4">
+                                <input type="radio" class="btn-check" name="payment_mode" id="modeNet" value="Net Banking" onclick="togglePaymentFields('Net')">
+                                <label class="btn btn-outline-primary w-100 py-2 fw-semibold" for="modeNet">
+                                    <i class="bi bi-bank d-block fs-4 mb-1"></i> NetBanking
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- UPI Details UI -->
+                    <div id="upiSection" class="p-3 bg-light rounded text-center mb-3">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=collegefees@sbtim.edu%26pn=SBTIM%20BETUL" alt="UPI QR Code" class="img-fluid rounded border mb-2" style="max-width: 130px;">
+                        <p class="small text-muted mb-0">Scan QR using GPay, PhonePe, or Paytm</p>
+                        <span class="badge bg-primary-subtle text-primary font-monospace mt-1">UPI ID: collegefees@sbtim.edu</span>
+                    </div>
+
+                    <!-- Card Details UI -->
+                    <div id="cardSection" class="p-3 bg-light rounded mb-3 d-none">
+                        <div class="mb-2">
+                            <input type="text" class="form-control" placeholder="Card Number (16 Digits)" maxlength="19">
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <input type="text" class="form-control" placeholder="MM/YY" maxlength="5">
+                            </div>
+                            <div class="col-6">
+                                <input type="password" class="form-control" placeholder="CVV" maxlength="3">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success fw-bold px-4 py-2">
+                        <i class="bi bi-shield-lock me-1"></i> Confirm & Pay Fee
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function selectYearForPayment(year, balance) {
+        let select = document.getElementById('payYear');
+        if (select) {
+            select.value = year;
+            document.getElementById('amountPaid').value = balance;
+        }
+    }
+
+    function updatePayableAmount() {
+        let select = document.getElementById('payYear');
+        if (select && select.selectedOptions.length > 0) {
+            let bal = select.selectedOptions[0].getAttribute('data-balance');
+            document.getElementById('amountPaid').value = bal;
+        }
+    }
+
+    function togglePaymentFields(mode) {
+        document.getElementById('upiSection').classList.add('d-none');
+        document.getElementById('cardSection').classList.add('d-none');
+        if (mode === 'UPI') {
+            document.getElementById('upiSection').classList.remove('d-none');
+        } else if (mode === 'Card') {
+            document.getElementById('cardSection').classList.remove('d-none');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updatePayableAmount();
+    });
+</script>
+{% endblock %}

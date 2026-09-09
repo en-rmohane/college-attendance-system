@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Fast Cashier Counter | Accountant Portal{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-display text-success me-2"></i>Cashier Counter Interface</h2>
+            <p class="text-muted mb-0">High-speed offline fee collection counter for fast student search and immediate receipt generation</p>
+        </div>
+        <a href="{{ url_for('accountant_dashboard') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Dashboard
+        </a>
+    </div>
+
+    <!-- Quick Search Bar -->
+    <div class="card shadow-sm border-0 mb-4 bg-primary text-white">
+        <div class="card-body p-4">
+            <form method="GET" action="{{ url_for('accountant_cashier') }}" class="row g-3 align-items-center">
+                <div class="col-md-9">
+                    <label for="search_roll" class="form-label fw-bold">Enter Student Roll Number or Name</label>
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text bg-white text-primary"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control fw-bold font-monospace" name="search_roll" placeholder="e.g. 0545CS241002 or Aarti" value="{{ search_roll }}" autofocus required>
+                    </div>
+                </div>
+                <div class="col-md-3 mt-md-4">
+                    <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold">Search Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if student %}
+    <!-- Student Found Card -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3 border-0">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-person-fill text-primary me-2"></i>Student Details</h5>
+                </div>
+                <div class="card-body">
+                    <h4 class="fw-bold text-primary mb-1">{{ student.name }}</h4>
+                    <p class="mb-2"><strong>Roll Number:</strong> <span class="font-monospace fs-5 text-dark">{{ student.roll }}</span></p>
+                    <p class="mb-2"><strong>Branch & Year:</strong> {{ student.branch }} | {{ student.year }}th Year</p>
+                    <hr>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted fw-semibold">Current Active Status:</span>
+                        <span class="badge bg-success px-3 py-2">Enrolled Student</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 h-100 bg-light">
+                <div class="card-header bg-success text-white py-3 border-0">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-cash-coin me-2"></i>Quick Fee Collection Form</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form action="{{ url_for('accountant_collect_fee') }}" method="POST">
+                        <input type="hidden" name="student_roll" value="{{ student.roll }}">
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label for="year" class="form-label fw-semibold">Select Year</label>
+                                <select class="form-select" name="year">
+                                    {% for r in fee_records %}
+                                    <option value="{{ r.year }}">Year {{ r.year }} (Due: ₹{{ "{:,.2f}".format(r.remaining_balance) }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label for="payment_mode" class="form-label fw-semibold">Payment Mode</label>
+                                <select class="form-select" name="payment_mode">
+                                    <option value="Cash">Cash</option>
+                                    <option value="UPI">UPI / QR Code</option>
+                                    <option value="Cheque">Cheque</option>
+                                    <option value="DD">Demand Draft</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="amount_paid" class="form-label fw-semibold">Amount Received (₹)</label>
+                            <input type="number" step="100" class="form-control form-control-lg fw-bold text-success" name="amount_paid" placeholder="Enter amount" required>
+                        </div>
+                        <button type="submit" class="btn btn-success btn-lg w-100 fw-bold">Collect Fee & Issue Receipt</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% elif search_roll %}
+    <div class="alert alert-warning text-center p-4">
+        <i class="bi bi-exclamation-triangle fs-1 d-block mb-2 text-warning"></i>
+        No student matching <strong>"{{ search_roll }}"</strong> was found. Please check roll number and try again.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

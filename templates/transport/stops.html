@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Stops for {{ route.route_number }} - ERP Portal{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{{ url_for('transport_routes') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <h2 class="fw-bold mb-0">
+                    <span class="badge bg-warning text-dark me-2">{{ route.route_number }}</span>
+                    {{ route.route_name }}
+                </h2>
+            </div>
+            <p class="text-muted mb-0 ms-4 ps-2">
+                Bus No: <strong>{{ route.vehicle_number }}</strong> &bull; Driver: <strong>{{ route.driver_name }}</strong> ({{ route.driver_phone }}) &bull; Total Stops: <strong>{{ stops|length }}</strong>
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-warning fw-bold" data-bs-toggle="modal" data-bs-target="#addStopModal">
+                <i class="bi bi-plus-circle me-1"></i> Add Pickup Stop
+            </button>
+        </div>
+    </div>
+
+    <!-- Stops Timeline / Table -->
+    <div class="card shadow-sm border-0 rounded-3">
+        <div class="card-header bg-dark text-white py-3">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-pin-map-fill text-warning me-2"></i>Route Stops & Time Schedule</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4" style="width: 80px;">Seq</th>
+                        <th>Stop Name</th>
+                        <th>Morning Pickup Time</th>
+                        <th>Evening Drop Time</th>
+                        <th>Stop Fare (Annual)</th>
+                        <th>Students Assigned</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stop in stops %}
+                    <tr>
+                        <td class="ps-4">
+                            <span class="badge bg-secondary rounded-pill px-3 py-2">#{{ stop.sequence_order }}</span>
+                        </td>
+                        <td>
+                            <strong class="text-dark fs-6">{{ stop.stop_name }}</strong>
+                            {% if loop.first %}
+                            <span class="badge bg-primary ms-2">Start Point</span>
+                            {% elif loop.last %}
+                            <span class="badge bg-success ms-2">Campus Gate</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-warning text-dark"><i class="bi bi-sunrise me-1"></i>{{ stop.morning_pickup_time }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info text-dark"><i class="bi bi-sunset me-1"></i>{{ stop.evening_drop_time }}</span>
+                        </td>
+                        <td>
+                            <strong class="text-success">₹{{ "{:,.0f}".format(stop.stop_fee) }}</strong>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border">{{ stop.passes|length }} Students</span>
+                        </td>
+                        <td class="text-end pe-4">
+                            <form method="POST" action="{{ url_for('transport_stop_delete', stop_id=stop.id) }}" class="d-inline" onsubmit="return confirm('Remove stop {{ stop.stop_name }}?');">
+                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete Stop">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            No stops configured yet for this route. Add one using the button above.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Stop Modal -->
+<div class="modal fade" id="addStopModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('transport_route_stops', route_id=route.id) }}">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle me-2"></i>Add Stop to {{ route.route_number }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Stop Name *</label>
+                        <input type="text" class="form-control" name="stop_name" placeholder="e.g. Shivaji Chowk" required>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Morning Pickup Time *</label>
+                            <input type="text" class="form-control" name="morning_pickup_time" placeholder="e.g. 08:10 AM" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Evening Drop Time *</label>
+                            <input type="text" class="form-control" name="evening_drop_time" placeholder="e.g. 05:40 PM" required>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Annual Fee (₹) *</label>
+                            <input type="number" step="0.01" class="form-control" name="stop_fee" value="{{ route.default_annual_fee }}" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Sequence Order *</label>
+                            <input type="number" class="form-control" name="sequence_order" value="{{ (stops|length) + 1 }}" required min="1">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning fw-bold">Add Stop</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

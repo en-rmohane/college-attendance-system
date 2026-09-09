@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Bus Pass - SBITM College ERP</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0f172a;
+            font-family: 'Outfit', sans-serif;
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .verify-card {
+            background: #1e293b;
+            border-radius: 20px;
+            border: 1px solid #334155;
+            max-width: 480px;
+            width: 100%;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+
+<div class="verify-card p-4">
+    <div class="text-center mb-4 pb-3 border-bottom border-secondary">
+        <i class="bi bi-bus-front-fill text-warning display-4 mb-2 d-block"></i>
+        <h4 class="fw-bold mb-0">SBITM Transport Verification</h4>
+        <p class="text-muted small mb-0">Official Digital Pass Verification Portal</p>
+    </div>
+
+    {% if pass_rec %}
+    <div class="alert alert-success d-flex align-items-center mb-4">
+        <i class="bi bi-patch-check-fill fs-2 me-3"></i>
+        <div>
+            <h6 class="fw-bold mb-0">VALID BUS PASS</h6>
+            <small>This pass is officially registered in SBITM College Transport ERP.</small>
+        </div>
+    </div>
+
+    <div class="bg-dark p-3 rounded-3 mb-3 border border-secondary">
+        <div class="text-center mb-3">
+            <h5 class="fw-bold text-warning mb-0">{{ pass_rec.student.name }}</h5>
+            <div class="text-muted small">Roll: <strong class="text-light">{{ pass_rec.student.roll }}</strong> &bull; {{ pass_rec.student.branch }}</div>
+            <span class="badge bg-secondary mt-1">PASS: {{ pass_rec.pass_number }}</span>
+        </div>
+
+        <div class="row g-2 small pt-2 border-top border-secondary">
+            <div class="col-6">
+                <span class="text-muted d-block">Route</span>
+                <strong class="text-light">{{ pass_rec.route.route_number }} - {{ pass_rec.route.vehicle_number }}</strong>
+            </div>
+            <div class="col-6 text-end">
+                <span class="text-muted d-block">Pickup Stop</span>
+                <strong class="text-warning">{{ pass_rec.stop.stop_name }}</strong>
+            </div>
+            <div class="col-6 mt-2">
+                <span class="text-muted d-block">Valid Upto</span>
+                <strong class="text-light">{{ pass_rec.valid_upto.strftime('%d-%m-%Y') }}</strong>
+            </div>
+            <div class="col-6 text-end mt-2">
+                <span class="text-muted d-block">Pass Status</span>
+                <span class="badge bg-{{ 'success' if pass_rec.status == 'Active' else 'danger' }}">{{ pass_rec.status }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center text-muted small">
+        <i class="bi bi-shield-lock-fill text-success me-1"></i> Verified on {{ now.strftime('%d %b %Y, %I:%M %p') }}
+    </div>
+    {% else %}
+    <div class="alert alert-danger text-center">
+        <i class="bi bi-x-octagon-fill fs-2 d-block mb-2"></i>
+        <h5 class="fw-bold">INVALID BUS PASS</h5>
+        <p class="small mb-0">No active transport pass found matching this verification token.</p>
+    </div>
+    {% endif %}
+</div>
+
+</body>
+</html>

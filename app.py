@@ -1,5 +1,7 @@
 import csv
 import os
+import hashlib
+import uuid
 from sqlalchemy import or_
 import requests
 from flask_sqlalchemy import SQLAlchemy
@@ -24,7 +26,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from fix_database import get_timetable_from_db, generate_monthly_attendance_excel, basedir, send_otp_email
 from models import db, User, Student, Subject, ProfessorSubject, Attendance, AttendanceReport, PasswordResetOTP, \
     EmailLog, RGPVScheme, TimetableSlot, CurrentSemester, MidTermMarks, Notes, Notice, Test, Question, \
-    TestAttempt, StudentAnswer, QuestionSection, Faculty
+    TestAttempt, StudentAnswer, QuestionSection, Faculty, FeeStructure, StudentFeeRecord, FeePayment, \
+    AcademicYear, FeeHead, FeeStructureItem, FeeDemand, FeeInstallment, FeeLedger, PaymentAllocation, \
+    PaymentGatewayTransaction, LateFeeRule, LateFeeWaiver, DiscountScholarship, RefundRecord, AuditLog, NoDuesCertificate, \
+    BusRoute, BusStop, BusPass, BusAttendance, TransportApplication
+
+from fee_service import LedgerService, AuditService, PaymentGatewayService, LateFeeEngine, PaymentAllocationEngine
 
 from datetime import datetime
 
@@ -60,7 +67,13 @@ if IS_VERCEL:
     app = Flask(__name__, instance_path='/tmp')
 else:
     app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
+
+# Security & Session Hardening
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'sbitm-erp-production-super-secure-key-2026')
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = IS_VERCEL or (os.environ.get('FLASK_ENV') == 'production')
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=12)
 
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_pre_ping": True,
@@ -68,6 +81,148 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_size": 5,
     "max_overflow": 2,
 }
+
+
+# ==================== ENTERPRISE WEB APPLICATION FIREWALL (WAF) & BOT SHIELD ====================
+import re
+
+class EnterpriseWAF:
+    """Intelligent Custom Web Application Firewall & Bot Blocker"""
+    def __init__(self):
+        # Known Attack Tools, Scanners & Malicious Bots
+        self.malicious_agents = [
+            'sqlmap', 'nikto', 'dirbuster', 'nmap', 'hydra', 'gobuster', 'wpscan',
+            'masscan', 'acunetix', 'scrapy', 'zgrab', 'netsparker', 'nuclei',
+            'havij', 'pangolin', 'censys', 'shodan', 'fuzz', 'qualys', 'nessus',
+            'morfeus', 'openvas', 'whatweb', 'arachni', 'burpcollaborator'
+        ]
+        
+        # Attack Patterns (Path Traversal, Probes, Shell Injections)
+        self.attack_patterns = [
+            r'(\.\./|\.\.\\)',                          # Path Traversal
+            r'(/etc/passwd|/etc/shadow|win\.ini)',      # Sensitive OS Files
+            r'(\.env|\.git/|\.aws/|dump\.sql)',         # Sensitive Configs
+            r'(wp-login|wp-admin|phpinfo|xmlrpc\.php)', # CMS Probes
+            r'(\$\{jndi:|<script|javascript:)',         # Log4j & Script Injection
+            r'(union\s+select|select\s+.*\s+from\s+)',  # Raw SQL Injections
+            r'(eval\(|base64_decode|system\(|passthru\()', # Remote Code Execution
+            r'(/bin/sh|/bin/bash|cmd\.exe)'             # Shell Spawning
+        ]
+
+        # Rate Limiting & Blacklist Storage
+        self.request_history = {} # ip -> [timestamps]
+        self.blacklisted_ips = {} # ip -> unban_timestamp
+        self.max_requests_per_minute = 100
+        self.ban_duration_seconds = 1800 # 30 mins
+
+    def get_client_ip(self, req):
+        """Accurately extract client IP even behind Vercel / Cloudflare Proxies"""
+        forwarded = req.headers.get('X-Forwarded-For')
+        if forwarded:
+            return forwarded.split(',')[0].strip()
+        return req.headers.get('CF-Connecting-IP') or req.remote_addr or '127.0.0.1'
+
+    def inspect_request(self, req):
+        """Inspect incoming HTTP request for threats, scanners, bots and exploits"""
+        ip = self.get_client_ip(req)
+        now = datetime.now()
+
+        # 1. Check if IP is already in temporary ban list
+        if ip in self.blacklisted_ips:
+            if now < self.blacklisted_ips[ip]:
+                remaining = int((self.blacklisted_ips[ip] - now).total_seconds() // 60) + 1
+                return False, f"🚨 Access Blocked: Your IP is banned by the WAF Firewall for malicious activity ({remaining} min remaining).", 403
+            else:
+                del self.blacklisted_ips[ip]
+
+        # 2. Check Malicious User-Agent / Scanner Bots
+        user_agent = (req.headers.get('User-Agent') or '').lower()
+        if not user_agent or len(user_agent) < 4:
+            # Block blank / headless bot user agents
+            if not req.path.startswith('/static'):
+                return False, "🚨 Access Denied: Headless automated bot detected.", 403
+
+        for bot_sig in self.malicious_agents:
+            if bot_sig in user_agent:
+                self.blacklisted_ips[ip] = now + timedelta(seconds=self.ban_duration_seconds)
+                print(f"[WAF SHIELD] Malicious Scanner Bot '{bot_sig}' BLOCKED & BANNED: {ip}")
+                return False, f"🚨 WAF Security Block: Automated scanner '{bot_sig}' is prohibited.", 403
+
+        # 3. Check Exploit Patterns in Path & Query Strings
+        full_target = f"{req.path}?{req.query_string.decode('utf-8', errors='ignore')}"
+        for pattern in self.attack_patterns:
+            if re.search(pattern, full_target, re.IGNORECASE):
+                self.blacklisted_ips[ip] = now + timedelta(seconds=self.ban_duration_seconds)
+                print(f"[WAF SHIELD] Exploit probe '{pattern}' BLOCKED from {ip}")
+                return False, "🚨 WAF Security Shield: Malicious attack payload / exploit probe blocked.", 403
+
+        # 4. Anti-DDoS & High-Speed Scraper Rate Limiting
+        if ip not in self.request_history:
+            self.request_history[ip] = []
+        
+        # Retain last 60 seconds of history
+        self.request_history[ip] = [t for t in self.request_history[ip] if (now - t).total_seconds() < 60]
+        self.request_history[ip].append(now)
+
+        if len(self.request_history[ip]) > self.max_requests_per_minute:
+            self.blacklisted_ips[ip] = now + timedelta(seconds=300) # Ban for 5 mins
+            print(f"[WAF SHIELD] Rate Limit Exceeded by {ip} ({len(self.request_history[ip])} req/min). Banned for 5m.")
+            return False, "🚨 DDoS / Rapid Scraping Defense: Too many requests. Temporarily blocked for 5 minutes.", 429
+
+        return True, None, 200
+
+waf = EnterpriseWAF()
+
+
+@app.before_request
+def firewall_inspection():
+    """Execute Custom WAF Inspection on every request"""
+    # Allow static assets
+    if request.path.startswith('/static/'):
+        return None
+
+    is_allowed, reason, status_code = waf.inspect_request(request)
+    if not is_allowed:
+        # Return a custom professional WAF Security Block Page
+        waf_block_html = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>403 Forbidden | WAF Security Shield</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+            <style>
+                body {{ background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }}
+                .shield-card {{ background: #1e293b; border: 1px solid #334155; border-radius: 16px; max-width: 540px; padding: 40px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }}
+                .shield-icon {{ font-size: 64px; color: #ef4444; margin-bottom: 20px; }}
+            </style>
+        </head>
+        <body>
+            <div class="shield-card">
+                <i class="bi bi-shield-x shield-icon"></i>
+                <h3 class="fw-bold text-danger mb-2">Access Denied by WAF</h3>
+                <p class="text-white-50 small mb-3">Enterprise Web Application Firewall & Bot Defense</p>
+                <div class="alert alert-danger border-0 small text-start mb-4">{reason}</div>
+                <p class="small text-muted mb-4">Your IP, User-Agent, and payload signatures were flagged by the security policy. If you believe this is an error, contact the system administrator.</p>
+                <a href="/" class="btn btn-outline-light btn-sm px-4">Return to Homepage</a>
+            </div>
+        </body>
+        </html>
+        """
+        return waf_block_html, status_code
+
+
+@app.after_request
+def apply_enterprise_security_headers(response):
+    """Enterprise Security Headers against XSS, Clickjacking, MIME-sniffing and data caching"""
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    if 'Cache-Control' not in response.headers:
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return response
 
 
 ''''# Email Configuration
@@ -763,6 +918,164 @@ def get_current_academic_year():
         return today.year - 1
 
 
+def initialize_fee_system():
+    """Initialize default fee structures, accountant account, fee heads, academic years, and fee demands"""
+    try:
+        # 1. Ensure Accountant User
+        accountant = User.query.filter((User.role == 'accountant') | (User.username == 'accountant') | (User.email == 'accountant@college.com')).first()
+        if not accountant:
+            accountant = User(
+                username='accountant',
+                fullname='Accountant / Fee Officer',
+                email='accountant@college.com',
+                password_hash=generate_password_hash('accountant123'),
+                role='accountant',
+                branch='ALL',
+                email_verified=True,
+                is_active=True
+            )
+            db.session.add(accountant)
+            db.session.commit()
+            print("[OK] Default accountant user created (accountant / accountant123)")
+
+        # 2. Ensure Academic Years
+        ay25 = AcademicYear.query.filter_by(name="2025-26").first()
+        if not ay25:
+            ay25 = AcademicYear(name="2025-26", start_date=date(2025, 7, 1), end_date=date(2026, 6, 30), is_current=True)
+            db.session.add(ay25)
+
+        ay26 = AcademicYear.query.filter_by(name="2026-27").first()
+        if not ay26:
+            ay26 = AcademicYear(name="2026-27", start_date=date(2026, 7, 1), end_date=date(2027, 6, 30), is_current=False)
+            db.session.add(ay26)
+
+        # 3. Ensure Default Fee Heads
+        heads_data = [
+            ("Tuition Fee", "TUITION", True),
+            ("Development Fee", "DEV", True),
+            ("Examination Fee", "EXAM", True),
+            ("Library Fee", "LIB", True),
+            ("Miscellaneous Fee", "MISC", False)
+        ]
+        for h_name, h_code, h_mand in heads_data:
+            fh = FeeHead.query.filter_by(code=h_code).first()
+            if not fh:
+                fh = FeeHead(name=h_name, code=h_code, is_mandatory=h_mand)
+                db.session.add(fh)
+
+        # 4. Ensure Default Late Fee Rule
+        rule = LateFeeRule.query.first()
+        if not rule:
+            rule = LateFeeRule(title="Standard Daily Late Fee", rule_type="DAILY", grace_period_days=5, rate_amount=50.0, max_late_fee=5000.0)
+            db.session.add(rule)
+
+        db.session.commit()
+
+        # 5. Ensure Fee Structures for Year 1..4 and Branches CSE, AD
+        default_fees = {
+            1: {'tuition': 45000, 'dev': 5000, 'exam': 3000, 'other': 2000, 'total': 55000},
+            2: {'tuition': 47000, 'dev': 5000, 'exam': 3000, 'other': 3000, 'total': 58000},
+            3: {'tuition': 48000, 'dev': 6000, 'exam': 3000, 'other': 3000, 'total': 60000},
+            4: {'tuition': 50000, 'dev': 6000, 'exam': 3000, 'other': 3000, 'total': 62000},
+        }
+
+        branches = ['CSE', 'AD']
+        for branch in branches:
+            for yr in range(1, 5):
+                existing = FeeStructure.query.filter_by(branch=branch, year=yr).first()
+                if not existing:
+                    fee_info = default_fees[yr]
+                    fs = FeeStructure(
+                        branch=branch,
+                        year=yr,
+                        academic_year=2026,
+                        tuition_fee=fee_info['tuition'],
+                        development_fee=fee_info['dev'],
+                        exam_fee=fee_info['exam'],
+                        other_charges=fee_info['other'],
+                        total_fee=fee_info['total'],
+                        due_date=date(2026, 9, 30),
+                        late_fee_per_day=50.0,
+                        is_active=True
+                    )
+                    db.session.add(fs)
+        db.session.commit()
+
+        # 6. Ensure Student Fee Records and Demands
+        students = Student.query.all()
+        created_records = 0
+        tuition_head = FeeHead.query.filter_by(code="TUITION").first()
+
+        for student in students:
+            for yr in range(1, (student.year or 1) + 1):
+                rec = StudentFeeRecord.query.filter_by(student_id=student.id, year=yr).first()
+                if not rec:
+                    fs = FeeStructure.query.filter_by(branch=student.branch, year=yr).first() or FeeStructure.query.filter_by(year=yr).first()
+                    total_amt = fs.total_fee if fs else 55000.0
+                    due_d = fs.due_date if fs else date(2026, 9, 30)
+
+                    if yr < student.year:
+                        paid_amt = total_amt
+                        status = 'Paid'
+                        rem_bal = 0.0
+                    else:
+                        paid_amt = 0.0
+                        status = 'Pending'
+                        rem_bal = total_amt
+
+                    new_rec = StudentFeeRecord(
+                        student_id=student.id,
+                        year=yr,
+                        academic_year=2026 - (student.year - yr),
+                        total_fee=total_amt,
+                        discount=0.0,
+                        paid_amount=paid_amt,
+                        remaining_balance=rem_bal,
+                        status=status,
+                        due_date=due_d
+                    )
+                    db.session.add(new_rec)
+                    created_records += 1
+
+                # Ensure FeeDemand exists
+                demand = FeeDemand.query.filter_by(student_id=student.id, year=yr).first()
+                if not demand:
+                    tot_val = rec.total_fee if rec else 55000.0
+                    paid_val = rec.paid_amount if rec else 0.0
+                    due_d = rec.due_date if rec else date(2026, 9, 30)
+                    demand = FeeDemand(
+                        student_id=student.id,
+                        academic_year_id=ay25.id if ay25 else None,
+                        fee_head_id=tuition_head.id if tuition_head else None,
+                        year=yr,
+                        original_amount=tot_val,
+                        discount_amount=0.0,
+                        net_amount=tot_val,
+                        paid_amount=paid_val,
+                        pending_amount=tot_val - paid_val,
+                        due_date=due_d,
+                        status='Paid' if (tot_val - paid_val) <= 0 else ('Partial' if paid_val > 0 else 'Pending')
+                    )
+                    db.session.add(demand)
+
+                    # Append initial ledger entry
+                    LedgerService.record_entry(
+                        student_id=student.id,
+                        entry_type='DEMAND',
+                        debit=tot_val,
+                        credit=0.0,
+                        reference_no=f"DEMAND-YR{yr}",
+                        remarks=f"Year {yr} Fee Assignment"
+                    )
+
+        db.session.commit()
+        print(f"[OK] Enterprise Fee system initialized ({created_records} student fee records created)")
+
+    except Exception as e:
+        print(f"[ERROR] initialize_fee_system failed: {e}")
+        db.session.rollback()
+
+
 # ========== DATABASE INITIALIZATION FOR RENDER ==========
 def init_database():
     """Initialize database tables and create default admin user"""
@@ -794,12 +1107,15 @@ def init_database():
             subject_count = Subject.query.count()
             if subject_count == 0:
                 print("[OK] Loading initial data...")
-                preload_subjects()  # This function is now defined above
-                load_students_from_files()  # This function is now defined above
+                preload_subjects()
+                load_students_from_files()
                 ensure_student_accounts()
                 initialize_current_semester()
                 initialize_rgpv_scheme_complete()
                 migrate_test_system()
+
+            # Always initialize fee system
+            initialize_fee_system()
 
             db.session.commit()
             print("Database initialization completed successfully!")
@@ -812,6 +1128,7 @@ def init_database():
 
 # Run database initialization
 init_database()
+
 # Global variables
 REPORT_DIR = os.path.join(basedir, 'reports')
 UPLOAD_FOLDER = os.path.join(basedir, 'uploads')
@@ -1825,6 +2142,8 @@ def index():
     if current_user.is_authenticated:
         if current_user.role == 'admin':
             return redirect(url_for('admin_dashboard'))
+        elif current_user.role == 'accountant':
+            return redirect(url_for('accountant_dashboard'))
         elif current_user.role == 'professor':
             return redirect(url_for('prof_dashboard'))
         else:
@@ -1832,11 +2151,65 @@ def index():
     return render_template('index.html')
 
 
+# ========== BRUTE-FORCE & RATE LIMITING DEFENSE SYSTEM ==========
+class LoginRateLimiter:
+    """Enterprise Brute-force, Credential Stuffing & Bot Defense"""
+    def __init__(self, max_attempts=5, lockout_seconds=300):
+        self.max_attempts = max_attempts
+        self.lockout_seconds = lockout_seconds
+        self.failed_attempts = {}
+        self.lockouts = {}
+
+    def _get_key(self, ip, username):
+        return f"{ip}_{username.lower()}"
+
+    def is_locked(self, ip, username):
+        now = datetime.now()
+        key = self._get_key(ip, username)
+        
+        for k in [key, ip]:
+            if k in self.lockouts:
+                if now < self.lockouts[k]:
+                    remaining_sec = int((self.lockouts[k] - now).total_seconds())
+                    return True, max(1, (remaining_sec + 59) // 60)
+                else:
+                    self.lockouts.pop(k, None)
+                    self.failed_attempts.pop(k, None)
+        return False, 0
+
+    def record_failure(self, ip, username):
+        now = datetime.now()
+        key = self._get_key(ip, username)
+        
+        for k in [key, ip]:
+            if k not in self.failed_attempts:
+                self.failed_attempts[k] = []
+            
+            # Clean expired timestamps (older than 10 mins)
+            self.failed_attempts[k] = [t for t in self.failed_attempts[k] if (now - t).total_seconds() < 600]
+            self.failed_attempts[k].append(now)
+
+            if len(self.failed_attempts[k]) >= self.max_attempts:
+                self.lockouts[k] = now + timedelta(seconds=self.lockout_seconds)
+                print(f"[SECURITY ALERT] Brute-force lockout triggered for '{k}' until {self.lockouts[k]}")
+
+    def record_success(self, ip, username):
+        key = self._get_key(ip, username)
+        self.failed_attempts.pop(key, None)
+        self.failed_attempts.pop(ip, None)
+        self.lockouts.pop(key, None)
+        self.lockouts.pop(ip, None)
+
+login_limiter = LoginRateLimiter(max_attempts=5, lockout_seconds=300)
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
         if current_user.role == 'admin':
             return redirect(url_for('admin_dashboard'))
+        elif current_user.role == 'accountant':
+            return redirect(url_for('accountant_dashboard'))
         elif current_user.role == 'professor':
             return redirect(url_for('prof_dashboard'))
         else:
@@ -1845,8 +2218,15 @@ def login():
     if request.method == 'POST':
         login_input = request.form.get('email', '').strip()
         password = request.form.get('password', '')
-        
-        print(f"[DEBUG] Login attempt for: '{login_input}'")
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr or '127.0.0.1').split(',')[0].strip()
+
+        # 1. Check Brute-Force Lockout
+        is_locked, rem_mins = login_limiter.is_locked(client_ip, login_input)
+        if is_locked:
+            flash(f'🚨 Security Alert: Too many failed login attempts! Your access is locked for {rem_mins} minute(s) to protect against unauthorized access.', 'danger')
+            return render_template('login.html'), 429
+
+        print(f"[DEBUG] Login attempt for: '{login_input}' from IP {client_ip}")
 
         user = User.query.filter(db.func.lower(User.email) == login_input.lower()).first()
         if not user:
@@ -1858,7 +2238,10 @@ def login():
             # Check password normally
             if user.check_password(password):
                 print(f"[DEBUG] Password correct for {user.username}")
-                if not user.email_verified and user.role != 'admin' and user.role != 'student':
+                # Reset failed counter on successful login
+                login_limiter.record_success(client_ip, login_input)
+
+                if not user.email_verified and user.role not in ['admin', 'student', 'accountant']:
                     flash('Please verify your email before logging in', 'warning')
                     return redirect(url_for('login'))
 
@@ -1867,21 +2250,19 @@ def login():
 
                 if user.role == 'admin':
                     return redirect(url_for('admin_dashboard'))
+                elif user.role == 'accountant':
+                    return redirect(url_for('accountant_dashboard'))
                 elif user.role == 'professor':
                     return redirect(url_for('prof_dashboard'))
                 else:
                     return redirect(url_for('student_dashboard'))
             else:
-                # Password incorrect - let's check if it would have worked with uppercase roll number
-                # This helps diagnose if the student is typing lowercase password
-                if user.role == 'student' and user.student_roll:
-                    if password.upper() == user.student_roll.upper():
-                        print(f"[DEBUG] Password INCORRECT, but matches UPPERCASE of student roll: {user.student_roll}")
-                    else:
-                        print(f"[DEBUG] Password INCORRECT for {user.username}. Typed length: {len(password)}")
-
+                # Record failed attempt for brute-force protection
+                login_limiter.record_failure(client_ip, login_input)
                 flash('Invalid email/username or password', 'danger')
         else:
+            # Record failed attempt even if username not found (prevents username harvesting)
+            login_limiter.record_failure(client_ip, login_input)
             print(f"[DEBUG] No user found for: '{login_input}'")
             flash('Invalid email/username or password', 'danger')
 
@@ -5739,14 +6120,1570 @@ def test_brevo_transactional():
     </ol>
     """
 
+# ==================== FEE MANAGEMENT MODULE ====================
+
+@app.route('/student/fees')
+@login_required
+def student_fees():
+    """Student Fee Portal - view balance, breakdown by year, receipts"""
+    if current_user.role not in ['student', 'admin']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    # Get student record
+    student = Student.query.filter_by(roll=current_user.student_roll).first() if current_user.student_roll else None
+    if not student:
+        student = Student.query.first()
+
+    if not student:
+        flash('Student record not found', 'danger')
+        return redirect(url_for('student_dashboard'))
+
+    # Ensure fee records exist for all completed & current years
+    for yr in range(1, (student.year or 1) + 1):
+        rec = StudentFeeRecord.query.filter_by(student_id=student.id, year=yr).first()
+        if not rec:
+            fs = FeeStructure.query.filter_by(branch=student.branch, year=yr).first() or FeeStructure.query.filter_by(year=yr).first()
+            total_amt = fs.total_fee if fs else 55000.0
+            due_d = fs.due_date if fs else date(2026, 9, 30)
+            rec = StudentFeeRecord(
+                student_id=student.id,
+                year=yr,
+                academic_year=2026 - (student.year - yr),
+                total_fee=total_amt,
+                discount=0.0,
+                paid_amount=0.0,
+                remaining_balance=total_amt,
+                status='Pending',
+                due_date=due_d
+            )
+            db.session.add(rec)
+    db.session.commit()
+
+    fee_records = StudentFeeRecord.query.filter_by(student_id=student.id).order_by(StudentFeeRecord.year.asc()).all()
+    payments = FeePayment.query.filter_by(student_id=student.id).order_by(FeePayment.payment_date.desc()).all()
+
+    # Calculate overall stats
+    total_fee_all_years = sum(r.total_fee - r.discount for r in fee_records)
+    total_paid_all_years = sum(r.paid_amount for r in fee_records)
+    total_balance_all_years = sum(r.remaining_balance for r in fee_records)
+
+    # Check for late fee for active pending year
+    today = date.today()
+    late_fee_info = []
+    for r in fee_records:
+        if r.remaining_balance > 0 and r.due_date and today > r.due_date:
+            days_late = (today - r.due_date).days
+            fs = FeeStructure.query.filter_by(branch=student.branch, year=r.year).first()
+            rate = fs.late_fee_per_day if fs else 50.0
+            late_amt = days_late * rate
+            late_fee_info.append({
+                'year': r.year,
+                'days_late': days_late,
+                'rate': rate,
+                'amount': late_amt
+            })
+
+    return render_template(
+        'student/fees.html',
+        student=student,
+        fee_records=fee_records,
+        payments=payments,
+        total_fee_all_years=total_fee_all_years,
+        total_paid_all_years=total_paid_all_years,
+        total_balance_all_years=total_balance_all_years,
+        late_fee_info=late_fee_info,
+        today=today
+    )
+
+
+@app.route('/student/pay_fee', methods=['POST'])
+@login_required
+def student_pay_fee():
+    """Online Fee Payment simulation for Students"""
+    if current_user.role not in ['student', 'admin']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    student = Student.query.filter_by(roll=current_user.student_roll).first() if current_user.student_roll else Student.query.first()
+    if not student:
+        flash('Student record not found', 'danger')
+        return redirect(url_for('student_fees'))
+
+    try:
+        year = int(request.form.get('year', 1))
+        amount_paid = float(request.form.get('amount_paid', 0.0))
+        payment_mode = request.form.get('payment_mode', 'UPI')
+        tx_id = request.form.get('transaction_id') or f"TXN{random.randint(10000000, 99999999)}"
+
+        if amount_paid <= 0:
+            flash('Please enter a valid payment amount greater than 0', 'danger')
+            return redirect(url_for('student_fees'))
+
+        fee_rec = StudentFeeRecord.query.filter_by(student_id=student.id, year=year).first()
+        if not fee_rec:
+            flash('Fee record not found for selected year', 'danger')
+            return redirect(url_for('student_fees'))
+
+        # Check late fee if past due date
+        today = date.today()
+        late_fee = 0.0
+        if fee_rec.due_date and today > fee_rec.due_date:
+            days_late = (today - fee_rec.due_date).days
+            fs = FeeStructure.query.filter_by(branch=student.branch, year=year).first()
+            rate = fs.late_fee_per_day if fs else 50.0
+            late_fee = days_late * rate
+
+        # Generate Receipt Number
+        receipt_no = f"REC-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+
+        # Create FeePayment with status 'Pending Verification'
+        payment = FeePayment(
+            receipt_no=receipt_no,
+            student_id=student.id,
+            year=year,
+            academic_year=fee_rec.academic_year,
+            amount_paid=amount_paid,
+            late_fee_paid=late_fee,
+            payment_mode=payment_mode,
+            transaction_id=tx_id,
+            payment_date=datetime.now(),
+            status='Pending Verification',
+            remarks=f"Online payment via {payment_mode} - Pending Accountant Approval"
+        )
+        db.session.add(payment)
+        db.session.commit()
+
+        flash(f'Payment of ₹{amount_paid:,.2f} submitted successfully (Receipt #{receipt_no})! Aapka fee status Accountant ke dwara verify aur approve karne ke baad "Paid" update ho jayega (Isme lagbhag 12 hours tak ka samay lag sakta hai).', 'info')
+        return redirect(url_for('student_fees'))
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Payment processing error: {str(e)}', 'danger')
+        return redirect(url_for('student_fees'))
+
+
+@app.route('/student/fee_receipt/<int:payment_id>')
+@login_required
+def student_fee_receipt(payment_id):
+    """View and print receipt for student or accountant"""
+    payment = FeePayment.query.get_or_404(payment_id)
+    student = Student.query.get_or_404(payment.student_id)
+
+    # Security IDOR Prevention: Students can only view their own receipts
+    if current_user.role == 'student':
+        if not current_user.student_roll or student.roll != current_user.student_roll:
+            flash('Unauthorized access: You can only view your own receipts.', 'danger')
+            return redirect(url_for('student_fees'))
+
+    fee_record = StudentFeeRecord.query.filter_by(student_id=student.id, year=payment.year).first()
+
+    return render_template(
+        'student/fee_receipt.html',
+        payment=payment,
+        student=student,
+        fee_record=fee_record
+    )
+
+
+# ==================== ACCOUNTANT / FEE ADMIN ROUTES ====================
+
+@app.route('/accountant')
+@app.route('/accountant/dashboard')
+@login_required
+def accountant_dashboard():
+    """Accountant / Fee Admin Dashboard"""
+    if current_user.role not in ['accountant', 'admin']:
+        flash('Access restricted to Accountant / Fee Admin only', 'danger')
+        return redirect(url_for('index'))
+
+    # Overall KPIs
+    all_payments = FeePayment.query.filter_by(status='Success').all()
+    total_collected = sum(p.amount_paid for p in all_payments)
+
+    all_fee_records = StudentFeeRecord.query.all()
+    total_due = sum(r.remaining_balance for r in all_fee_records)
+
+    today = date.today()
+    today_payments = [p for p in all_payments if p.payment_date and p.payment_date.date() == today]
+    today_collected = sum(p.amount_paid for p in today_payments)
+
+    overdue_count = StudentFeeRecord.query.filter(
+        StudentFeeRecord.remaining_balance > 0,
+        StudentFeeRecord.due_date < today
+    ).count()
+
+    total_students = Student.query.count()
+    paid_students = StudentFeeRecord.query.filter_by(status='Paid').count()
+
+    # Pending online payments for accountant verification
+    pending_verifications = FeePayment.query.filter_by(status='Pending Verification').order_by(FeePayment.payment_date.desc()).all()
+    pending_approval_count = len(pending_verifications)
+
+    recent_payments = FeePayment.query.order_by(FeePayment.payment_date.desc()).limit(10).all()
+
+    return render_template(
+        'accountant/dashboard.html',
+        total_collected=total_collected,
+        total_due=total_due,
+        today_collected=today_collected,
+        overdue_count=overdue_count,
+        total_students=total_students,
+        paid_students=paid_students,
+        recent_payments=recent_payments,
+        pending_verifications=pending_verifications,
+        pending_approval_count=pending_approval_count
+    )
+
+
+@app.route('/accountant/approve_payment/<int:payment_id>', methods=['POST'])
+@login_required
+def accountant_approve_payment(payment_id):
+    """Accountant verifies and marks payment as Received/Approved, updating student fee status to Paid"""
+    if current_user.role not in ['accountant', 'admin']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    payment = FeePayment.query.get_or_404(payment_id)
+    student = Student.query.get(payment.student_id)
+    if not student:
+        flash('Student record not found', 'danger')
+        return redirect(url_for('accountant_dashboard'))
+
+    try:
+        # 1. Update Payment Status to Success
+        payment.status = 'Success'
+        payment.collected_by = current_user.id
+
+        # 2. Update StudentFeeRecord (Tuition/Annual Fee)
+        fee_rec = StudentFeeRecord.query.filter_by(student_id=student.id, year=payment.year).first()
+        if fee_rec:
+            fee_rec.paid_amount += payment.amount_paid
+            fee_rec.update_balance()
+            fee_rec.updated_at = datetime.now()
+
+        # 3. Post Financial Ledger Credit Entry
+        LedgerService.record_entry(
+            student_id=student.id,
+            entry_type='FEE_PAYMENT_APPROVED',
+            debit=0.0,
+            credit=payment.amount_paid,
+            reference_no=payment.receipt_no,
+            created_by=current_user.id,
+            remarks=f"Online payment approved by Accountant ({payment.payment_mode})"
+        )
+
+        # 4. Check & auto-activate Bus Pass if applicable
+        auto_activate_student_bus_pass(student.id, payment.amount_paid)
+
+        db.session.commit()
+        AuditService.log_action(current_user.id, current_user.role, 'APPROVE_PAYMENT', 'FeePayment', payment.id, 'Pending Verification', 'Success')
+        flash(f'✅ Payment #{payment.receipt_no} of ₹{payment.amount_paid:,.2f} for {student.name} ({student.roll}) successfully APPROVED! Fee status updated to Paid.', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error approving payment: {str(e)}', 'danger')
+
+    return redirect(url_for('accountant_dashboard'))
+
+
+@app.route('/accountant/reject_payment/<int:payment_id>', methods=['POST'])
+@login_required
+def accountant_reject_payment(payment_id):
+    """Accountant rejects an unverified payment"""
+    if current_user.role not in ['accountant', 'admin']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    payment = FeePayment.query.get_or_404(payment_id)
+    payment.status = 'Rejected'
+    payment.collected_by = current_user.id
+    db.session.commit()
+
+    AuditService.log_action(current_user.id, current_user.role, 'REJECT_PAYMENT', 'FeePayment', payment.id, 'Pending Verification', 'Rejected')
+    flash(f'Payment #{payment.receipt_no} has been REJECTED.', 'warning')
+    return redirect(url_for('accountant_dashboard'))
+
+
+@app.route('/accountant/students')
+@login_required
+def accountant_students():
+    """List all students with fee records, search & filters"""
+    if current_user.role not in ['accountant', 'admin']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    branch_filter = request.args.get('branch', '')
+    year_filter = request.args.get('year', '')
+    status_filter = request.args.get('status', '')
+    search_query = request.args.get('search', '').strip()
+
+    query = Student.query
+
+    if branch_filter:
+        query = query.filter(Student.branch == branch_filter)
+    if year_filter:
+        query = query.filter(Student.year == int(year_filter))
+    if search_query:
+        query = query.filter(or_(
+            Student.roll.ilike(f'%{search_query}%'),
+            Student.name.ilike(f'%{search_query}%')
+        ))
+
+    students_list = query.all()
+
+    # Build student fee data mapping
+    student_fee_data = []
+    today = date.today()
+
+    for s in students_list:
+        records = StudentFeeRecord.query.filter_by(student_id=s.id).all()
+        tot_fee = sum(r.total_fee - r.discount for r in records)
+        tot_paid = sum(r.paid_amount for r in records)
+        tot_rem = sum(r.remaining_balance for r in records)
+
+        if tot_rem == 0 and tot_fee > 0:
+            status = 'Paid'
+        elif any(r.remaining_balance > 0 and r.due_date and today > r.due_date for r in records):
+            status = 'Overdue'
+        elif tot_paid > 0:
+            status = 'Partial'
+        else:
+            status = 'Pending'
+
+        if status_filter and status != status_filter:
+            continue
+
+        student_fee_data.append({
+            'student': s,
+            'total_fee': tot_fee,
+            'paid_amount': tot_paid,
+            'remaining_balance': tot_rem,
+            'status': status
+        })
+
+    return render_template(
+        'accountant/students.html',
+        student_fee_data=student_fee_data,
+        branch_filter=branch_filter,
+        year_filter=year_filter,
+        status_filter=status_filter,
+        search_query=search_query
+    )
+
+
+@app.route('/accountant/student/<int:student_id>')
+@login_required
+def accountant_student_detail(student_id):
+    """Detailed fee card for a student + manual collect form"""
+    if current_user.role not in ['accountant', 'admin']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    student = Student.query.get_or_404(student_id)
+    fee_records = StudentFeeRecord.query.filter_by(student_id=student.id).order_by(StudentFeeRecord.year.asc()).all()
+    payments = FeePayment.query.filter_by(student_id=student.id).order_by(FeePayment.payment_date.desc()).all()
+
+    tot_fee = sum(r.total_fee - r.discount for r in fee_records)
+    tot_paid = sum(r.paid_amount for r in fee_records)
+    tot_rem = sum(r.remaining_balance for r in fee_records)
+
+    return render_template(
+        'accountant/student_detail.html',
+        student=student,
+        fee_records=fee_records,
+        payments=payments,
+        tot_fee=tot_fee,
+        tot_paid=tot_paid,
+        tot_rem=tot_rem
+    )
+
+
+@app.route('/accountant/collect_fee', methods=['GET', 'POST'])
+@login_required
+def accountant_collect_fee():
+    """Manual offline fee collection by Accountant"""
+    if current_user.role not in ['accountant', 'admin']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        roll = request.form.get('student_roll', '').strip()
+        year = int(request.form.get('year', 1))
+        amount_paid = float(request.form.get('amount_paid', 0.0))
+        late_fee = float(request.form.get('late_fee_paid', 0.0))
+        payment_mode = request.form.get('payment_mode', 'Cash')
+        tx_id = request.form.get('transaction_id') or f"OFFLINE-{random.randint(10000, 99999)}"
+        remarks = request.form.get('remarks', '')
+
+        student = Student.query.filter_by(roll=roll.upper()).first()
+        if not student:
+            flash(f'Student with roll number {roll} not found', 'danger')
+            return redirect(url_for('accountant_collect_fee'))
+
+        fee_rec = StudentFeeRecord.query.filter_by(student_id=student.id, year=year).first()
+        if not fee_rec:
+            fs = FeeStructure.query.filter_by(branch=student.branch, year=year).first() or FeeStructure.query.filter_by(year=year).first()
+            tot = fs.total_fee if fs else 55000.0
+            due_d = fs.due_date if fs else date(2026, 9, 30)
+            fee_rec = StudentFeeRecord(
+                student_id=student.id,
+                year=year,
+                academic_year=2026,
+                total_fee=tot,
+                discount=0.0,
+                paid_amount=0.0,
+                remaining_balance=tot,
+                status='Pending',
+                due_date=due_d
+            )
+            db.session.add(fee_rec)
+            db.session.commit()
+
+        receipt_no = f"REC-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+
+        fee_rec.paid_amount += amount_paid
+        fee_rec.update_balance()
+
+        payment = FeePayment(
+            receipt_no=receipt_no,
+            student_id=student.id,
+            year=year,
+            academic_year=fee_rec.academic_year,
+            amount_paid=amount_paid,
+            late_fee_paid=late_fee,
+            payment_mode=payment_mode,
+            transaction_id=tx_id,
+            payment_date=datetime.now(),
+            status='Success',
+            collected_by=current_user.id,
+            remarks=remarks
+        )
+        db.session.add(payment)
+        db.session.commit()
+
+        # Automatically activate student bus pass if present
+        auto_activate_student_bus_pass(student.id, amount_paid)
+
+        flash(f'Offline Fee payment recorded! Receipt #{receipt_no} issued.', 'success')
+        return redirect(url_for('student_fee_receipt', payment_id=payment.id))
+
+    students = Student.query.all()
+    return render_template('accountant/collect_fee.html', students=students)
+
+
+@app.route('/accountant/fee_structures', methods=['GET', 'POST'])
+@login_required
+def accountant_fee_structures():
+    """Manage Fee Structures (Tuition Fee, Dev Fee, Due Dates, Late Fee)"""
+    if current_user.role not in ['accountant', 'admin']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        branch = request.form.get('branch', 'CSE')
+        year = int(request.form.get('year', 1))
+        tuition_fee = float(request.form.get('tuition_fee', 0.0))
+        development_fee = float(request.form.get('development_fee', 0.0))
+        exam_fee = float(request.form.get('exam_fee', 0.0))
+        other_charges = float(request.form.get('other_charges', 0.0))
+        late_fee_per_day = float(request.form.get('late_fee_per_day', 50.0))
+        due_date_str = request.form.get('due_date', '')
+
+        due_date_val = datetime.strptime(due_date_str, '%Y-%m-%d').date() if due_date_str else date(2026, 9, 30)
+        total_fee = tuition_fee + development_fee + exam_fee + other_charges
+
+        fs = FeeStructure.query.filter_by(branch=branch, year=year).first()
+        if fs:
+            fs.tuition_fee = tuition_fee
+            fs.development_fee = development_fee
+            fs.exam_fee = exam_fee
+            fs.other_charges = other_charges
+            fs.total_fee = total_fee
+            fs.late_fee_per_day = late_fee_per_day
+            fs.due_date = due_date_val
+        else:
+            fs = FeeStructure(
+                branch=branch,
+                year=year,
+                academic_year=2026,
+                tuition_fee=tuition_fee,
+                development_fee=development_fee,
+                exam_fee=exam_fee,
+                other_charges=other_charges,
+                total_fee=total_fee,
+                due_date=due_date_val,
+                late_fee_per_day=late_fee_per_day
+            )
+            db.session.add(fs)
+
+        db.session.commit()
+        flash(f'Fee Structure for {branch} Year {year} updated successfully!', 'success')
+        return redirect(url_for('accountant_fee_structures'))
+
+    structures = FeeStructure.query.order_by(FeeStructure.branch.asc(), FeeStructure.year.asc()).all()
+    return render_template('accountant/fee_structures.html', structures=structures)
+
+
+# ==================== SUPER ADMIN & ENTERPRISE ERP ROUTES ====================
+
+@app.route('/admin/fees/academic_years', methods=['GET', 'POST'])
+@login_required
+def admin_academic_years():
+    """Super Admin: Manage Academic Years"""
+    if current_user.role != 'admin':
+        flash('Super Admin privileges required', 'danger')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        start_date_str = request.form.get('start_date', '')
+        end_date_str = request.form.get('end_date', '')
+        is_current = 'is_current' in request.form
+
+        start_d = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else date(2025, 7, 1)
+        end_d = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else date(2026, 6, 30)
+
+        if is_current:
+            AcademicYear.query.update({AcademicYear.is_current: False})
+
+        ay = AcademicYear(name=name, start_date=start_d, end_date=end_d, is_current=is_current)
+        db.session.add(ay)
+        db.session.commit()
+        AuditService.log_action(current_user.id, current_user.role, 'CREATE_ACADEMIC_YEAR', 'AcademicYear', ay.id, None, ay.name, request.remote_addr)
+        flash(f'Academic Year {name} created successfully!', 'success')
+        return redirect(url_for('admin_academic_years'))
+
+    years = AcademicYear.query.order_by(AcademicYear.start_date.desc()).all()
+    return render_template('admin/fees/academic_years.html', years=years)
+
+
+@app.route('/admin/fees/heads', methods=['GET', 'POST'])
+@login_required
+def admin_fee_heads():
+    """Super Admin: Manage Fee Heads"""
+    if current_user.role != 'admin':
+        flash('Super Admin privileges required', 'danger')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        code = request.form.get('code', '').strip().upper()
+        is_mandatory = 'is_mandatory' in request.form
+        is_taxable = 'is_taxable' in request.form
+
+        head = FeeHead(name=name, code=code, is_mandatory=is_mandatory, is_taxable=is_taxable)
+        db.session.add(head)
+        db.session.commit()
+        AuditService.log_action(current_user.id, current_user.role, 'CREATE_FEE_HEAD', 'FeeHead', head.id, None, head.name, request.remote_addr)
+        flash(f'Fee Head {name} created successfully!', 'success')
+        return redirect(url_for('admin_fee_heads'))
+
+    heads = FeeHead.query.order_by(FeeHead.id.asc()).all()
+    return render_template('admin/fees/fee_heads.html', heads=heads)
+
+
+@app.route('/admin/fees/late_fee_rules', methods=['GET', 'POST'])
+@login_required
+def admin_late_fee_rules():
+    """Super Admin: Manage Late Fee Engine Rules"""
+    if current_user.role != 'admin':
+        flash('Super Admin privileges required', 'danger')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        rule_type = request.form.get('rule_type', 'DAILY')
+        grace_days = int(request.form.get('grace_period_days', 5))
+        rate_amount = float(request.form.get('rate_amount', 50.0))
+        max_fee = float(request.form.get('max_late_fee', 5000.0))
+
+        rule = LateFeeRule(title=title, rule_type=rule_type, grace_period_days=grace_days, rate_amount=rate_amount, max_late_fee=max_fee)
+        db.session.add(rule)
+        db.session.commit()
+        AuditService.log_action(current_user.id, current_user.role, 'CREATE_LATE_FEE_RULE', 'LateFeeRule', rule.id, None, title, request.remote_addr)
+        flash('Late Fee Rule updated successfully!', 'success')
+        return redirect(url_for('admin_late_fee_rules'))
+
+    rules = LateFeeRule.query.all()
+    return render_template('admin/fees/late_fee_rules.html', rules=rules)
+
+
+@app.route('/admin/fees/discounts', methods=['GET', 'POST'])
+@login_required
+def admin_discounts():
+    """Super Admin / Accountant: Approve Scholarships & Discounts"""
+    if current_user.role not in ['admin', 'accountant']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        roll = request.form.get('student_roll', '').strip()
+        title = request.form.get('title', '').strip()
+        disc_type = request.form.get('type', 'Scholarship')
+        amount = float(request.form.get('amount', 0.0))
+        reason = request.form.get('reason', '')
+
+        student = Student.query.filter_by(roll=roll.upper()).first()
+        if not student:
+            flash(f'Student roll {roll} not found', 'danger')
+            return redirect(url_for('admin_discounts'))
+
+        disc = DiscountScholarship(student_id=student.id, title=title, type=disc_type, amount=amount, reason=reason, approved_by=current_user.id)
+        db.session.add(disc)
+
+        LedgerService.record_entry(student.id, 'DISCOUNT', credit=amount, reference_no=f"DISC-{disc_type.upper()}", created_by=current_user.id, remarks=reason)
+        
+        fee_rec = StudentFeeRecord.query.filter_by(student_id=student.id, year=student.year).first()
+        if fee_rec:
+            fee_rec.discount += amount
+            fee_rec.update_balance()
+
+        db.session.commit()
+        AuditService.log_action(current_user.id, current_user.role, 'APPLY_DISCOUNT', 'DiscountScholarship', disc.id, None, f"₹{amount} to {student.roll}", request.remote_addr)
+        flash(f'Discount/Scholarship of ₹{amount:,.2f} applied to {student.name}!', 'success')
+        return redirect(url_for('admin_discounts'))
+
+    discounts = DiscountScholarship.query.order_by(DiscountScholarship.created_at.desc()).all()
+    students = Student.query.all()
+    return render_template('admin/fees/discounts.html', discounts=discounts, students=students)
+
+
+@app.route('/admin/fees/audit_logs')
+@login_required
+def admin_audit_logs():
+    """Super Admin: View Audit Logs"""
+    if current_user.role != 'admin':
+        flash('Super Admin privileges required', 'danger')
+        return redirect(url_for('index'))
+
+    logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(100).all()
+    return render_template('admin/fees/audit_logs.html', logs=logs)
+
+
+# ==================== ACCOUNTANT REPORTS & CASHIER ROUTES ====================
+
+@app.route('/accountant/cashier', methods=['GET', 'POST'])
+@login_required
+def accountant_cashier():
+    """Fast Cashier Counter Interface"""
+    if current_user.role not in ['accountant', 'admin']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    search_roll = request.args.get('search_roll', '').strip()
+    student = None
+    fee_records = []
+    payments = []
+
+    if search_roll:
+        student = Student.query.filter((Student.roll == search_roll.upper()) | (Student.name.ilike(f"%{search_roll}%"))).first()
+        if student:
+            fee_records = StudentFeeRecord.query.filter_by(student_id=student.id).order_by(StudentFeeRecord.year.asc()).all()
+            payments = FeePayment.query.filter_by(student_id=student.id).order_by(FeePayment.payment_date.desc()).all()
+
+    return render_template('accountant/cashier.html', student=student, fee_records=fee_records, payments=payments, search_roll=search_roll)
+
+
+@app.route('/accountant/reports/daily')
+@login_required
+def accountant_reports_daily():
+    """Daily Collection Report"""
+    if current_user.role not in ['accountant', 'admin']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    selected_date_str = request.args.get('date', date.today().strftime('%Y-%m-%d'))
+    selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+
+    all_payments = FeePayment.query.filter(db.func.date(FeePayment.payment_date) == selected_date).all()
+    cash_total = sum(p.amount_paid for p in all_payments if p.payment_mode == 'Cash')
+    online_total = sum(p.amount_paid for p in all_payments if p.payment_mode in ['UPI', 'Card', 'Net Banking'])
+    other_total = sum(p.amount_paid for p in all_payments if p.payment_mode not in ['Cash', 'UPI', 'Card', 'Net Banking'])
+    grand_total = cash_total + online_total + other_total
+
+    return render_template('accountant/reports_daily.html', payments=all_payments, selected_date=selected_date, cash_total=cash_total, online_total=online_total, other_total=other_total, grand_total=grand_total)
+
+
+@app.route('/accountant/reports/monthly')
+@login_required
+def accountant_reports_monthly():
+    """Monthly Revenue & Collection Analysis"""
+    if current_user.role not in ['accountant', 'admin']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    month = int(request.args.get('month', date.today().month))
+    year = int(request.args.get('year', date.today().year))
+
+    payments = FeePayment.query.filter(
+        db.extract('month', FeePayment.payment_date) == month,
+        db.extract('year', FeePayment.payment_date) == year
+    ).all()
+
+    total_month_collection = sum(p.amount_paid for p in payments)
+    total_demands = sum(r.total_fee for r in StudentFeeRecord.query.all())
+    collection_rate = round((total_month_collection / total_demands * 100), 2) if total_demands > 0 else 0
+
+    return render_template('accountant/reports_monthly.html', payments=payments, month=month, year=year, total_month_collection=total_month_collection, collection_rate=collection_rate)
+
+
+@app.route('/accountant/reports/defaulters')
+@login_required
+def accountant_reports_defaulters():
+    """Fee Defaulter Student List"""
+    if current_user.role not in ['accountant', 'admin']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    today = date.today()
+    overdue_records = StudentFeeRecord.query.filter(
+        StudentFeeRecord.remaining_balance > 0,
+        StudentFeeRecord.due_date < today
+    ).all()
+
+    defaulters = []
+    for r in overdue_records:
+        days = (today - r.due_date).days if r.due_date else 0
+        late_fee, _, _ = LateFeeEngine.calculate_late_fee(r.due_date, r.remaining_balance, r.student.branch, r.year)
+        defaulters.append({
+            'student': r.student,
+            'record': r,
+            'days_overdue': days,
+            'late_fee': late_fee,
+            'total_payable': r.remaining_balance + late_fee
+        })
+
+    return render_template('accountant/defaulters.html', defaulters=defaulters)
+
+
+@app.route('/accountant/refunds', methods=['GET', 'POST'])
+@login_required
+def accountant_refunds():
+    """Refund Processing"""
+    if current_user.role not in ['accountant', 'admin']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        roll = request.form.get('student_roll', '').strip()
+        amount = float(request.form.get('amount', 0.0))
+        refund_type = request.form.get('refund_type', 'Cancellation')
+        reason = request.form.get('reason', '')
+
+        student = Student.query.filter_by(roll=roll.upper()).first()
+        if not student:
+            flash(f'Student roll {roll} not found', 'danger')
+            return redirect(url_for('accountant_refunds'))
+
+        refund = RefundRecord(student_id=student.id, amount=amount, refund_type=refund_type, reason=reason, status='Approved', approved_by=current_user.id)
+        db.session.add(refund)
+
+        LedgerService.record_entry(student.id, 'REFUND', debit=amount, reference_no=f"REFUND-{refund_type.upper()}", created_by=current_user.id, remarks=reason)
+        db.session.commit()
+
+        AuditService.log_action(current_user.id, current_user.role, 'PROCESS_REFUND', 'RefundRecord', refund.id, None, f"₹{amount} to {student.roll}", request.remote_addr)
+        flash(f'Refund of ₹{amount:,.2f} recorded for {student.name}!', 'success')
+        return redirect(url_for('accountant_refunds'))
+
+    refunds = RefundRecord.query.order_by(RefundRecord.created_at.desc()).all()
+    students = Student.query.all()
+    return render_template('accountant/refunds.html', refunds=refunds, students=students)
+
+
+@app.route('/accountant/reconciliation')
+@login_required
+def accountant_reconciliation():
+    """Payment Gateway & Bank Reconciliation Screen"""
+    if current_user.role not in ['accountant', 'admin']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    txs = PaymentGatewayTransaction.query.order_by(PaymentGatewayTransaction.created_at.desc()).all()
+    return render_template('accountant/reconciliation.html', transactions=txs)
+
+
+# ==================== STUDENT NO DUES & PUBLIC VERIFICATION ====================
+
+@app.route('/student/no_dues')
+@login_required
+def student_no_dues():
+    """Generate Official No-Dues Certificate"""
+    if current_user.role not in ['student', 'admin']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    student = Student.query.filter_by(roll=current_user.student_roll).first() if current_user.student_roll else Student.query.first()
+    if not student:
+        flash('Student record not found', 'danger')
+        return redirect(url_for('student_dashboard'))
+
+    fee_records = StudentFeeRecord.query.filter_by(student_id=student.id).all()
+    tot_bal = sum(r.remaining_balance for r in fee_records)
+
+    cert = NoDuesCertificate.query.filter_by(student_id=student.id).first()
+    if not cert:
+        cert_no = f"NODUES-2026-{student.roll}"
+        status_val = "CLEARED" if tot_bal <= 0 else "PENDING"
+        cert = NoDuesCertificate(student_id=student.id, certificate_no=cert_no, academic_year_name="2025-26", status=status_val)
+        db.session.add(cert)
+        db.session.commit()
+
+    return render_template('student/no_dues.html', student=student, cert=cert, tot_bal=tot_bal)
+
+
+@app.route('/verify-receipt/<receipt_no>')
+def public_verify_receipt(receipt_no):
+    """Public Digital QR Verification Route for Receipts"""
+    payment = FeePayment.query.filter_by(receipt_no=receipt_no).first()
+    student = Student.query.get(payment.student_id) if payment else None
+
+    return render_template('public/verify_receipt.html', payment=payment, student=student, receipt_no=receipt_no)
+
+
+# ==================== TRANSPORT & BUS MANAGEMENT CONTROLLERS ====================
+
+def auto_activate_student_bus_pass(student_id, amount_paid=0.0):
+    """Automatically activate student bus pass and mark as Paid upon payment"""
+    pass_rec = BusPass.query.filter_by(student_id=student_id).order_by(BusPass.id.desc()).first()
+    if pass_rec:
+        if amount_paid > 0:
+            pass_rec.paid_amount += amount_paid
+        else:
+            pass_rec.paid_amount = pass_rec.fee_amount
+
+        if pass_rec.paid_amount >= pass_rec.fee_amount:
+            pass_rec.fee_status = 'Paid'
+        else:
+            pass_rec.fee_status = 'Partial'
+
+        # Instantly activate the pass upon fee payment
+        pass_rec.status = 'Active'
+
+        # Approve any pending transport application
+        app_rec = TransportApplication.query.filter_by(student_id=student_id, status='Pending').first()
+        if app_rec:
+            app_rec.status = 'Approved'
+            app_rec.processed_at = datetime.now()
+
+        # Update associated FeeDemand for BUS_FEE if exists
+        bus_fee_head = FeeHead.query.filter_by(code="BUS_FEE").first()
+        if bus_fee_head:
+            dem = FeeDemand.query.filter_by(student_id=student_id, fee_head_id=bus_fee_head.id).first()
+            if dem:
+                dem.paid_amount = pass_rec.paid_amount
+                dem.pending_amount = max(0.0, dem.net_amount - dem.paid_amount)
+                dem.status = 'Paid' if dem.pending_amount <= 0 else 'Partial'
+
+        db.session.commit()
+        return pass_rec
+    return None
+
+@app.route('/transport/routes', methods=['GET', 'POST'])
+@login_required
+def transport_routes():
+    """Transport Fleet & Route Directory"""
+    if current_user.role not in ['admin', 'accountant']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    routes = BusRoute.query.order_by(BusRoute.route_number).all()
+    route_data = []
+    total_capacity = 0
+    total_allocated = 0
+
+    for r in routes:
+        allocated = BusPass.query.filter_by(route_id=r.id, status='Active').count()
+        stops_count = len(r.stops)
+        cap = r.capacity or 1
+        pct = min(100, int((allocated / cap) * 100))
+        total_capacity += r.capacity
+        total_allocated += allocated
+
+        route_data.append({
+            'route': r,
+            'allocated_count': allocated,
+            'stops_count': stops_count,
+            'percent': pct
+        })
+
+    occupancy_pct = int((total_allocated / total_capacity * 100)) if total_capacity > 0 else 0
+
+    return render_template(
+        'transport/routes.html',
+        routes=routes,
+        route_data=route_data,
+        total_capacity=total_capacity,
+        total_passes=total_allocated,
+        occupancy_percent=occupancy_pct
+    )
+
+
+@app.route('/transport/routes/add', methods=['POST'])
+@login_required
+def transport_route_add():
+    """Create a new bus route"""
+    if current_user.role not in ['admin', 'accountant']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    try:
+        route_num = request.form.get('route_number', '').strip().upper()
+        route_name = request.form.get('route_name', '').strip()
+        start_point = request.form.get('start_point', '').strip()
+        end_point = request.form.get('end_point', 'College Campus').strip()
+        veh_num = request.form.get('vehicle_number', '').strip().upper()
+        driver_name = request.form.get('driver_name', '').strip()
+        driver_phone = request.form.get('driver_phone', '').strip()
+        cap = int(request.form.get('capacity', 45))
+        fee = float(request.form.get('default_annual_fee', 12000))
+        morning_time = request.form.get('morning_departure_time', '07:30 AM')
+        evening_time = request.form.get('evening_departure_time', '05:15 PM')
+        incharge_name = request.form.get('incharge_name', '').strip()
+        incharge_phone = request.form.get('incharge_phone', '').strip()
+
+        if BusRoute.query.filter_by(route_number=route_num).first():
+            flash(f'Route number {route_num} already exists!', 'danger')
+            return redirect(url_for('transport_routes'))
+
+        new_route = BusRoute(
+            route_number=route_num,
+            route_name=route_name,
+            start_point=start_point,
+            end_point=end_point,
+            vehicle_number=veh_num,
+            driver_name=driver_name,
+            driver_phone=driver_phone,
+            capacity=cap,
+            default_annual_fee=fee,
+            morning_departure_time=morning_time,
+            evening_departure_time=evening_time,
+            incharge_name=incharge_name or None,
+            incharge_phone=incharge_phone or None,
+            is_active=True
+        )
+        db.session.add(new_route)
+        db.session.commit()
+
+        # Create start and campus stops by default
+        db.session.add(BusStop(route_id=new_route.id, stop_name=f"{start_point} (Origin)", morning_pickup_time=morning_time, evening_drop_time=evening_time, stop_fee=fee, sequence_order=1))
+        db.session.add(BusStop(route_id=new_route.id, stop_name="College Campus Gate", morning_pickup_time="08:35 AM", evening_drop_time="05:00 PM", stop_fee=0.0, sequence_order=2))
+        db.session.commit()
+
+        AuditService.log_action(current_user.id, current_user.role, 'CREATE_BUS_ROUTE', 'BusRoute', new_route.id, None, route_num)
+        flash(f'Bus Route {route_num} created successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error creating route: {str(e)}', 'danger')
+
+    return redirect(url_for('transport_routes'))
+
+
+@app.route('/transport/routes/edit/<int:route_id>', methods=['POST'])
+@login_required
+def transport_route_edit(route_id):
+    """Edit route details"""
+    if current_user.role not in ['admin', 'accountant']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    route = BusRoute.query.get_or_404(route_id)
+    try:
+        route.route_number = request.form.get('route_number', route.route_number).strip().upper()
+        route.route_name = request.form.get('route_name', route.route_name).strip()
+        route.start_point = request.form.get('start_point', route.start_point).strip()
+        route.end_point = request.form.get('end_point', route.end_point).strip()
+        route.vehicle_number = request.form.get('vehicle_number', route.vehicle_number).strip().upper()
+        route.driver_name = request.form.get('driver_name', route.driver_name).strip()
+        route.driver_phone = request.form.get('driver_phone', route.driver_phone).strip()
+        route.capacity = int(request.form.get('capacity', route.capacity))
+        route.default_annual_fee = float(request.form.get('default_annual_fee', route.default_annual_fee))
+        route.morning_departure_time = request.form.get('morning_departure_time', route.morning_departure_time)
+        route.evening_departure_time = request.form.get('evening_departure_time', route.evening_departure_time)
+        route.incharge_name = request.form.get('incharge_name', route.incharge_name)
+        route.incharge_phone = request.form.get('incharge_phone', route.incharge_phone)
+
+        db.session.commit()
+        flash(f'Route {route.route_number} updated successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating route: {str(e)}', 'danger')
+
+    return redirect(url_for('transport_routes'))
+
+
+@app.route('/transport/routes/delete/<int:route_id>', methods=['POST'])
+@login_required
+def transport_route_delete(route_id):
+    """Toggle Active status of route"""
+    if current_user.role not in ['admin', 'accountant']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    route = BusRoute.query.get_or_404(route_id)
+    route.is_active = not route.is_active
+    db.session.commit()
+    status_str = "activated" if route.is_active else "deactivated"
+    flash(f'Route {route.route_number} {status_str} successfully!', 'info')
+    return redirect(url_for('transport_routes'))
+
+
+@app.route('/transport/routes/<int:route_id>/stops', methods=['GET', 'POST'])
+@login_required
+def transport_route_stops(route_id):
+    """Manage stops and timings for a specific route"""
+    if current_user.role not in ['admin', 'accountant']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    route = BusRoute.query.get_or_404(route_id)
+
+    if request.method == 'POST':
+        try:
+            stop_name = request.form.get('stop_name', '').strip()
+            pickup_time = request.form.get('morning_pickup_time', '').strip()
+            drop_time = request.form.get('evening_drop_time', '').strip()
+            stop_fee = float(request.form.get('stop_fee', route.default_annual_fee))
+            seq = int(request.form.get('sequence_order', len(route.stops) + 1))
+
+            new_stop = BusStop(
+                route_id=route.id,
+                stop_name=stop_name,
+                morning_pickup_time=pickup_time,
+                evening_drop_time=drop_time,
+                stop_fee=stop_fee,
+                sequence_order=seq
+            )
+            db.session.add(new_stop)
+            db.session.commit()
+            flash(f'Stop "{stop_name}" added to {route.route_number}!', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error adding stop: {str(e)}', 'danger')
+
+        return redirect(url_for('transport_route_stops', route_id=route.id))
+
+    stops = BusStop.query.filter_by(route_id=route.id).order_by(BusStop.sequence_order).all()
+    return render_template('transport/stops.html', route=route, stops=stops)
+
+
+@app.route('/transport/stops/delete/<int:stop_id>', methods=['POST'])
+@login_required
+def transport_stop_delete(stop_id):
+    """Remove a bus stop"""
+    if current_user.role not in ['admin', 'accountant']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    stop = BusStop.query.get_or_404(stop_id)
+    route_id = stop.route_id
+    if stop.passes and len(stop.passes) > 0:
+        flash('Cannot delete stop with existing student pass allocations!', 'danger')
+    else:
+        db.session.delete(stop)
+        db.session.commit()
+        flash('Stop deleted successfully!', 'info')
+
+    return redirect(url_for('transport_route_stops', route_id=route_id))
+
+
+@app.route('/transport/allocations')
+@login_required
+def transport_allocations():
+    """Directory of all student bus passes"""
+    if current_user.role not in ['admin', 'accountant']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    search = request.args.get('search', '').strip()
+    route_id = request.args.get('route_id', type=int)
+    status_filter = request.args.get('status', '').strip()
+
+    query = BusPass.query.join(Student)
+    if search:
+        query = query.filter(or_(Student.name.ilike(f'%{search}%'), Student.roll.ilike(f'%{search}%'), BusPass.pass_number.ilike(f'%{search}%')))
+    if route_id:
+        query = query.filter(BusPass.route_id == route_id)
+    if status_filter:
+        query = query.filter(BusPass.status == status_filter)
+
+    passes = query.order_by(BusPass.id.desc()).all()
+    routes = BusRoute.query.filter_by(is_active=True).all()
+
+    # Build dictionary of stops by route for dynamic modal selection
+    stops_dict = {}
+    for r in routes:
+        stops_dict[r.id] = [{'id': s.id, 'name': s.stop_name, 'pickup_time': s.morning_pickup_time, 'fee': s.stop_fee} for s in r.stops]
+
+    # Find unallocated students
+    allocated_student_ids = [p.student_id for p in BusPass.query.filter_by(status='Active').all()]
+    unallocated_students = Student.query.filter(~Student.id.in_(allocated_student_ids)).order_by(Student.roll).all() if allocated_student_ids else Student.query.order_by(Student.roll).all()
+
+    return render_template(
+        'transport/allocations.html',
+        passes=passes,
+        routes=routes,
+        stops_json=stops_dict,
+        unallocated_students=unallocated_students,
+        search_query=search,
+        selected_route=route_id,
+        selected_status=status_filter
+    )
+
+
+@app.route('/transport/allocate', methods=['POST'])
+@login_required
+def transport_allocate_student():
+    """Issue a new Bus Pass to Student and generate ERP Fee Demand"""
+    if current_user.role not in ['admin', 'accountant']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    try:
+        student_id = int(request.form.get('student_id'))
+        route_id = int(request.form.get('route_id'))
+        stop_id = int(request.form.get('stop_id'))
+        pass_type = request.form.get('pass_type', 'Annual')
+        fee_amount = float(request.form.get('fee_amount', 12000.0))
+        remarks = request.form.get('remarks', '').strip()
+
+        student = Student.query.get_or_404(student_id)
+        route = BusRoute.query.get_or_404(route_id)
+        stop = BusStop.query.get_or_404(stop_id)
+
+        # Check vehicle capacity
+        active_count = BusPass.query.filter_by(route_id=route.id, status='Active').count()
+        if active_count >= route.capacity:
+            flash(f'Warning: Route {route.route_number} is at full capacity ({route.capacity} seats)!', 'warning')
+
+        # Deactivate any previous active pass for this student
+        existing_passes = BusPass.query.filter_by(student_id=student.id, status='Active').all()
+        for ep in existing_passes:
+            ep.status = 'Expired'
+
+        # Generate unique Pass Number & QR Token
+        pass_no = f"BP-2026-{student.roll[-4:] if len(student.roll) >= 4 else random.randint(1000, 9999)}"
+        qr_token = f"PASS-{hashlib.sha256(f'{pass_no}-{student.id}-{datetime.now()}'.encode('utf-8')).hexdigest()[:16].upper()}"
+
+        today = date.today()
+        valid_upto = date(today.year + 1, 5, 31) if today.month >= 6 else date(today.year, 5, 31)
+
+        new_pass = BusPass(
+            pass_number=pass_no,
+            student_id=student.id,
+            route_id=route.id,
+            stop_id=stop.id,
+            academic_year_name="2025-26",
+            pass_type=pass_type,
+            issue_date=today,
+            valid_upto=valid_upto,
+            fee_amount=fee_amount,
+            paid_amount=0.0,
+            fee_status='Pending',
+            status='Active',
+            qr_token=qr_token,
+            remarks=remarks or None,
+            issued_by=current_user.id
+        )
+        db.session.add(new_pass)
+        db.session.flush()
+
+        # 1. Post to Financial Ledger (Debit Transport Liability)
+        LedgerService.record_entry(
+            student_id=student.id,
+            entry_type='BUS_FEE_DEMAND',
+            debit=fee_amount,
+            credit=0.0,
+            reference_no=pass_no,
+            created_by=current_user.id,
+            remarks=f"Annual College Bus Facility ({route.route_number} - {stop.stop_name})"
+        )
+
+        # 2. Add / Link to FeeDemand & StudentFeeRecord
+        bus_fee_head = FeeHead.query.filter_by(code="BUS_FEE").first()
+        if bus_fee_head:
+            demand = FeeDemand(
+                student_id=student.id,
+                fee_head_id=bus_fee_head.id,
+                year=student.year or 1,
+                original_amount=fee_amount,
+                discount_amount=0.0,
+                net_amount=fee_amount,
+                paid_amount=0.0,
+                pending_amount=fee_amount,
+                due_date=valid_upto,
+                status='Pending'
+            )
+            db.session.add(demand)
+
+        db.session.commit()
+        AuditService.log_action(current_user.id, current_user.role, 'ISSUE_BUS_PASS', 'BusPass', new_pass.id, None, pass_no)
+        flash(f'Bus Pass {pass_no} successfully issued to {student.name}! Transport fee ₹{fee_amount:,.0f} debited to student ledger.', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error issuing bus pass: {str(e)}', 'danger')
+
+    return redirect(url_for('transport_allocations'))
+
+
+@app.route('/transport/pass/<int:pass_id>')
+@login_required
+def transport_view_pass(pass_id):
+    """View and print official digital bus pass"""
+    pass_rec = BusPass.query.get_or_404(pass_id)
+
+    # Permission check
+    if current_user.role == 'student':
+        student = Student.query.filter_by(roll=current_user.student_roll).first()
+        if not student or pass_rec.student_id != student.id:
+            flash('Unauthorized access to this bus pass', 'danger')
+            return redirect(url_for('student_transport'))
+
+    return render_template('transport/bus_pass.html', pass_rec=pass_rec, now=datetime.now())
+
+
+@app.route('/transport/pass/<int:pass_id>/toggle-status', methods=['POST'])
+@login_required
+def transport_toggle_pass_status(pass_id):
+    """Toggle pass between Active and Suspended"""
+    if current_user.role not in ['admin', 'accountant']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    pass_rec = BusPass.query.get_or_404(pass_id)
+    pass_rec.status = 'Suspended' if pass_rec.status == 'Active' else 'Active'
+    db.session.commit()
+    flash(f'Pass {pass_rec.pass_number} status updated to {pass_rec.status}!', 'info')
+    return redirect(url_for('transport_allocations'))
+
+
+@app.route('/transport/applications')
+@login_required
+def transport_admin_applications():
+    """Admin view for student transport applications"""
+    if current_user.role not in ['admin', 'accountant']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    applications = TransportApplication.query.order_by(TransportApplication.id.desc()).all()
+    return render_template('transport/applications.html', applications=applications)
+
+
+@app.route('/transport/applications/<int:app_id>/process', methods=['POST'])
+@login_required
+def transport_process_application(app_id):
+    """Approve or Reject student transport application"""
+    if current_user.role not in ['admin', 'accountant']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    app_rec = TransportApplication.query.get_or_404(app_id)
+    action = request.form.get('action')
+
+    if action == 'approve':
+        student = app_rec.student
+        route = app_rec.route
+        stop = app_rec.stop
+        fee = stop.stop_fee or route.default_annual_fee
+
+        pass_no = f"BP-2026-{student.roll[-4:] if len(student.roll) >= 4 else random.randint(1000, 9999)}"
+        qr_token = f"PASS-{hashlib.sha256(f'{pass_no}-{student.id}-{datetime.now()}'.encode('utf-8')).hexdigest()[:16].upper()}"
+        today = date.today()
+        valid_upto = date(today.year + 1, 5, 31) if today.month >= 6 else date(today.year, 5, 31)
+
+        receipt_no = f"REC-BUS-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+
+        new_pass = BusPass(
+            pass_number=pass_no,
+            student_id=student.id,
+            route_id=route.id,
+            stop_id=stop.id,
+            academic_year_name="2025-26",
+            pass_type="Annual",
+            issue_date=today,
+            valid_upto=valid_upto,
+            fee_amount=fee,
+            paid_amount=fee,
+            fee_status='Paid',
+            status='Active',
+            qr_token=qr_token,
+            remarks="Transport application approved by Accountant (Fee Verified & Paid)",
+            issued_by=current_user.id
+        )
+        db.session.add(new_pass)
+
+        # 1. Record Demand in Ledger
+        LedgerService.record_entry(
+            student_id=student.id,
+            entry_type='BUS_FEE_DEMAND',
+            debit=fee,
+            credit=0.0,
+            reference_no=pass_no,
+            created_by=current_user.id,
+            remarks=f"Transport Facility Demand ({route.route_number} - {stop.stop_name})"
+        )
+
+        # 2. Record Payment in Ledger & FeePayment
+        payment = FeePayment(
+            receipt_no=receipt_no,
+            student_id=student.id,
+            year=student.year or 1,
+            academic_year=2026,
+            amount_paid=fee,
+            late_fee_paid=0.0,
+            payment_mode='Cash / Approved',
+            payment_date=datetime.now(),
+            status='Success',
+            collected_by=current_user.id,
+            remarks=f"Bus Fee Payment for {pass_no}"
+        )
+        db.session.add(payment)
+
+        LedgerService.record_entry(
+            student_id=student.id,
+            entry_type='BUS_FEE_PAYMENT',
+            debit=0.0,
+            credit=fee,
+            reference_no=receipt_no,
+            created_by=current_user.id,
+            remarks=f"Bus Pass Approved & Paid ({pass_no})"
+        )
+
+        app_rec.status = 'Approved'
+        app_rec.processed_by = current_user.id
+        app_rec.processed_at = datetime.now()
+        db.session.commit()
+        flash(f'Application approved, Bus Pass {pass_no} generated and marked as PAID (ACTIVE)!', 'success')
+
+    elif action == 'reject':
+        app_rec.status = 'Rejected'
+        app_rec.processed_by = current_user.id
+        app_rec.processed_at = datetime.now()
+        db.session.commit()
+        flash('Transport application rejected.', 'info')
+
+    return redirect(url_for('transport_admin_applications'))
+
+
+@app.route('/student/transport')
+@login_required
+def student_transport():
+    """Student Transport Portal Dashboard"""
+    if current_user.role != 'student':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    student = Student.query.filter_by(roll=current_user.student_roll).first() if current_user.student_roll else Student.query.first()
+    if not student:
+        flash('Student profile not found', 'danger')
+        return redirect(url_for('index'))
+
+    active_pass = BusPass.query.filter_by(student_id=student.id, status='Active').first()
+    pending_app = TransportApplication.query.filter_by(student_id=student.id, status='Pending').first()
+    all_routes = BusRoute.query.filter_by(is_active=True).all()
+
+    route_stops = []
+    if active_pass:
+        route_stops = BusStop.query.filter_by(route_id=active_pass.route_id).order_by(BusStop.sequence_order).all()
+
+    all_stops_dict = {}
+    for r in all_routes:
+        all_stops_dict[r.id] = [{'id': s.id, 'name': s.stop_name, 'pickup_time': s.morning_pickup_time, 'fee': s.stop_fee} for s in r.stops]
+
+    return render_template(
+        'student/transport.html',
+        student=student,
+        active_pass=active_pass,
+        pending_app=pending_app,
+        all_routes=all_routes,
+        route_stops=route_stops,
+        all_stops_json=all_stops_dict
+    )
+
+
+@app.route('/student/bus-pass')
+@login_required
+def student_bus_pass():
+    """Direct route for student to view digital bus pass"""
+    if current_user.role != 'student':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    student = Student.query.filter_by(roll=current_user.student_roll).first() if current_user.student_roll else Student.query.first()
+    if not student:
+        flash('Student profile not found', 'danger')
+        return redirect(url_for('index'))
+
+    active_pass = BusPass.query.filter_by(student_id=student.id, status='Active').first()
+    if not active_pass:
+        flash('You do not have an active bus pass. You can apply for one below.', 'warning')
+        return redirect(url_for('student_transport'))
+
+    return redirect(url_for('transport_view_pass', pass_id=active_pass.id))
+
+
+@app.route('/student/transport/apply', methods=['POST'])
+@login_required
+def student_apply_transport():
+    """Student submits application for college bus service"""
+    if current_user.role != 'student':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    student = Student.query.filter_by(roll=current_user.student_roll).first()
+    if not student:
+        flash('Student record not found', 'danger')
+        return redirect(url_for('student_transport'))
+
+    route_id = int(request.form.get('route_id'))
+    stop_id = int(request.form.get('stop_id'))
+
+    existing_app = TransportApplication.query.filter_by(student_id=student.id, status='Pending').first()
+    if existing_app:
+        flash('You already have a pending transport application under review!', 'info')
+        return redirect(url_for('student_transport'))
+
+    app_req = TransportApplication(
+        student_id=student.id,
+        route_id=route_id,
+        stop_id=stop_id,
+        status='Pending'
+    )
+    db.session.add(app_req)
+    db.session.commit()
+    flash('Your application for College Bus Service has been submitted successfully!', 'success')
+    return redirect(url_for('student_transport'))
+
+
+@app.route('/student/transport/pay_fee', methods=['POST'])
+@login_required
+def student_pay_bus_fee():
+    """Online Bus Fee Payment: Immediately activates the student's bus pass and generates receipt"""
+    if current_user.role != 'student':
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    student = Student.query.filter_by(roll=current_user.student_roll).first() if current_user.student_roll else Student.query.first()
+    if not student:
+        flash('Student record not found', 'danger')
+        return redirect(url_for('student_transport'))
+
+    pass_rec = BusPass.query.filter_by(student_id=student.id).order_by(BusPass.id.desc()).first()
+    if not pass_rec:
+        flash('No bus pass record found to pay for', 'warning')
+        return redirect(url_for('student_transport'))
+
+    try:
+        amount_paid = float(request.form.get('amount_paid', pass_rec.fee_amount))
+        payment_mode = request.form.get('payment_mode', 'UPI')
+        tx_id = request.form.get('transaction_id') or f"BUS{random.randint(10000000, 99999999)}"
+
+        receipt_no = f"REC-BUS-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+
+        # 1. Create FeePayment record
+        payment = FeePayment(
+            receipt_no=receipt_no,
+            student_id=student.id,
+            year=student.year or 1,
+            academic_year=2026,
+            amount_paid=amount_paid,
+            late_fee_paid=0.0,
+            payment_mode=payment_mode,
+            transaction_id=tx_id,
+            payment_date=datetime.now(),
+            status='Success',
+            remarks=f"College Bus Fee Payment ({pass_rec.route.route_number} - {pass_rec.stop.stop_name})"
+        )
+        db.session.add(payment)
+
+        # 2. Record Financial Ledger Credit
+        LedgerService.record_entry(
+            student_id=student.id,
+            entry_type='BUS_FEE_PAYMENT',
+            debit=0.0,
+            credit=amount_paid,
+            reference_no=receipt_no,
+            created_by=current_user.id,
+            remarks=f"Online payment for Bus Pass {pass_rec.pass_number} via {payment_mode}"
+        )
+
+        # 3. Automatically activate the student's bus pass!
+        auto_activate_student_bus_pass(student.id, amount_paid)
+
+        db.session.commit()
+        flash(f'🎉 Bus Fee payment of ₹{amount_paid:,.0f} successful! Your Bus Pass #{pass_rec.pass_number} is now ACTIVE.', 'success')
+        return redirect(url_for('student_transport'))
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error processing bus fee payment: {str(e)}', 'danger')
+        return redirect(url_for('student_transport'))
+
+
+@app.route('/transport/pass/<int:pass_id>/mark-paid', methods=['POST'])
+@login_required
+def transport_mark_pass_paid(pass_id):
+    """Accountant/Admin 1-click action: Mark bus pass fee as paid and activate pass"""
+    if current_user.role not in ['admin', 'accountant']:
+        flash('Unauthorized access', 'danger')
+        return redirect(url_for('index'))
+
+    pass_rec = BusPass.query.get_or_404(pass_id)
+    student = pass_rec.student
+    fee_amt = pass_rec.fee_amount
+
+    receipt_no = f"REC-BUS-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
+
+    # Record Payment
+    payment = FeePayment(
+        receipt_no=receipt_no,
+        student_id=student.id,
+        year=student.year or 1,
+        academic_year=2026,
+        amount_paid=fee_amt,
+        payment_mode='Cash',
+        payment_date=datetime.now(),
+        status='Success',
+        collected_by=current_user.id,
+        remarks=f"Offline Cash Bus Fee for Pass {pass_rec.pass_number}"
+    )
+    db.session.add(payment)
+
+    LedgerService.record_entry(
+        student_id=student.id,
+        entry_type='BUS_FEE_PAYMENT',
+        debit=0.0,
+        credit=fee_amt,
+        reference_no=receipt_no,
+        created_by=current_user.id,
+        remarks=f"Offline Cash Payment for Bus Pass {pass_rec.pass_number}"
+    )
+
+    # Activate
+    auto_activate_student_bus_pass(student.id, fee_amt)
+    db.session.commit()
+
+    flash(f'Bus Pass {pass_rec.pass_number} for {student.name} marked as PAID and ACTIVATED!', 'success')
+    return redirect(url_for('transport_allocations'))
+
+
+@app.route('/verify-bus-pass/<qr_token>')
+def public_verify_bus_pass(qr_token):
+    """Public QR code scanner verification for bus conductor / security"""
+    pass_rec = BusPass.query.filter_by(qr_token=qr_token).first()
+    return render_template('public/verify_bus_pass.html', pass_rec=pass_rec, now=datetime.now())
+
+
 # ========== MAIN APPLICATION LAUNCH ==========
 if __name__ == '__main__':
     # Get port from environment variable or default to 5000
     port = int(os.environ.get("PORT", 5000))
+    debug_mode = os.environ.get("FLASK_ENV") != "production"
 
     # Run the app
     app.run(
         host='0.0.0.0',  # Important: Bind to all interfaces
         port=port,
-        debug=False  # Set to False in production
+        debug=debug_mode  # Auto-reloads code on changes in local development
     )

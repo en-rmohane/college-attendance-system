@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Fee Heads | Super Admin Fees Management{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-tags text-primary me-2"></i>Configurable Fee Heads</h2>
+            <p class="text-muted mb-0">Define tuition, exam, development, hostel, library and miscellaneous fee heads</p>
+        </div>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Admin Dashboard
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3 border-0">
+                    <h5 class="fw-bold mb-0 text-dark">Active Fee Heads</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Fee Head Name</th>
+                                    <th>Code</th>
+                                    <th>Type</th>
+                                    <th>Tax Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for h in heads %}
+                                <tr>
+                                    <td>{{ h.id }}</td>
+                                    <td class="fw-bold">{{ h.name }}</td>
+                                    <td><span class="badge bg-secondary font-monospace">{{ h.code }}</span></td>
+                                    <td>
+                                        {% if h.is_mandatory %}
+                                        <span class="badge bg-primary">Mandatory</span>
+                                        {% else %}
+                                        <span class="badge bg-info text-dark">Optional</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if h.is_taxable %}
+                                        <span class="badge bg-warning text-dark">Taxable</span>
+                                        {% else %}
+                                        <span class="badge bg-light text-dark border">Non-Taxable</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white py-3 border-0">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-plus-circle me-2"></i>Add Fee Head</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form action="{{ url_for('admin_fee_heads') }}" method="POST">
+                        <div class="mb-3">
+                            <label for="name" class="form-label fw-semibold">Fee Head Name</label>
+                            <input type="text" class="form-control" name="name" placeholder="e.g. Laboratory Fee" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="code" class="form-label fw-semibold">Unique Code</label>
+                            <input type="text" class="form-control font-monospace" name="code" placeholder="e.g. LAB_FEE" required>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="isMandatory" name="is_mandatory" checked>
+                            <label class="form-check-label fw-semibold" for="isMandatory">Mandatory Fee Head</label>
+                        </div>
+                        <div class="form-check form-switch mb-4">
+                            <input class="form-check-input" type="checkbox" id="isTaxable" name="is_taxable">
+                            <label class="form-check-label fw-semibold" for="isTaxable">Taxable Charges</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold py-2">Save Fee Head</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

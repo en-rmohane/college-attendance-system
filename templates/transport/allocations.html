@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Student Bus Passes & Allocations - ERP Portal{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-3">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{{ url_for('transport_routes') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+                <h2 class="fw-bold mb-0"><i class="bi bi-pass-fill text-warning me-2"></i>Student Bus Passes & Allocations</h2>
+            </div>
+            <p class="text-muted mb-0 ms-4 ps-2">Issue digital bus passes, manage student transport routes, and track transport fees</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-warning fw-bold" data-bs-toggle="modal" data-bs-target="#allocateModal">
+                <i class="bi bi-plus-circle me-1"></i> Issue New Bus Pass
+            </button>
+        </div>
+    </div>
+
+    <!-- Filters & Search -->
+    <div class="card shadow-sm border-0 rounded-3 mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('transport_allocations') }}" class="row g-2 align-items-center">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control border-start-0" name="search" value="{{ search_query }}" placeholder="Search by Roll No or Student Name...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="route_id">
+                        <option value="">-- All Bus Routes --</option>
+                        {% for r in routes %}
+                        <option value="{{ r.id }}" {% if selected_route == r.id %}selected{% endif %}>{{ r.route_number }} - {{ r.route_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="status">
+                        <option value="">-- All Pass Statuses --</option>
+                        <option value="Active" {% if selected_status == 'Active' %}selected{% endif %}>Active Passes</option>
+                        <option value="Suspended" {% if selected_status == 'Suspended' %}selected{% endif %}>Suspended Passes</option>
+                        <option value="Expired" {% if selected_status == 'Expired' %}selected{% endif %}>Expired Passes</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-dark w-100"><i class="bi bi-funnel me-1"></i> Filter</button>
+                    <a href="{{ url_for('transport_allocations') }}" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i></a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Passes Table -->
+    <div class="card shadow-sm border-0 rounded-3">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-card-heading text-warning me-2"></i>Issued Bus Passes ({{ passes|length }})</h5>
+            <span class="badge bg-warning text-dark fw-bold">Academic Session 2025-26</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Pass No.</th>
+                        <th>Student Details</th>
+                        <th>Assigned Route</th>
+                        <th>Pickup Stop</th>
+                        <th>Fee & Status</th>
+                        <th>Validity</th>
+                        <th>Pass Status</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in passes %}
+                    <tr>
+                        <td class="ps-4">
+                            <span class="badge bg-dark fw-bold px-2 py-1">{{ p.pass_number }}</span>
+                        </td>
+                        <td>
+                            <strong class="text-dark">{{ p.student.name }}</strong>
+                            <div class="small text-muted">{{ p.student.roll }} &bull; {{ p.student.branch }} (Yr {{ p.student.year }})</div>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary me-1">{{ p.route.route_number }}</span>
+                            <span class="text-truncate d-inline-block align-middle" style="max-width: 180px;" title="{{ p.route.route_name }}">{{ p.route.route_name }}</span>
+                            <div class="small text-muted"><i class="bi bi-truck me-1"></i>{{ p.route.vehicle_number }}</div>
+                        </td>
+                        <td>
+                            <strong>{{ p.stop.stop_name }}</strong>
+                            <div class="small text-muted"><i class="bi bi-clock me-1"></i>{{ p.stop.morning_pickup_time }}</div>
+                        </td>
+                        <td>
+                            <strong class="text-dark">₹{{ "{:,.0f}".format(p.fee_amount) }}</strong>
+                            <div>
+                                {% if p.fee_status == 'Paid' %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">Paid</span>
+                                {% elif p.fee_status == 'Partial' %}
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Partial</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Pending</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="small text-muted">Till {{ p.valid_upto.strftime('%d %b %Y') if p.valid_upto else 'N/A' }}</span>
+                        </td>
+                        <td>
+                            {% if p.status == 'Active' %}
+                            <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Active</span>
+                            {% elif p.status == 'Suspended' %}
+                            <span class="badge bg-warning text-dark"><i class="bi bi-pause-circle me-1"></i>Suspended</span>
+                            {% else %}
+                            <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>{{ p.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="btn-group">
+                                {% if p.fee_status != 'Paid' %}
+                                <form method="POST" action="{{ url_for('transport_mark_pass_paid', pass_id=p.id) }}" class="d-inline" onsubmit="return confirm('Mark fee as PAID and ACTIVATE pass for {{ p.student.name }}?');">
+                                    <button type="submit" class="btn btn-sm btn-success fw-bold" title="Mark Fee Paid & Activate Pass">
+                                        <i class="bi bi-cash-stack me-1"></i> Pay & Activate
+                                    </button>
+                                </form>
+                                {% endif %}
+                                <a href="{{ url_for('transport_view_pass', pass_id=p.id) }}" target="_blank" class="btn btn-sm btn-outline-primary" title="View & Print Digital Pass">
+                                    <i class="bi bi-printer"></i>
+                                </a>
+                                <form method="POST" action="{{ url_for('transport_toggle_pass_status', pass_id=p.id) }}" class="d-inline" onsubmit="return confirm('Toggle pass status?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary" title="Toggle Status">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-pass display-4 d-block mb-2 text-muted"></i>
+                            No student bus passes found. Click "Issue New Bus Pass" to allocate.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Issue Bus Pass Modal -->
+<div class="modal fade" id="allocateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('transport_allocate_student') }}">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-person-plus-fill me-2"></i>Issue College Bus Pass to Student</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Select Student *</label>
+                            <select class="form-select" name="student_id" required>
+                                <option value="">-- Choose Student --</option>
+                                {% for s in unallocated_students %}
+                                <option value="{{ s.id }}">{{ s.roll }} - {{ s.name }} ({{ s.branch }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Select Bus Route *</label>
+                            <select class="form-select" id="routeSelect" name="route_id" required onchange="updateStopsDropdown(this.value)">
+                                <option value="">-- Choose Route --</option>
+                                {% for r in routes %}
+                                <option value="{{ r.id }}" data-fee="{{ r.default_annual_fee }}">{{ r.route_number }} - {{ r.route_name }} ({{ r.vehicle_number }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Select Pickup / Drop Stop *</label>
+                            <select class="form-select" id="stopSelect" name="stop_id" required onchange="updateFeeFromStop()">
+                                <option value="">-- First Select Route --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Pass Validity Duration *</label>
+                            <select class="form-select" name="pass_type">
+                                <option value="Annual">Annual (Full Academic Year)</option>
+                                <option value="Semester">Semester-Wise</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Transport Fee Amount (₹) *</label>
+                            <input type="number" step="0.01" class="form-control fw-bold text-success" id="feeAmountInput" name="fee_amount" value="12000" required>
+                            <div class="form-text">Will automatically create a Transport Fee demand in Student Fee Ledger.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Remarks / Special Note</label>
+                            <input type="text" class="form-control" name="remarks" placeholder="Optional notes">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning fw-bold"><i class="bi bi-check2-circle me-1"></i> Allocate & Generate Pass</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+const stopsByRoute = {{ stops_json | tojson | safe }};
+
+function updateStopsDropdown(routeId) {
+    const stopSelect = document.getElementById('stopSelect');
+    stopSelect.innerHTML = '<option value="">-- Choose Stop --</option>';
+    
+    if (stopsByRoute[routeId]) {
+        stopsByRoute[routeId].forEach(stop => {
+            const opt = document.createElement('option');
+            opt.value = stop.id;
+            opt.textContent = `${stop.name} (${stop.pickup_time}) - ₹${stop.fee}`;
+            opt.dataset.fee = stop.fee;
+            stopSelect.appendChild(opt);
+        });
+        if (stopsByRoute[routeId].length > 0) {
+            stopSelect.selectedIndex = 1;
+            updateFeeFromStop();
+        }
+    }
+}
+
+function updateFeeFromStop() {
+    const stopSelect = document.getElementById('stopSelect');
+    const selectedOpt = stopSelect.options[stopSelect.selectedIndex];
+    if (selectedOpt && selectedOpt.dataset.fee) {
+        document.getElementById('feeAmountInput').value = selectedOpt.dataset.fee;
+    }
+}
+</script>
+{% endblock %}

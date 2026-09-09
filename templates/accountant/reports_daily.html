@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Fee Collection Report | Accountant Portal{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Daily Fee Collection Report</h2>
+            <p class="text-muted mb-0">Transaction-level cash, online, and bank transfer report for <strong>{{ selected_date.strftime('%d %B %Y') }}</strong></p>
+        </div>
+        <div class="d-flex gap-2">
+            <button onclick="window.print()" class="btn btn-outline-primary fw-bold"><i class="bi bi-printer me-1"></i> Print Report</button>
+            <a href="{{ url_for('accountant_dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Dashboard</a>
+        </div>
+    </div>
+
+    <!-- Date Picker Form -->
+    <div class="card shadow-sm border-0 mb-4 no-print">
+        <div class="card-body p-3">
+            <form method="GET" action="{{ url_for('accountant_reports_daily') }}" class="row g-3 align-items-center">
+                <div class="col-md-4">
+                    <label for="date" class="form-label fw-bold">Select Date</label>
+                    <input type="date" class="form-control" name="date" value="{{ selected_date.strftime('%Y-%m-%d') }}">
+                </div>
+                <div class="col-md-2 mt-md-4">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold">Load Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- KPI Summary Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 bg-success text-white p-3 shadow-sm">
+                <span class="small text-uppercase">Cash Collection</span>
+                <h3 class="fw-bold mb-0">₹{{ "{:,.2f}".format(cash_total) }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-primary text-white p-3 shadow-sm">
+                <span class="small text-uppercase">Online Collection</span>
+                <h3 class="fw-bold mb-0">₹{{ "{:,.2f}".format(online_total) }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-info text-white p-3 shadow-sm">
+                <span class="small text-uppercase">Cheque / Bank Transfer</span>
+                <h3 class="fw-bold mb-0">₹{{ "{:,.2f}".format(other_total) }}</h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-dark text-white p-3 shadow-sm">
+                <span class="small text-uppercase">Grand Total Today</span>
+                <h3 class="fw-bold mb-0">₹{{ "{:,.2f}".format(grand_total) }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Collection Details Table -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            {% if payments %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Receipt No.</th>
+                            <th>Time</th>
+                            <th>Student</th>
+                            <th>Roll Number</th>
+                            <th>Branch & Year</th>
+                            <th>Mode</th>
+                            <th>Transaction Ref</th>
+                            <th class="text-end">Amount Paid (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in payments %}
+                        <tr>
+                            <td class="fw-bold text-primary">{{ p.receipt_no }}</td>
+                            <td class="small">{{ p.payment_date.strftime('%I:%M %p') }}</td>
+                            <td class="fw-semibold">{{ p.student.name if p.student else 'Student' }}</td>
+                            <td class="font-monospace">{{ p.student.roll if p.student else 'N/A' }}</td>
+                            <td>{{ p.student.branch if p.student else 'N/A' }} - Yr {{ p.year }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ p.payment_mode }}</span></td>
+                            <td class="small font-monospace text-muted">{{ p.transaction_id or 'N/A' }}</td>
+                            <td class="text-end fw-bold text-success">₹{{ "{:,.2f}".format(p.amount_paid) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light fw-bold">
+                        <tr>
+                            <td colspan="7" class="text-end">TOTAL DAY COLLECTION:</td>
+                            <td class="text-end text-success fs-5">₹{{ "{:,.2f}".format(grand_total) }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-5 text-center text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                <p class="mb-0">No fee collections recorded for {{ selected_date.strftime('%d %b %Y') }}.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

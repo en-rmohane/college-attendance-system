@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Collect Offline Fee | Accountant Portal{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold mb-1"><i class="bi bi-cash-stack text-success me-2"></i>Record Offline Fee Payment</h2>
+                    <p class="text-muted mb-0">Collect cash, cheque, DD, or manual bank transfer payments</p>
+                </div>
+                <a href="{{ url_for('accountant_dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Dashboard
+                </a>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4 p-md-5">
+                    <form action="{{ url_for('accountant_collect_fee') }}" method="POST">
+                        <div class="mb-4">
+                            <label for="studentRollSelect" class="form-label fw-bold">Select Student (Roll Number / Name)</label>
+                            <select class="form-select form-select-lg" id="studentRollSelect" name="student_roll" required>
+                                <option value="" disabled selected>-- Search or Select Student --</option>
+                                {% for s in students %}
+                                <option value="{{ s.roll }}">
+                                    {{ s.roll }} - {{ s.name }} ({{ s.branch }} | Year {{ s.year }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label for="year" class="form-label fw-bold">Academic Year</label>
+                                <select class="form-select form-select-lg" name="year" required>
+                                    <option value="1">1st Year</option>
+                                    <option value="2">2nd Year</option>
+                                    <option value="3">3rd Year</option>
+                                    <option value="4">4th Year</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="payment_mode" class="form-label fw-bold">Payment Mode</label>
+                                <select class="form-select form-select-lg" name="payment_mode" required>
+                                    <option value="Cash">Cash</option>
+                                    <option value="UPI">UPI / PhonePe / GPay</option>
+                                    <option value="Cheque">Cheque</option>
+                                    <option value="DD">Demand Draft (DD)</option>
+                                    <option value="Bank Transfer">Bank Transfer (NEFT/IMPS)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label for="amount_paid" class="form-label fw-bold text-success">Fee Amount Received (₹)</label>
+                                <input type="number" step="100" min="100" class="form-control form-control-lg fw-bold text-success" name="amount_paid" placeholder="e.g. 25000" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="late_fee_paid" class="form-label fw-bold text-danger">Late Fine Collected (₹)</label>
+                                <input type="number" step="50" min="0" class="form-control form-control-lg text-danger" name="late_fee_paid" value="0">
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="transaction_id" class="form-label fw-bold">Transaction / Cheque / DD Reference No.</label>
+                            <input type="text" class="form-control" name="transaction_id" placeholder="e.g. CHQ-104928 or UTR 294820492">
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="remarks" class="form-label fw-bold">Remarks / Notes</label>
+                            <textarea class="form-control" name="remarks" rows="2" placeholder="Optional notes for internal record"></textarea>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg fw-bold py-3">
+                                <i class="bi bi-printer me-2"></i> Submit & Generate Official Receipt
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

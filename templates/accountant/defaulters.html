@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Fee Defaulter Student List | Accountant Portal{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-exclamation-octagon text-danger me-2"></i>Fee Defaulter Student List</h2>
+            <p class="text-muted mb-0">Students with overdue pending balance past their due dates</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button onclick="window.print()" class="btn btn-outline-danger fw-bold"><i class="bi bi-printer me-1"></i> Print Defaulters List</button>
+            <a href="{{ url_for('accountant_dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Dashboard</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            {% if defaulters %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-danger text-danger">
+                        <tr>
+                            <th>Roll Number</th>
+                            <th>Student Name</th>
+                            <th>Branch & Year</th>
+                            <th>Due Date</th>
+                            <th>Days Overdue</th>
+                            <th>Pending Fee</th>
+                            <th>Late Fine</th>
+                            <th>Total Payable</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in defaulters %}
+                        <tr>
+                            <td class="fw-bold font-monospace text-primary">{{ d.student.roll }}</td>
+                            <td class="fw-semibold">{{ d.student.name }}</td>
+                            <td>{{ d.student.branch }} - Yr {{ d.student.year }}</td>
+                            <td>{{ d.record.due_date.strftime('%d %b %Y') if d.record.due_date else 'N/A' }}</td>
+                            <td><span class="badge bg-danger fs-6">{{ d.days_overdue }} Days</span></td>
+                            <td class="fw-bold">₹{{ "{:,.2f}".format(d.record.remaining_balance) }}</td>
+                            <td class="text-danger fw-bold">₹{{ "{:,.2f}".format(d.late_fee) }}</td>
+                            <td class="fw-bold fs-6 text-danger">₹{{ "{:,.2f}".format(d.total_payable) }}</td>
+                            <td>
+                                <a href="{{ url_for('accountant_student_detail', student_id=d.student.id) }}" class="btn btn-sm btn-outline-primary fw-bold">
+                                    Fee Details
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="p-5 text-center text-muted">
+                <i class="bi bi-check-circle fs-1 d-block mb-2 text-success"></i>
+                <h5 class="fw-bold text-success">Great News! No Fee Defaulters Found.</h5>
+                <p class="mb-0">All students are up to date on their fee payments.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

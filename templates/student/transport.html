@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}My Bus Pass & Transport - Student Portal{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-bus-front-fill text-warning me-2"></i>College Transport & Bus Pass</h2>
+            <p class="text-muted mb-0">View your assigned bus route, pickup timings, driver contact, or apply for college bus service</p>
+        </div>
+        <div>
+            {% if active_pass %}
+            <a href="{{ url_for('transport_view_pass', pass_id=active_pass.id) }}" target="_blank" class="btn btn-warning fw-bold shadow-sm">
+                <i class="bi bi-printer-fill me-1"></i> Print / Download Bus Pass
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if active_pass %}
+    <!-- Active Bus Pass Card & Route Details -->
+    <div class="row g-4 mb-4">
+        <!-- Pass Summary Card -->
+        <div class="col-12 col-lg-5">
+            <div class="card shadow-sm border-0 rounded-4 overflow-hidden h-100">
+                <div class="card-header bg-dark text-white p-4 position-relative">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="badge bg-warning text-dark fw-bold mb-2">OFFICIAL BUS PASS</span>
+                            <h4 class="fw-bold mb-0">{{ active_pass.pass_number }}</h4>
+                        </div>
+                        <span class="badge bg-success px-3 py-2 fs-6"><i class="bi bi-patch-check-fill me-1"></i>{{ active_pass.status }}</span>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+                        <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-circle fs-3">
+                            <i class="bi bi-person-badge"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-0 text-dark">{{ student.name }}</h5>
+                            <div class="text-muted small">Roll No: <strong>{{ student.roll }}</strong> &bull; {{ student.branch }}</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-light p-3 rounded-3 mb-3 border">
+                        <div class="row g-3 small">
+                            <div class="col-6">
+                                <span class="text-muted d-block">Route</span>
+                                <strong class="text-primary fs-6">{{ active_pass.route.route_number }}</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block">Bus / Vehicle No.</span>
+                                <strong class="text-dark">{{ active_pass.route.vehicle_number }}</strong>
+                            </div>
+                            <div class="col-12">
+                                <span class="text-muted d-block">Designated Pickup Stop</span>
+                                <strong class="text-dark"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ active_pass.stop.stop_name }}</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block">Morning Pickup</span>
+                                <strong><i class="bi bi-sunrise text-warning me-1"></i>{{ active_pass.stop.morning_pickup_time }}</strong>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-muted d-block">Evening Drop</span>
+                                <strong><i class="bi bi-sunset text-info me-1"></i>{{ active_pass.stop.evening_drop_time }}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Driver Helpline -->
+                    <div class="alert alert-warning d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="small text-muted d-block">Driver Contact</span>
+                            <strong><i class="bi bi-person-fill me-1"></i>{{ active_pass.route.driver_name }}</strong>
+                        </div>
+                        <a href="tel:{{ active_pass.route.driver_phone }}" class="btn btn-dark btn-sm fw-bold">
+                            <i class="bi bi-telephone-fill me-1"></i> Call Driver
+                        </a>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center pt-2 small text-muted">
+                        <span>Validity: Till <strong>{{ active_pass.valid_upto.strftime('%d %b %Y') }}</strong></span>
+                        <span class="text-{{ 'success' if active_pass.fee_status == 'Paid' else 'danger' }} fw-bold">Fee: ₹{{ "{:,.0f}".format(active_pass.fee_amount) }} ({{ active_pass.fee_status }})</span>
+                    </div>
+
+                    {% if active_pass.fee_status != 'Paid' %}
+                    <div class="mt-3 pt-3 border-top">
+                        <button class="btn btn-success w-100 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#payBusFeeModal">
+                            <i class="bi bi-credit-card-fill me-1"></i> Pay Bus Fee & Activate Pass (₹{{ "{:,.0f}".format(active_pass.fee_amount) }})
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Route Stop Sequence -->
+        <div class="col-12 col-lg-7">
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-signpost-2-fill text-primary me-2"></i>{{ active_pass.route.route_name }} - Stop Schedule</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="timeline position-relative ps-4">
+                        {% for stop in route_stops %}
+                        <div class="mb-4 position-relative">
+                            <div class="position-absolute start-0 top-0 translate-middle-x rounded-circle d-flex align-items-center justify-content-center"
+                                 style="width: 28px; height: 28px; margin-left: -16px; background: {{ '#fbbf24' if stop.id == active_pass.stop_id else '#0d6efd' if loop.first else '#198754' if loop.last else '#6c757d' }}; color: white;">
+                                <i class="bi bi-{{ 'geo-alt-fill' if stop.id == active_pass.stop_id else 'play-fill' if loop.first else 'flag-fill' if loop.last else 'circle-fill' }}" style="font-size: 0.75rem;"></i>
+                            </div>
+                            <div class="card border {{ 'border-warning shadow-sm bg-warning bg-opacity-10' if stop.id == active_pass.stop_id else 'bg-light' }} p-3 rounded-3">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                    <div>
+                                        <h6 class="fw-bold mb-1 text-dark">
+                                            {{ stop.stop_name }}
+                                            {% if stop.id == active_pass.stop_id %}
+                                            <span class="badge bg-warning text-dark ms-2"><i class="bi bi-star-fill me-1"></i>Your Designated Stop</span>
+                                            {% endif %}
+                                        </h6>
+                                    </div>
+                                    <div class="small">
+                                        <span class="badge bg-warning text-dark me-1"><i class="bi bi-sunrise me-1"></i>{{ stop.morning_pickup_time }}</span>
+                                        <span class="badge bg-info text-dark"><i class="bi bi-sunset me-1"></i>{{ stop.evening_drop_time }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Not Enrolled State -->
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-lg-8">
+            <div class="card shadow-sm border-0 rounded-4 p-4 mb-4">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-circle fs-2">
+                        <i class="bi bi-bus-front"></i>
+                    </div>
+                    <div>
+                        <h4 class="fw-bold mb-1">Apply for College Bus Facility</h4>
+                        <p class="text-muted mb-3">Safe, comfortable, and reliable transport across Betul district with GPS-enabled fleet and clash-free timetable alignment.</p>
+                        
+                        {% if pending_app %}
+                        <div class="alert alert-info d-flex align-items-center">
+                            <i class="bi bi-hourglass-split fs-4 me-3"></i>
+                            <div>
+                                <strong>Application Under Review</strong>
+                                <div>You applied for <strong>{{ pending_app.route.route_name }}</strong> ({{ pending_app.stop.stop_name }}) on {{ pending_app.application_date.strftime('%d %b %Y') }}. Our transport officer will approve it shortly.</div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <button class="btn btn-warning fw-bold px-4 py-2" data-bs-toggle="modal" data-bs-target="#applyBusModal">
+                            <i class="bi bi-pencil-square me-1"></i> Apply for Bus Pass Now
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Available Routes Catalogue -->
+            <h5 class="fw-bold mb-3"><i class="bi bi-signpost-split text-primary me-2"></i>Available College Bus Routes</h5>
+            <div class="row g-3">
+                {% for r in all_routes %}
+                <div class="col-12 col-md-6">
+                    <div class="card border shadow-sm rounded-3 h-100 p-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge bg-warning text-dark fw-bold">{{ r.route_number }}</span>
+                            <span class="small text-muted">{{ r.vehicle_number }}</span>
+                        </div>
+                        <h6 class="fw-bold mb-1">{{ r.route_name }}</h6>
+                        <p class="small text-muted mb-2"><i class="bi bi-geo-alt-fill text-danger me-1"></i> {{ r.start_point }} &rarr; Campus</p>
+                        <div class="d-flex justify-content-between align-items-center pt-2 border-top small">
+                            <span>Morning: <strong>{{ r.morning_departure_time }}</strong></span>
+                            <span class="text-success fw-bold">₹{{ "{:,.0f}".format(r.default_annual_fee) }}/Yr</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-4">
+            <div class="card shadow-sm border-0 rounded-4 p-4 bg-dark text-white h-100">
+                <h5 class="fw-bold text-warning mb-3"><i class="bi bi-shield-check me-2"></i>Transport Rules & Benefits</h5>
+                <ul class="list-unstyled small d-flex flex-column gap-3 mb-0 opacity-90">
+                    <li class="d-flex gap-2">
+                        <i class="bi bi-check2-circle text-warning fs-5"></i>
+                        <span>Guaranteed seat with dedicated faculty in-charge on every bus.</span>
+                    </li>
+                    <li class="d-flex gap-2">
+                        <i class="bi bi-check2-circle text-warning fs-5"></i>
+                        <span>Synchronized with official college timetable & exam schedules.</span>
+                    </li>
+                    <li class="d-flex gap-2">
+                        <i class="bi bi-check2-circle text-warning fs-5"></i>
+                        <span>Direct integration with College ERP fee ledger and receipt generation.</span>
+                    </li>
+                    <li class="d-flex gap-2">
+                        <i class="bi bi-check2-circle text-warning fs-5"></i>
+                        <span>Instant digital QR bus pass on your mobile portal.</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Apply Bus Modal -->
+{% if not active_pass and not pending_app %}
+<div class="modal fade" id="applyBusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('student_apply_transport') }}">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-bus-front me-2"></i>Apply for College Bus Facility</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Preferred Bus Route *</label>
+                        <select class="form-select" id="applyRouteSelect" name="route_id" required onchange="loadStudentStops(this.value)">
+                            <option value="">-- Choose Route --</option>
+                            {% for r in all_routes %}
+                            <option value="{{ r.id }}">{{ r.route_number }} - {{ r.route_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Your Pickup Stop *</label>
+                        <select class="form-select" id="applyStopSelect" name="stop_id" required>
+                            <option value="">-- First Select Route --</option>
+                        </select>
+                    </div>
+                    <div class="alert alert-light border small text-muted">
+                        <i class="bi bi-info-circle me-1"></i> Once approved, the transport fee will be debited to your student fee ledger.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning fw-bold">Submit Application</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Pay Bus Fee Modal -->
+{% if active_pass and active_pass.fee_status != 'Paid' %}
+<div class="modal fade" id="payBusFeeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('student_pay_bus_fee') }}">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-credit-card-fill me-2"></i>Pay Bus Fee & Activate Pass</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-success d-flex align-items-center mb-3">
+                        <i class="bi bi-shield-check fs-2 me-3"></i>
+                        <div>
+                            <strong>Instant Activation Guarantee</strong>
+                            <div class="small">As soon as payment is confirmed, your Digital Bus Pass will be instantly activated and verified.</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-light p-3 rounded-3 mb-3 border">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Bus Pass Number:</span>
+                            <strong>{{ active_pass.pass_number }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-muted">Route & Stop:</span>
+                            <span>{{ active_pass.route.route_number }} ({{ active_pass.stop.stop_name }})</span>
+                        </div>
+                        <div class="d-flex justify-content-between pt-2 border-top">
+                            <span class="fw-bold">Payable Amount:</span>
+                            <strong class="text-success fs-5">₹{{ "{:,.0f}".format(active_pass.fee_amount) }}</strong>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="amount_paid" value="{{ active_pass.fee_amount }}">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Payment Mode *</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="payment_mode" id="modeUPI" value="UPI" checked>
+                                <label class="form-check-label fw-semibold" for="modeUPI"><i class="bi bi-qr-code me-1"></i>UPI / GPay / PhonePe</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="payment_mode" id="modeCard" value="Card">
+                                <label class="form-check-label fw-semibold" for="modeCard"><i class="bi bi-credit-card me-1"></i>Debit/Credit Card</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success fw-bold px-4">
+                        <i class="bi bi-lock-fill me-1"></i> Pay ₹{{ "{:,.0f}".format(active_pass.fee_amount) }} & Activate Pass
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if not active_pass and not pending_app %}
+<script>
+const studentStopsData = {{ all_stops_json | tojson | safe }};
+
+function loadStudentStops(routeId) {
+    const stopSelect = document.getElementById('applyStopSelect');
+    stopSelect.innerHTML = '<option value="">-- Choose Stop --</option>';
+    
+    if (studentStopsData[routeId]) {
+        studentStopsData[routeId].forEach(stop => {
+            const opt = document.createElement('option');
+            opt.value = stop.id;
+            opt.textContent = `${stop.name} (${stop.pickup_time}) - ₹${stop.fee}/Yr`;
+            stopSelect.appendChild(opt);
+        });
+    }
+}
+</script>
+{% endif %}
+{% endblock %}

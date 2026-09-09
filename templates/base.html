@@ -86,7 +86,57 @@
             </a>
 
             {% if current_user.is_authenticated %}
-            <div class="navbar-nav ms-auto">
+            <div class="navbar-nav ms-auto align-items-center">
+                {% if current_user.role == 'student' %}
+                <a href="{{ url_for('student_transport') }}" class="btn btn-outline-info btn-sm me-2 fw-bold">
+                    <i class="bi bi-bus-front me-1"></i> Bus Pass
+                </a>
+                <a href="{{ url_for('student_fees') }}" class="btn btn-outline-warning btn-sm me-2 fw-bold">
+                    <i class="bi bi-wallet2 me-1"></i> Fees & Receipts
+                </a>
+                <a href="{{ url_for('student_no_dues') }}" class="btn btn-outline-light btn-sm me-3 fw-bold">
+                    <i class="bi bi-patch-check me-1"></i> No Dues
+                </a>
+                {% elif current_user.role in ['accountant', 'admin'] %}
+                <div class="nav-item dropdown me-2">
+                    <a class="btn btn-outline-info btn-sm dropdown-toggle fw-bold" href="#" id="transportDrop" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-bus-front me-1"></i> Transport ERP
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="transportDrop">
+                        <li><a class="dropdown-item fw-bold text-primary" href="{{ url_for('transport_routes') }}"><i class="bi bi-signpost-2 me-2"></i>Bus Routes & Fleet</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('transport_allocations') }}"><i class="bi bi-pass me-2 text-warning"></i>Student Bus Passes</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('transport_admin_applications') }}"><i class="bi bi-envelope-paper me-2 text-info"></i>Transport Applications</a></li>
+                    </ul>
+                </div>
+                <div class="nav-item dropdown me-3">
+                    <a class="btn btn-outline-warning btn-sm dropdown-toggle fw-bold" href="#" id="feePortalDrop" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-bank me-1"></i> ERP Fee Portal
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="feePortalDrop">
+                        <li><a class="dropdown-item fw-bold text-primary" href="{{ url_for('accountant_dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>Fee Dashboard</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('accountant_cashier') }}"><i class="bi bi-display me-2 text-success"></i>Fast Cashier Counter</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('accountant_students') }}"><i class="bi bi-people me-2"></i>Student Fee Directory</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-uppercase">Financial Reports</h6></li>
+                        <li><a class="dropdown-item" href="{{ url_for('accountant_reports_daily') }}"><i class="bi bi-file-earmark-spreadsheet me-2 text-info"></i>Daily Collection Report</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('accountant_reports_monthly') }}"><i class="bi bi-graph-up me-2 text-success"></i>Monthly Revenue Report</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('accountant_reports_defaulters') }}"><i class="bi bi-exclamation-triangle me-2 text-danger"></i>Fee Defaulter List</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-uppercase">Operations & Controls</h6></li>
+                        <li><a class="dropdown-item" href="{{ url_for('admin_discounts') }}"><i class="bi bi-award me-2 text-warning"></i>Scholarships & Discounts</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('accountant_refunds') }}"><i class="bi bi-arrow-counterclockwise me-2 text-danger"></i>Refunds & Adjustments</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('accountant_reconciliation') }}"><i class="bi bi-shield-check me-2 text-primary"></i>Gateway Reconciliation</a></li>
+                        {% if current_user.role == 'admin' %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-uppercase">Super Admin Setup</h6></li>
+                        <li><a class="dropdown-item" href="{{ url_for('admin_academic_years') }}"><i class="bi bi-calendar-range me-2"></i>Academic Years</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('admin_fee_heads') }}"><i class="bi bi-tags me-2"></i>Fee Heads</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('admin_late_fee_rules') }}"><i class="bi bi-clock-history me-2"></i>Late Fee Rules</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('admin_audit_logs') }}"><i class="bi bi-journal-text me-2"></i>Financial Audit Logs</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% endif %}
                 <span class="navbar-text me-3">
                     <i class="bi bi-person-circle"></i> {{ current_user.fullname }} ({{ current_user.role.title() }})
                 </span>

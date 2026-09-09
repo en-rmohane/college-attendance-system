@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Receipt Verification | SBTIM Betul</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        .verification-card {
+            max-width: 600px;
+            margin: 60px auto;
+            border-radius: 16px;
+            border: none;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card verification-card overflow-hidden">
+        {% if payment and student %}
+        <!-- Valid Receipt Header -->
+        <div class="card-header bg-success text-white text-center py-4">
+            <i class="bi bi-patch-check-fill display-3 mb-2 d-inline-block"></i>
+            <h3 class="fw-bold mb-0">VALID RECEIPT VERIFIED</h3>
+            <p class="mb-0 text-white-50">Official Payment Record Registered in SBTIM ERP</p>
+        </div>
+        <div class="card-body p-4 p-md-5">
+            <div class="mb-4 text-center">
+                <span class="text-muted small d-block">RECEIPT NUMBER</span>
+                <span class="fs-4 font-monospace fw-bold text-primary">{{ payment.receipt_no }}</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle">
+                    <tbody>
+                        <tr>
+                            <th class="bg-light">Student Name</th>
+                            <td><strong>{{ student.name }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Roll Number</th>
+                            <td class="font-monospace"><strong>{{ student.roll }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Branch & Year</th>
+                            <td>{{ student.branch }} — Year {{ payment.year }}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Amount Paid</th>
+                            <td class="fw-bold text-success fs-5">₹{{ "{:,.2f}".format(payment.amount_paid) }}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Payment Mode</th>
+                            <td><span class="badge bg-secondary">{{ payment.payment_mode }}</span></td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Transaction ID</th>
+                            <td class="font-monospace small">{{ payment.transaction_id or 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Payment Date</th>
+                            <td>{{ payment.payment_date.strftime('%d %B %Y, %I:%M %p') }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="alert alert-success-subtle text-success border border-success text-center mt-4 mb-0">
+                <i class="bi bi-shield-check me-2"></i> This receipt has been authenticated by SBTIM Financial ERP.
+            </div>
+        </div>
+        {% else %}
+        <!-- Invalid Receipt Header -->
+        <div class="card-header bg-danger text-white text-center py-4">
+            <i class="bi bi-exclamation-triangle-fill display-3 mb-2 d-inline-block"></i>
+            <h3 class="fw-bold mb-0">RECEIPT NOT FOUND</h3>
+            <p class="mb-0 text-white-50">Invalid or Unrecognized Receipt Token</p>
+        </div>
+        <div class="card-body p-4 p-md-5 text-center">
+            <p class="text-muted fs-5">Receipt number <strong>"{{ receipt_no }}"</strong> could not be verified in the college ERP records.</p>
+            <div class="alert alert-danger-subtle text-danger border border-danger">
+                <i class="bi bi-shield-x me-2"></i> Warning: Please verify that you scanned an official receipt issued by SBTIM Betul Accounts Office.
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+</body>
+</html>
