@@ -15,9 +15,12 @@
                             <p class="text-white-50 mb-0 fs-5">Welcome back, {{ current_user.fullname }}! Here's your
                                 system overview.</p>
                         </div>
-                        <div class="col-md-4 text-end">
+                        <div class="col-md-6 text-end d-flex align-items-center justify-content-end gap-2">
+                            <a href="{{ url_for('admin_download_backup') }}" class="btn btn-warning btn-lg shadow text-dark fw-bold">
+                                <i class="bi bi-cloud-arrow-down-fill me-2"></i>Download Backup (ZIP)
+                            </a>
                             {% if current_semester %}
-                            <div class="bg-white bg-opacity-25 rounded-3 p-3 d-inline-block">
+                            <div class="bg-white bg-opacity-25 rounded-3 p-3 d-inline-block text-start">
                                 <div class="text-white fw-bold fs-6 mb-1">
                                     <i class="bi bi-calendar-check me-2"></i>Current Session
                                 </div>

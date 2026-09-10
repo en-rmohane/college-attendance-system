@@ -2945,6 +2945,256 @@ def download_timetable(branch, year, semester):
             'Content-Disposition': f'attachment; filename={filename}'
         }
     )
+
+
+# ========== 1-CLICK FULL DATABASE BACKUP (ZIP / EXCEL) ==========
+@app.route('/admin/download_backup')
+@login_required
+def admin_download_backup():
+    if current_user.role != 'admin':
+        flash('Access denied. Only administrators can download full system backups.', 'danger')
+        return redirect(url_for('login'))
+
+    try:
+        import io
+        import zipfile
+        import json
+        import pandas as pd
+        from datetime import datetime
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        date_str = datetime.now().strftime('%d-%m-%Y %I:%M %p')
+
+        # 1. Gather all tables data
+        # Students
+        students = Student.query.order_by(Student.branch, Student.year, Student.roll).all()
+        students_data = [{
+            'Roll': s.roll,
+            'Name': s.name,
+            'Branch': s.branch,
+            'Year': s.year,
+            'Is_Active': s.is_active,
+            'Created_At': str(s.created_at) if hasattr(s, 'created_at') and s.created_at else ''
+        } for s in students]
+
+        # Users (Faculty / Admin / Students)
+        users = User.query.order_by(User.role, User.fullname).all()
+        users_data = [{
+            'ID': u.id,
+            'Username': u.username,
+            'Fullname': u.fullname,
+            'Email': u.email,
+            'Role': u.role,
+            'Branch': u.branch or '',
+            'Student_Roll': u.student_roll or '',
+            'Is_Active': u.is_active,
+            'Email_Verified': u.email_verified
+        } for u in users]
+
+        # Subjects
+        subjects = Subject.query.order_by(Subject.branch, Subject.semester, Subject.code).all()
+        subjects_data = [{
+            'ID': s.id,
+            'Code': s.code,
+            'Name': s.name,
+            'Branch': s.branch,
+            'Semester': s.semester,
+            'Is_Active': s.is_active
+        } for s in subjects]
+
+        # Allotments
+        allotments = ProfessorSubject.query.all()
+        allotments_data = []
+        for a in allotments:
+            prof = db.session.get(User, a.professor_id)
+            subj = db.session.get(Subject, a.subject_id)
+            if prof and subj:
+                allotments_data.append({
+                    'Allotment_ID': a.id,
+                    'Professor_ID': prof.id,
+                    'Professor_Name': prof.fullname,
+                    'Professor_Username': prof.username,
+                    'Subject_Code': subj.code,
+                    'Subject_Name': subj.name,
+                    'Branch': subj.branch,
+                    'Semester': subj.semester
+                })
+
+        # Attendance
+        attendances = Attendance.query.order_by(Attendance.date.desc()).limit(10000).all()
+        attendance_data = []
+        for att in attendances:
+            st = db.session.get(Student, att.student_id)
+            subj = db.session.get(Subject, att.subject_id)
+            attendance_data.append({
+                'ID': att.id,
+                'Date': str(att.date),
+                'Student_Roll': st.roll if st else '',
+                'Student_Name': st.name if st else '',
+                'Branch': st.branch if st else '',
+                'Subject_Code': subj.code if subj else '',
+                'Subject_Name': subj.name if subj else '',
+                'Status': att.status
+            })
+
+        # Mid Term Marks
+        marks = MidTermMarks.query.order_by(MidTermMarks.academic_year.desc(), MidTermMarks.semester).all()
+        marks_data = []
+        for m in marks:
+            st = db.session.get(Student, m.student_id)
+            subj = db.session.get(Subject, m.subject_id)
+            prof = db.session.get(User, m.professor_id)
+            marks_data.append({
+                'ID': m.id,
+                'Student_Roll': st.roll if st else '',
+                'Student_Name': st.name if st else '',
+                'Subject_Code': subj.code if subj else '',
+                'Subject_Name': subj.name if subj else '',
+                'Marks_Obtained': m.marks_obtained,
+                'Total_Marks': m.total_marks,
+                'Exam_Type': m.exam_type,
+                'Semester': m.semester,
+                'Academic_Year': m.academic_year,
+                'Evaluated_By': prof.fullname if prof else ''
+            })
+
+        # Fees Records
+        fee_records = StudentFeeRecord.query.order_by(StudentFeeRecord.academic_year.desc()).all()
+        fees_data = []
+        for f in fee_records:
+            st = db.session.get(Student, f.student_id)
+            fees_data.append({
+                'ID': f.id,
+                'Student_Roll': st.roll if st else '',
+                'Student_Name': st.name if st else '',
+                'Academic_Year': getattr(f, 'academic_year', ''),
+                'Year': getattr(f, 'year', ''),
+                'Total_Fee': getattr(f, 'total_fee', 0),
+                'Discount': getattr(f, 'discount', 0),
+                'Paid_Amount': getattr(f, 'paid_amount', 0),
+                'Remaining_Balance': getattr(f, 'remaining_balance', 0),
+                'Status': getattr(f, 'status', ''),
+                'Due_Date': str(f.due_date) if getattr(f, 'due_date', None) else '',
+                'Created_At': str(f.created_at) if getattr(f, 'created_at', None) else ''
+            })
+
+        # Timetable
+        slots = TimetableSlot.query.order_by(TimetableSlot.branch, TimetableSlot.semester, TimetableSlot.day_of_week, TimetableSlot.period_number).all()
+        timetable_data = []
+        for slot in slots:
+            subj = db.session.get(Subject, slot.subject_id)
+            fac = db.session.get(Faculty, slot.faculty_id)
+            timetable_data.append({
+                'Branch': slot.branch,
+                'Year': slot.year,
+                'Semester': slot.semester,
+                'Day_Of_Week': WORKING_DAYS.get(slot.day_of_week, str(slot.day_of_week)),
+                'Period': slot.period_number,
+                'Timing': COLLEGE_TIMINGS.get(slot.period_number, ''),
+                'Subject_Code': subj.code if subj else '',
+                'Subject_Name': subj.name if subj else '',
+                'Faculty_Name': fac.name if fac else '',
+                'Room': slot.room_number,
+                'Type': slot.slot_type
+            })
+
+        # Notices
+        notices = Notice.query.order_by(Notice.created_at.desc()).all()
+        notices_data = [{
+            'ID': n.id,
+            'Title': getattr(n, 'title', ''),
+            'Message': getattr(n, 'message', ''),
+            'Target_Audience': getattr(n, 'target_audience', ''),
+            'Branch': getattr(n, 'branch', ''),
+            'Year': getattr(n, 'year', ''),
+            'Is_Important': getattr(n, 'is_important', False),
+            'Is_Active': getattr(n, 'is_active', True),
+            'Created_At': str(n.created_at) if getattr(n, 'created_at', None) else ''
+        } for n in notices]
+
+        # 2. Build multi-sheet Excel
+        excel_buffer = io.BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+            pd.DataFrame(students_data).to_excel(writer, sheet_name='Students', index=False)
+            pd.DataFrame(users_data).to_excel(writer, sheet_name='Users_Faculty', index=False)
+            pd.DataFrame(subjects_data).to_excel(writer, sheet_name='Subjects', index=False)
+            pd.DataFrame(allotments_data).to_excel(writer, sheet_name='Allocations', index=False)
+            pd.DataFrame(attendance_data).to_excel(writer, sheet_name='Attendance', index=False)
+            pd.DataFrame(marks_data).to_excel(writer, sheet_name='Marks', index=False)
+            pd.DataFrame(fees_data).to_excel(writer, sheet_name='Fees', index=False)
+            pd.DataFrame(timetable_data).to_excel(writer, sheet_name='Timetable', index=False)
+            pd.DataFrame(notices_data).to_excel(writer, sheet_name='Notices', index=False)
+        excel_buffer.seek(0)
+
+        # Check requested format
+        format_type = request.args.get('format', 'zip').lower()
+        if format_type == 'excel':
+            return send_file(
+                excel_buffer,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                as_attachment=True,
+                download_name=f'College_Database_Backup_{timestamp}.xlsx'
+            )
+
+        # 3. Build JSON Dump
+        full_json = {
+            'metadata': {
+                'backup_timestamp': timestamp,
+                'generated_at': date_str,
+                'generated_by': current_user.fullname,
+                'total_students': len(students_data),
+                'total_users': len(users_data),
+                'total_subjects': len(subjects_data),
+                'total_attendance_records': len(attendance_data),
+            },
+            'students': students_data,
+            'users': users_data,
+            'subjects': subjects_data,
+            'allotments': allotments_data,
+            'attendance': attendance_data,
+            'marks': marks_data,
+            'fees': fees_data,
+            'timetable': timetable_data,
+            'notices': notices_data
+        }
+        json_bytes = json.dumps(full_json, indent=2, default=str).encode('utf-8')
+
+        # 4. Package as ZIP
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(f'Master_College_Database_{timestamp}.xlsx', excel_buffer.getvalue())
+            zf.writestr(f'database_backup_{timestamp}.json', json_bytes)
+            zf.writestr('README_BACKUP.txt', f"""=====================================================
+SBTIM BETUL - COMPLETE DATABASE BACKUP
+=====================================================
+Backup Generated: {date_str}
+Created by: {current_user.fullname} ({current_user.username})
+
+CONTENTS:
+1. Master_College_Database_{timestamp}.xlsx
+   - Formatted multi-sheet Excel spreadsheet containing all active data
+     (Students, Faculty, Subjects, Allocations, Attendance, Marks, Fees, Timetable, Notices)
+2. database_backup_{timestamp}.json
+   - Full raw JSON dump for automated system restoration.
+=====================================================
+""")
+        zip_buffer.seek(0)
+
+        return send_file(
+            zip_buffer,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f'College_Complete_Backup_{timestamp}.zip'
+        )
+
+    except Exception as e:
+        print(f"[ERROR] Error generating full backup: {e}")
+        import traceback
+        traceback.print_exc()
+        flash(f'Error generating backup: {str(e)}', 'danger')
+        return redirect(url_for('admin_dashboard'))
+
+
 @app.route('/admin/sync_faculties')
 @login_required
 def admin_sync_faculties():
