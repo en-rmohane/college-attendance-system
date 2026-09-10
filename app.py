@@ -62,11 +62,13 @@ def convert_to_utc(ist_dt):
     return ist_dt.astimezone(pytz.utc)
 
 # Initialize Flask app
+app = Flask(__name__)
+application = app
+handler = app
+
 IS_VERCEL = os.environ.get('VERCEL') == '1'
 if IS_VERCEL:
-    app = Flask(__name__, instance_path='/tmp')
-else:
-    app = Flask(__name__)
+    app.instance_path = '/tmp'
 
 # Security & Session Hardening
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'sbitm-erp-production-super-secure-key-2026')
@@ -8372,6 +8374,11 @@ def public_verify_bus_pass(qr_token):
     pass_rec = BusPass.query.filter_by(qr_token=qr_token).first()
     return render_template('public/verify_bus_pass.html', pass_rec=pass_rec, now=datetime.now())
 
+
+# WSGI Entrypoint aliases for Vercel / Gunicorn
+app = app
+application = app
+handler = app
 
 # ========== MAIN APPLICATION LAUNCH ==========
 if __name__ == '__main__':
