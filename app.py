@@ -1525,6 +1525,10 @@ def sync_default_timetable_slots():
 
 def init_database():
     """Initialize database tables and create default admin user"""
+    if IS_VERCEL:
+        # On Vercel serverless, prevent function cold-start timeouts (10s max limit).
+        # Cloud PostgreSQL database is already initialized and seeded.
+        return
 
     with app.app_context():
         try:
@@ -1559,13 +1563,11 @@ def init_database():
                 initialize_current_semester()
                 initialize_rgpv_scheme_complete()
                 migrate_test_system()
-
-            # Always preload subjects, initialize faculties, and synchronize allotments
-            preload_subjects()
-            initialize_faculties()
-            sync_default_subject_allotments()
-            sync_default_timetable_slots()
-            initialize_fee_system()
+                preload_subjects()
+                initialize_faculties()
+                sync_default_subject_allotments()
+                sync_default_timetable_slots()
+                initialize_fee_system()
 
             db.session.commit()
             print("Database initialization completed successfully!")
