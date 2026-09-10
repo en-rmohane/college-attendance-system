@@ -371,6 +371,8 @@ def preload_subjects():
         ("CS304P", "Digital Systems Lab", "CSE", 3),
         ("CS305", "Object Oriented Programming & Methodology", "CSE", 3),
         ("CS305P", "OOP & Methodology Lab", "CSE", 3),
+        ("CS306", "Computer Workshop", "CSE", 3),
+        ("BT107", "Internship-I", "CSE", 3),
 
         # 4th Semester (CSE)
         ("BT401", "Mathematics-III", "CSE", 4),
@@ -384,16 +386,19 @@ def preload_subjects():
 
         # 5th Semester (CSE)
         ("CS501", "Theory of Computation", "CSE", 5),
+        ("CS501P", "Theory of Computation Lab", "CSE", 5),
         ("CS502", "Database Management Systems", "CSE", 5),
         ("CS502P", "Database Management Systems Lab", "CSE", 5),
         ("CS503", "Cyber Security", "CSE", 5),
-        # Open Electives (5th sem)
+        ("CS504", "Internet and Web Technology", "CSE", 5),
         ("CS504A", "Internet and Web Technology", "CSE", 5),
         ("CS504B", "Object Oriented Programming", "CSE", 5),
         ("CS504C", "Introduction to Database Management Systems", "CSE", 5),
-        # Python subject + lab
-        ("CS506", "Python Programming", "CSE", 5),
+        ("CS505", "Lab (Linux)", "CSE", 5),
+        ("CS506", "Lab (Python)", "CSE", 5),
         ("CS506P", "Python Programming Lab", "CSE", 5),
+        ("CS507", "Internship-II", "CSE", 5),
+        ("CS508", "Minor Project-I", "CSE", 5),
 
         # 6th Semester (CSE)
         ("CS601", "Machine Learning", "CSE", 6),
@@ -411,16 +416,21 @@ def preload_subjects():
 
         # 7th Semester (CSE)
         ("CS701", "Software Architectures", "CSE", 7),
+        ("CS701P", "Software Architectures Lab", "CSE", 7),
+        ("CS702", "Big Data", "CSE", 7),
         ("CS702A", "Computational Intelligence", "CSE", 7),
         ("CS702B", "Deep & Reinforcement Learning", "CSE", 7),
         ("CS702C", "Wireless & Mobile Computing", "CSE", 7),
         ("CS702P", "Elective-III Lab (CI / DL & RL / WMC)", "CSE", 7),
+        ("CS703", "Data Mining", "CSE", 7),
         ("CS703A", "Cryptography & Information Security", "CSE", 7),
         ("CS703B", "Data Mining and Warehousing", "CSE", 7),
         ("CS703C", "Agile Software Development", "CSE", 7),
         ("CS703P", "Data Mining and Warehousing Lab", "CSE", 7),
-        ("CS704", "Major Project Phase-I", "CSE", 7),
-        ("CS705", "Seminar", "CSE", 7),
+        ("CS704", "Big Data Lab", "CSE", 7),
+        ("CS705", "Data Mining Lab", "CSE", 7),
+        ("CS706", "Major Project-I", "CSE", 7),
+        ("CS707", "Internship-III", "CSE", 7),
 
         # 8th Semester (CSE)
         ("CS802A", "Block Chain Technologies", "CSE", 8),
@@ -444,6 +454,10 @@ def preload_subjects():
         ("AD303P", "Data Structures Lab", "AD", 3),
         ("AD304", "Artificial Intelligence", "AD", 3),
         ("AD304P", "Artificial Intelligence Lab", "AD", 3),
+        ("AD305", "Object Oriented Programming & Methodology", "AD", 3),
+        ("AD305P", "OOP & Methodology Lab", "AD", 3),
+        ("AD306", "Computer Workshop/Introduction to Python", "AD", 3),
+        ("BT107", "Internship-I", "AD", 3),
 
         # 4th Semester (AD)
         ("BT401", "Mathematics-III", "AD", 4),
@@ -456,12 +470,20 @@ def preload_subjects():
 
         # 5th Semester (AD)
         ("AD501", "Theory of Computation", "AD", 5),
+        ("AD501P", "Theory of Computation Lab", "AD", 5),
         ("AD502", "Machine Learning", "AD", 5),
         ("AD502P", "Machine Learning Lab", "AD", 5),
+        ("AD503", "Computer Organization & Architecture", "AD", 5),
         ("AD503A", "Internet and Web Technology", "AD", 5),
         ("AD503AP", "Internet and Web Technology Lab", "AD", 5),
         ("AD503B", "Computer Graphics & Multimedia", "AD", 5),
         ("AD503BP", "Computer Graphics & Multimedia Lab", "AD", 5),
+        ("AD504", "Management Information Systems", "AD", 5),
+        ("AD505", "COA Lab", "AD", 5),
+        ("AD506", "Linux Lab", "AD", 5),
+        ("BT407", "Internship-II", "AD", 5),
+        ("AD507", "Internship-II", "AD", 5),
+        ("AD508", "Minor Project", "AD", 5),
 
         # 6th Semester (AD)
         ("AD601", "Deep Learning", "AD", 6),
@@ -476,12 +498,17 @@ def preload_subjects():
         # 7th Semester (AD)
         ("AD701", "AI for Computer Vision", "AD", 7),
         ("AD701P", "AI for Computer Vision Lab", "AD", 7),
+        ("AD702", "Cloud Computing", "AD", 7),
         ("AD702A", "Cloud Computing", "AD", 7),
         ("AD702B", "Business Intelligence", "AD", 7),
         ("AD702C", "Computational Intelligence", "AD", 7),
         ("AD702D", "Predictive Analytics", "AD", 7),
-        ("AD703", "Seminar", "AD", 7),
-        ("AD704", "Major Project Phase-I", "AD", 7),
+        ("AD703", "Data Visualization", "AD", 7),
+        ("AD704", "Cloud Computing Lab", "AD", 7),
+        ("AD705", "Data Visualization Lab", "AD", 7),
+        ("AD706", "Major Project", "AD", 7),
+        ("AD607", "Internship-III", "AD", 7),
+        ("AD707", "Internship-III", "AD", 7),
 
         # 8th Semester (AD)
         ("AD801", "Big Data", "AD", 8),
@@ -681,6 +708,7 @@ def initialize_rgpv_scheme_complete():
             ("CS304", "Digital Systems", "CSE", 2, 3, 3, 0, 2, 4),
             ("CS305", "Object Oriented Programming & Methodology", "CSE", 2, 3, 3, 0, 2, 4),
             ("CS306", "Computer Workshop", "CSE", 2, 3, 0, 0, 4, 2),
+            ("BT107", "Internship-I", "CSE", 2, 3, 0, 0, 2, 1),
 
             # ---------- 4th Semester (CSE) ----------
             ("BT401", "Mathematics III", "CSE", 2, 4, 3, 1, 0, 4),
@@ -729,6 +757,7 @@ def initialize_rgpv_scheme_complete():
             ("AD304", "Artificial Intelligence", "AD", 2, 3, 3, 0, 2, 4),
             ("AD305", "Object Oriented Programming & Methodology", "AD", 2, 3, 3, 0, 2, 4),
             ("AD306", "Computer Workshop/Introduction to Python", "AD", 2, 3, 0, 0, 4, 2),
+            ("BT107", "Internship-I", "AD", 2, 3, 0, 0, 2, 1),
 
             # ---------- 4th Semester (AD) ----------
             ("BT401", "Mathematics III", "AD", 2, 4, 3, 1, 0, 4),
@@ -1076,7 +1105,422 @@ def initialize_fee_system():
         db.session.rollback()
 
 
+def initialize_faculties():
+    """Ensure all CSE and AD / AIDS faculties are registered and assigned in User and Faculty tables"""
+    faculties_data = [
+        # (username, fullname, email, branch, designation)
+        ("pankaj", "DR.PANKAJ SINGH SISODIYA", "pankajsinghsisodiya@college.com", "CSE,AD", "Professor"),
+        ("satish", "PRO. SATISH CHADOKAR", "satishchadokar@collage.com", "CSE,AD", "Professor"),
+        ("pramila", "PRO.PRAMILA GHARJALE", "pramilagharjale@college.com", "CSE,AD", "Professor"),
+        ("ravi", "PRO. RAVI KUMAR MOHANE", "ravikumarmohane@college.com", "CSE,AD", "Professor"),
+        ("ashish", "PRO.ASHISH GAWANDE", "ashishgawande@college.com", "CSE,AD", "Professor"),
+        ("jitendra", "PRO. JITENDRA BARMASE", "jitendrabarmase@college.com", "CSE,AD", "Professor"),
+        ("sonali", "PRO.SONALI RATHORE", "sonalirathore@college.com", "CSE,AD", "Professor"),
+        ("deepika", "PRO. DEEPIKA MALVIYA", "deepikamalviya@college.com", "CSE,AD", "Professor"),
+        ("khushboo", "PRO. KHUSHBOO PARTE", "khushbooparte@college.com", "CSE,AD", "Professor"),
+        ("alka", "PRO.ALKA NARWARE", "alkanarware@college.com", "CSE,AD", "Professor"),
+        ("vinay", "PRO. VIANY SAHU", "vianysahu@college.com", "CSE,AD", "Professor"),
+        # Additional AIDS / AD faculties (also assigned to CSE,AD)
+        ("shashank", "PRO. SHASHANK MANE", "shashankmane@college.com", "CSE,AD", "Professor"),
+        ("nilesh", "PRO. NILESH MISHRA", "nileshmishra@college.com", "CSE,AD", "Professor"),
+        ("bhavesh", "PRO. BHAVESH KHASDEV", "bhaveshkhasdev@college.com", "CSE,AD", "Professor"),
+        ("rishu", "PRO. RISHU DANGI", "rishudangi@college.com", "CSE,AD", "Professor"),
+        ("pushpa", "PRO. PUSHPA MOGARKAR", "pushpamogarkar@college.com", "CSE,AD", "Professor"),
+        ("paresh", "DR. PARESH J SHAH", "pareshjshah@college.com", "CSE,AD", "Professor"),
+        ("vkmalvi", "PRO. V. K. MALVI", "vkmalvi@college.com", "CSE,AD", "Professor"),
+    ]
+
+    try:
+        for uname, fname, email, branch, designation in faculties_data:
+            # 1. Update or create User account
+            user = User.query.filter((User.username == uname) | (User.email == email)).first()
+            if not user:
+                user = User(
+                    username=uname,
+                    fullname=fname,
+                    email=email,
+                    role='professor',
+                    branch=branch,
+                    email_verified=True,
+                    is_active=True
+                )
+                user.set_password(f"{uname}123")
+                db.session.add(user)
+                db.session.flush()
+                print(f"[OK] Created professor user: {uname}")
+            else:
+                user.fullname = fname
+                user.email = email
+                user.branch = branch
+                user.role = 'professor'
+                user.is_active = True
+
+            # 2. Update or create Faculty table entry
+            fac = Faculty.query.filter((Faculty.email == email) | (Faculty.id == user.id)).first()
+            if not fac:
+                fac = Faculty(
+                    id=user.id,
+                    name=fname,
+                    email=email,
+                    phone=None,
+                    designation=designation,
+                    branches=branch,
+                    is_active=True
+                )
+                db.session.add(fac)
+            else:
+                fac.name = fname
+                fac.email = email
+                fac.branches = branch
+                fac.designation = designation
+                fac.is_active = True
+
+        db.session.commit()
+        print("[OK] All CSE and AD/AIDS faculties initialized and synchronized successfully")
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] initialize_faculties failed: {e}")
+
+
 # ========== DATABASE INITIALIZATION FOR RENDER ==========
+def sync_default_subject_allotments():
+    """Ensure all timetable subjects are allotted to their respective professors"""
+    default_allotments = [
+        # --- Semester 3 (CSE) ---
+        ("ES301", "CSE", 3, "pushpa"),
+        ("CS302", "CSE", 3, "pramila"),
+        ("CS303", "CSE", 3, "pankaj"),
+        ("CS303P", "CSE", 3, "ravi"),
+        ("CS304", "CSE", 3, "paresh"),
+        ("CS304P", "CSE", 3, "paresh"),
+        ("CS305", "CSE", 3, "ravi"),
+        ("CS305P", "CSE", 3, "ravi"),
+        ("CS305P", "CSE", 3, "deepika"),
+        ("CS306", "CSE", 3, "jitendra"),
+        ("BT107", "CSE", 3, "vinay"),
+
+        # --- Semester 5 (CSE) ---
+        ("CS501", "CSE", 5, "satish"),
+        ("CS501P", "CSE", 5, "satish"),
+        ("CS502", "CSE", 5, "sonali"),
+        ("CS502P", "CSE", 5, "sonali"),
+        ("CS503", "CSE", 5, "khushboo"),
+        ("CS504", "CSE", 5, "pramila"),
+        ("CS504A", "CSE", 5, "pramila"),
+        ("CS505", "CSE", 5, "khushboo"),
+        ("CS506", "CSE", 5, "ravi"),
+        ("CS506P", "CSE", 5, "ravi"),
+        ("CS507", "CSE", 5, "vinay"),
+        ("CS508", "CSE", 5, "ashish"),
+        ("CS508", "CSE", 5, "jitendra"),
+
+        # --- Semester 7 (CSE) ---
+        ("CS701", "CSE", 7, "alka"),
+        ("CS701P", "CSE", 7, "alka"),
+        ("CS702", "CSE", 7, "satish"),
+        ("CS702A", "CSE", 7, "satish"),
+        ("CS702P", "CSE", 7, "satish"),
+        ("CS703", "CSE", 7, "jitendra"),
+        ("CS703B", "CSE", 7, "jitendra"),
+        ("CS703P", "CSE", 7, "jitendra"),
+        ("CS704", "CSE", 7, "satish"),
+        ("CS705", "CSE", 7, "jitendra"),
+        ("CS706", "CSE", 7, "satish"),
+        ("CS706", "CSE", 7, "pankaj"),
+        ("CS707", "CSE", 7, "vinay"),
+
+        # --- AD Branch (AI & DS) ---
+        # Sem 3 (AD)
+        ("AD301", "AD", 3, "rishu"),
+        ("AD302", "AD", 3, "vkmalvi"),
+        ("AD303", "AD", 3, "pankaj"),
+        ("AD303P", "AD", 3, "ravi"),
+        ("AD304", "AD", 3, "shashank"),
+        ("AD304P", "AD", 3, "shashank"),
+        ("AD305", "AD", 3, "ravi"),
+        ("AD305P", "AD", 3, "ravi"),
+        ("AD306", "AD", 3, "deepika"),
+        ("BT107", "AD", 3, "vinay"),
+
+        # Sem 5 (AD)
+        ("AD501", "AD", 5, "satish"),
+        ("AD501P", "AD", 5, "satish"),
+        ("AD502", "AD", 5, "ashish"),
+        ("AD502P", "AD", 5, "ashish"),
+        ("AD503", "AD", 5, "bhavesh"),
+        ("AD505", "AD", 5, "bhavesh"),
+        ("AD504", "AD", 5, "nilesh"),
+        ("AD506", "AD", 5, "khushboo"),
+        ("BT407", "AD", 5, "vinay"),
+        ("AD507", "AD", 5, "vinay"),
+        ("AD508", "AD", 5, "nilesh"),
+
+        # Sem 7 (AD)
+        ("AD701", "AD", 7, "alka"),
+        ("AD701P", "AD", 7, "alka"),
+        ("AD702", "AD", 7, "sonali"),
+        ("AD702A", "AD", 7, "sonali"),
+        ("AD704", "AD", 7, "sonali"),
+        ("AD703", "AD", 7, "ashish"),
+        ("AD705", "AD", 7, "ashish"),
+        ("AD706", "AD", 7, "bhavesh"),
+        ("AD607", "AD", 7, "vinay"),
+        ("AD707", "AD", 7, "vinay"),
+    ]
+    try:
+        for code, branch, sem, uname in default_allotments:
+            prof = User.query.filter_by(username=uname).first()
+            subject = Subject.query.filter_by(code=code, branch=branch, semester=sem).first()
+            if prof and subject:
+                existing = ProfessorSubject.query.filter_by(professor_id=prof.id, subject_id=subject.id).first()
+                if not existing:
+                    allot = ProfessorSubject(professor_id=prof.id, subject_id=subject.id)
+                    db.session.add(allot)
+                    print(f"[OK] Allotted {code} ({branch} Sem {sem}) -> {prof.fullname}")
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] sync_default_subject_allotments failed: {e}")
+
+
+def sync_default_timetable_slots():
+    """Ensure timetable slots for CSE and AD (Sem 3, 5, 7) are populated"""
+    try:
+        if TimetableSlot.query.count() > 0:
+            return
+
+        def find_subject(code, branch, semester):
+            s = Subject.query.filter_by(code=code, branch=branch, semester=semester).first()
+            if not s:
+                s = Subject.query.filter(Subject.code == code, Subject.semester == semester).first()
+            return s
+
+        def find_faculty(username):
+            u = User.query.filter_by(username=username).first()
+            if u:
+                f = Faculty.query.filter((Faculty.id == u.id) | (Faculty.email == u.email)).first()
+                if not f:
+                    f = Faculty(
+                        id=u.id,
+                        name=u.fullname,
+                        email=u.email,
+                        branches=u.branch or "CSE,AD",
+                        designation="Professor",
+                        is_active=True
+                    )
+                    db.session.add(f)
+                    db.session.flush()
+                return f
+            return None
+
+        cse_slots = [
+            # ---------------- CSE SEM 3 (Year 2) ----------------
+            ("CSE", 2, 3, 1, 1, "ES301", "pushpa", "CR-1", "lecture"),
+            ("CSE", 2, 3, 1, 2, "CS304", "paresh", "CR-1", "lecture"),
+            ("CSE", 2, 3, 1, 3, "CS305", "ravi", "CR-1", "lecture"),
+            ("CSE", 2, 3, 1, 4, "CS302", "pramila", "CR-1", "lecture"),
+            ("CSE", 2, 3, 1, 5, "CS306", "jitendra", "Lab-1", "lab"),
+            ("CSE", 2, 3, 1, 6, "CS306", "jitendra", "Lab-1", "lab"),
+            ("CSE", 2, 3, 2, 1, "BT107", "vinay", "Lab-1", "lab"),
+            ("CSE", 2, 3, 2, 2, "BT107", "vinay", "Lab-1", "lab"),
+            ("CSE", 2, 3, 2, 3, "CS302", "pramila", "CR-1", "lecture"),
+            ("CSE", 2, 3, 2, 4, "CS303", "pankaj", "CR-1", "lecture"),
+            ("CSE", 2, 3, 2, 5, "ES301", "pushpa", "CR-1", "lecture"),
+            ("CSE", 2, 3, 2, 6, "CS304", "paresh", "CR-1", "lecture"),
+            ("CSE", 2, 3, 3, 1, "CS302", "pramila", "CR-1", "lecture"),
+            ("CSE", 2, 3, 3, 2, "ES301", "pushpa", "CR-1", "lecture"),
+            ("CSE", 2, 3, 3, 3, "CS303", "pankaj", "CR-1", "lecture"),
+            ("CSE", 2, 3, 3, 4, "CS305", "ravi", "CR-1", "lecture"),
+            ("CSE", 2, 3, 4, 1, "CS303", "pankaj", "CR-1", "lecture"),
+            ("CSE", 2, 3, 4, 2, "CS302", "pramila", "CR-1", "lecture"),
+            ("CSE", 2, 3, 4, 3, "ES301", "pushpa", "CR-1", "lecture"),
+            ("CSE", 2, 3, 4, 5, "CS305P", "ravi", "Lab-2", "lab"),
+            ("CSE", 2, 3, 4, 6, "CS305P", "deepika", "Lab-2", "lab"),
+            ("CSE", 2, 3, 5, 1, "CS303P", "ravi", "Lab-1", "lab"),
+            ("CSE", 2, 3, 5, 2, "CS303P", "ravi", "Lab-1", "lab"),
+            ("CSE", 2, 3, 5, 3, "CS305", "ravi", "CR-1", "lecture"),
+            ("CSE", 2, 3, 5, 4, "CS304", "paresh", "CR-1", "lecture"),
+            ("CSE", 2, 3, 5, 5, "CS304P", "paresh", "Lab-2", "lab"),
+            ("CSE", 2, 3, 5, 6, "CS306", "jitendra", "Lab-1", "lab"),
+
+            # ---------------- CSE SEM 5 (Year 3) ----------------
+            ("CSE", 3, 5, 1, 1, "CS501", "satish", "CR-2", "lecture"),
+            ("CSE", 3, 5, 1, 2, "CS507", "vinay", "CR-2", "lecture"),
+            ("CSE", 3, 5, 1, 3, "CS503", "khushboo", "CR-2", "lecture"),
+            ("CSE", 3, 5, 1, 4, "CS502", "sonali", "CR-2", "lecture"),
+            ("CSE", 3, 5, 1, 5, "CS508", "ashish", "Lab-2", "project"),
+            ("CSE", 3, 5, 1, 6, "CS508", "jitendra", "Lab-2", "project"),
+            ("CSE", 3, 5, 2, 1, "CS501", "satish", "CR-2", "lecture"),
+            ("CSE", 3, 5, 2, 2, "CS502", "sonali", "CR-2", "lecture"),
+            ("CSE", 3, 5, 2, 3, "CS503", "khushboo", "CR-2", "lecture"),
+            ("CSE", 3, 5, 2, 4, "CS504", "pramila", "CR-2", "lecture"),
+            ("CSE", 3, 5, 2, 5, "CS502P", "sonali", "Lab-3", "lab"),
+            ("CSE", 3, 5, 2, 6, "CS502P", "sonali", "Lab-3", "lab"),
+            ("CSE", 3, 5, 3, 1, "CS502", "sonali", "CR-2", "lecture"),
+            ("CSE", 3, 5, 3, 2, "CS507", "vinay", "CR-2", "lecture"),
+            ("CSE", 3, 5, 3, 3, "CS504", "pramila", "CR-2", "lecture"),
+            ("CSE", 3, 5, 3, 4, "CS503", "khushboo", "CR-2", "lecture"),
+            ("CSE", 3, 5, 4, 1, "CS505", "khushboo", "Lab-3", "lab"),
+            ("CSE", 3, 5, 4, 2, "CS506", "ravi", "Lab-3", "lab"),
+            ("CSE", 3, 5, 4, 3, "CS503", "khushboo", "CR-2", "lecture"),
+            ("CSE", 3, 5, 4, 4, "CS507", "vinay", "CR-2", "lecture"),
+            ("CSE", 3, 5, 4, 5, "CS508", "ashish", "Lab-2", "project"),
+            ("CSE", 3, 5, 4, 6, "CS508", "jitendra", "Lab-2", "project"),
+            ("CSE", 3, 5, 5, 1, "CS501", "satish", "CR-2", "lecture"),
+            ("CSE", 3, 5, 5, 2, "CS504", "pramila", "CR-2", "lecture"),
+            ("CSE", 3, 5, 5, 3, "CS501P", "satish", "Lab-3", "lab"),
+            ("CSE", 3, 5, 5, 4, "CS501P", "satish", "Lab-3", "lab"),
+            ("CSE", 3, 5, 5, 5, "CS506", "ravi", "Lab-3", "lab"),
+            ("CSE", 3, 5, 5, 6, "CS505", "khushboo", "Lab-3", "lab"),
+
+            # ---------------- CSE SEM 7 (Year 4) ----------------
+            ("CSE", 4, 7, 1, 1, "CS707", "vinay", "CR-3", "lecture"),
+            ("CSE", 4, 7, 1, 2, "CS701", "alka", "CR-3", "lecture"),
+            ("CSE", 4, 7, 1, 3, "CS703", "jitendra", "CR-3", "lecture"),
+            ("CSE", 4, 7, 1, 4, "CS702", "satish", "CR-3", "lecture"),
+            ("CSE", 4, 7, 1, 5, "CS701P", "alka", "Lab-4", "lab"),
+            ("CSE", 4, 7, 1, 6, "CS701P", "alka", "Lab-4", "lab"),
+            ("CSE", 4, 7, 2, 1, "CS703", "jitendra", "CR-3", "lecture"),
+            ("CSE", 4, 7, 2, 2, "CS701", "alka", "CR-3", "lecture"),
+            ("CSE", 4, 7, 2, 3, "CS702", "satish", "CR-3", "lecture"),
+            ("CSE", 4, 7, 2, 4, "CS706", "satish", "Lab-4", "project"),
+            ("CSE", 4, 7, 2, 5, "CS706", "pankaj", "Lab-4", "project"),
+            ("CSE", 4, 7, 2, 6, "CS706", "satish", "Lab-4", "project"),
+            ("CSE", 4, 7, 3, 1, "CS707", "vinay", "CR-3", "lecture"),
+            ("CSE", 4, 7, 3, 2, "CS701", "alka", "CR-3", "lecture"),
+            ("CSE", 4, 7, 3, 3, "CS705", "jitendra", "Lab-4", "lab"),
+            ("CSE", 4, 7, 3, 4, "CS704", "satish", "Lab-4", "lab"),
+            ("CSE", 4, 7, 4, 1, "CS703", "jitendra", "CR-3", "lecture"),
+            ("CSE", 4, 7, 4, 2, "CS702", "satish", "CR-3", "lecture"),
+            ("CSE", 4, 7, 4, 3, "CS706", "satish", "Lab-4", "project"),
+            ("CSE", 4, 7, 4, 4, "CS706", "pankaj", "Lab-4", "project"),
+            ("CSE", 4, 7, 4, 5, "CS704", "satish", "Lab-4", "lab"),
+            ("CSE", 4, 7, 4, 6, "CS705", "jitendra", "Lab-4", "lab"),
+            ("CSE", 4, 7, 5, 1, "CS707", "vinay", "CR-3", "lecture"),
+            ("CSE", 4, 7, 5, 2, "CS707", "vinay", "CR-3", "lecture"),
+            ("CSE", 4, 7, 5, 3, "CS706", "satish", "Lab-4", "project"),
+            ("CSE", 4, 7, 5, 4, "CS706", "pankaj", "Lab-4", "project"),
+            ("CSE", 4, 7, 5, 5, "CS706", "satish", "Lab-4", "project"),
+            ("CSE", 4, 7, 5, 6, "CS702", "satish", "CR-3", "lecture"),
+        ]
+
+        ad_slots = [
+            # ---------------- AD SEM 3 (Year 2) ----------------
+            ("AD", 2, 3, 1, 1, "AD301", "rishu", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 1, 2, "AD302", "vkmalvi", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 1, 3, "AD305", "ravi", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 1, 4, "AD304", "shashank", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 1, 5, "AD304P", "shashank", "AD-Lab1", "lab"),
+            ("AD", 2, 3, 1, 6, "AD304P", "shashank", "AD-Lab1", "lab"),
+            ("AD", 2, 3, 2, 1, "AD301", "rishu", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 2, 2, "AD302", "vkmalvi", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 2, 3, "AD304", "shashank", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 2, 4, "AD303", "pankaj", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 2, 5, "AD306", "deepika", "AD-Lab1", "lab"),
+            ("AD", 2, 3, 2, 6, "AD306", "deepika", "AD-Lab1", "lab"),
+            ("AD", 2, 3, 3, 1, "AD301", "rishu", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 3, 2, "AD302", "vkmalvi", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 3, 3, "AD303", "pankaj", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 3, 4, "AD305", "ravi", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 4, 1, "AD303", "pankaj", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 4, 2, "AD301", "rishu", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 4, 3, "AD304", "shashank", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 4, 4, "AD302", "vkmalvi", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 4, 5, "AD305P", "ravi", "AD-Lab1", "lab"),
+            ("AD", 2, 3, 4, 6, "AD305P", "ravi", "AD-Lab1", "lab"),
+            ("AD", 2, 3, 5, 1, "AD303P", "ravi", "AD-Lab1", "lab"),
+            ("AD", 2, 3, 5, 2, "AD303P", "ravi", "AD-Lab1", "lab"),
+            ("AD", 2, 3, 5, 3, "AD305", "ravi", "AD-CR1", "lecture"),
+            ("AD", 2, 3, 5, 5, "AD306", "deepika", "AD-Lab1", "lab"),
+            ("AD", 2, 3, 5, 6, "AD306", "deepika", "AD-Lab1", "lab"),
+
+            # ---------------- AD SEM 5 (Year 3) ----------------
+            ("AD", 3, 5, 1, 1, "AD501", "satish", "AD-CR2", "lecture"),
+            ("AD", 3, 5, 1, 2, "AD503", "bhavesh", "AD-CR2", "lecture"),
+            ("AD", 3, 5, 1, 3, "AD505", "bhavesh", "AD-Lab2", "lab"),
+            ("AD", 3, 5, 1, 4, "AD506", "khushboo", "AD-Lab2", "lab"),
+            ("AD", 3, 5, 1, 5, "AD502", "ashish", "AD-CR2", "lecture"),
+            ("AD", 3, 5, 1, 6, "AD508", "nilesh", "AD-Lab2", "project"),
+            ("AD", 3, 5, 2, 1, "AD501", "satish", "AD-CR2", "lecture"),
+            ("AD", 3, 5, 2, 2, "AD503", "bhavesh", "AD-CR2", "lecture"),
+            ("AD", 3, 5, 2, 3, "AD504", "nilesh", "AD-CR2", "lecture"),
+            ("AD", 3, 5, 2, 4, "AD507", "vinay", "AD-CR2", "lecture"),
+            ("AD", 3, 5, 2, 5, "AD508", "nilesh", "AD-Lab2", "project"),
+            ("AD", 3, 5, 2, 6, "AD508", "nilesh", "AD-Lab2", "project"),
+            ("AD", 3, 5, 3, 1, "AD502", "ashish", "AD-CR2", "lecture"),
+            ("AD", 3, 5, 3, 2, "AD503", "bhavesh", "AD-CR2", "lecture"),
+            ("AD", 3, 5, 3, 3, "AD504", "nilesh", "AD-CR2", "lecture"),
+            ("AD", 3, 5, 3, 4, "AD507", "vinay", "AD-CR2", "lecture"),
+            ("AD", 3, 5, 4, 1, "AD505", "bhavesh", "AD-Lab2", "lab"),
+            ("AD", 3, 5, 4, 2, "AD506", "khushboo", "AD-Lab2", "lab"),
+            ("AD", 3, 5, 4, 3, "AD504", "nilesh", "AD-CR2", "lecture"),
+            ("AD", 3, 5, 4, 4, "AD502", "ashish", "AD-CR2", "lecture"),
+            ("AD", 3, 5, 4, 5, "AD501P", "satish", "AD-Lab2", "lab"),
+            ("AD", 3, 5, 4, 6, "AD502P", "ashish", "AD-Lab2", "lab"),
+            ("AD", 3, 5, 5, 1, "AD501", "satish", "AD-CR2", "lecture"),
+            ("AD", 3, 5, 5, 2, "AD503", "bhavesh", "AD-CR2", "lecture"),
+            ("AD", 3, 5, 5, 3, "AD501P", "satish", "AD-Lab2", "lab"),
+            ("AD", 3, 5, 4, 4, "AD502P", "ashish", "AD-Lab2", "lab"),
+            ("AD", 3, 5, 5, 5, "AD507", "vinay", "AD-CR2", "lecture"),
+            ("AD", 3, 5, 5, 6, "AD507", "vinay", "AD-CR2", "lecture"),
+
+            # ---------------- AD SEM 7 (Year 4) ----------------
+            ("AD", 4, 7, 1, 1, "AD702", "sonali", "AD-CR3", "lecture"),
+            ("AD", 4, 7, 1, 2, "AD703", "ashish", "AD-CR3", "lecture"),
+            ("AD", 4, 7, 1, 3, "AD707", "vinay", "AD-CR3", "lecture"),
+            ("AD", 4, 7, 1, 4, "AD701", "alka", "AD-CR3", "lecture"),
+            ("AD", 4, 7, 1, 5, "AD701P", "alka", "AD-Lab3", "lab"),
+            ("AD", 4, 7, 1, 6, "AD701P", "alka", "AD-Lab3", "lab"),
+            ("AD", 4, 7, 2, 1, "AD701", "alka", "AD-CR3", "lecture"),
+            ("AD", 4, 7, 2, 2, "AD703", "ashish", "AD-CR3", "lecture"),
+            ("AD", 4, 7, 2, 3, "AD704", "sonali", "AD-Lab3", "lab"),
+            ("AD", 4, 7, 2, 4, "AD705", "ashish", "AD-Lab3", "lab"),
+            ("AD", 4, 7, 2, 5, "AD702", "sonali", "AD-CR3", "lecture"),
+            ("AD", 4, 7, 2, 6, "AD706", "bhavesh", "AD-Lab3", "project"),
+            ("AD", 4, 7, 3, 1, "AD701", "alka", "AD-CR3", "lecture"),
+            ("AD", 4, 7, 3, 2, "AD702", "sonali", "AD-CR3", "lecture"),
+            ("AD", 4, 7, 3, 3, "AD703", "ashish", "AD-CR3", "lecture"),
+            ("AD", 4, 7, 3, 4, "AD707", "vinay", "AD-CR3", "lecture"),
+            ("AD", 4, 7, 4, 1, "AD704", "sonali", "AD-Lab3", "lab"),
+            ("AD", 4, 7, 4, 2, "AD705", "ashish", "AD-Lab3", "lab"),
+            ("AD", 4, 7, 4, 3, "AD706", "bhavesh", "AD-Lab3", "project"),
+            ("AD", 4, 7, 4, 4, "AD706", "bhavesh", "AD-Lab3", "project"),
+            ("AD", 4, 7, 4, 5, "AD702", "sonali", "AD-CR3", "lecture"),
+            ("AD", 4, 7, 4, 6, "AD706", "bhavesh", "AD-Lab3", "project"),
+            ("AD", 4, 7, 5, 1, "AD707", "vinay", "AD-CR3", "lecture"),
+            ("AD", 4, 7, 5, 2, "AD707", "vinay", "AD-CR3", "lecture"),
+            ("AD", 4, 7, 5, 3, "AD704", "sonali", "AD-Lab3", "lab"),
+            ("AD", 4, 7, 5, 4, "AD705", "ashish", "AD-Lab3", "lab"),
+            ("AD", 4, 7, 5, 5, "AD706", "bhavesh", "AD-Lab3", "project"),
+            ("AD", 4, 7, 5, 6, "AD706", "bhavesh", "AD-Lab3", "project"),
+        ]
+
+        for branch, year, semester, day_num, period_num, code, uname, room, slot_type in (cse_slots + ad_slots):
+            subj = find_subject(code, branch, semester)
+            fac = find_faculty(uname)
+            if subj and fac:
+                slot = TimetableSlot(
+                    branch=branch,
+                    year=year,
+                    semester=semester,
+                    day_of_week=day_num,
+                    period_number=period_num,
+                    subject_id=subj.id,
+                    faculty_id=fac.id,
+                    room_number=room,
+                    slot_type=slot_type,
+                    is_common=False,
+                    common_name=""
+                )
+                db.session.add(slot)
+
+        db.session.commit()
+        print("[OK] Timetable slots synchronized successfully")
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] sync_default_timetable_slots failed: {e}")
+
+
 def init_database():
     """Initialize database tables and create default admin user"""
 
@@ -1114,7 +1558,11 @@ def init_database():
                 initialize_rgpv_scheme_complete()
                 migrate_test_system()
 
-            # Always initialize fee system
+            # Always preload subjects, initialize faculties, and synchronize allotments
+            preload_subjects()
+            initialize_faculties()
+            sync_default_subject_allotments()
+            sync_default_timetable_slots()
             initialize_fee_system()
 
             db.session.commit()

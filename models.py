@@ -468,6 +468,8 @@ def initialize_rgpv_scheme_complete():
          'credits': 4},
         {'branch': 'CSE', 'year': 2, 'semester': 3, 'code': 'CS306', 'name': 'Computer Workshop', 'lectures': 0,
          'tutorials': 0, 'practical': 4, 'credits': 2},
+        {'branch': 'CSE', 'year': 2, 'semester': 3, 'code': 'BT107', 'name': 'Internship-I', 'lectures': 0,
+         'tutorials': 0, 'practical': 2, 'credits': 1},
 
         # ---------- 4th Semester (CSE) ----------
         {'branch': 'CSE', 'year': 2, 'semester': 4, 'code': 'BT401', 'name': 'Mathematics III', 'lectures': 3,
@@ -554,6 +556,9 @@ def initialize_rgpv_scheme_complete():
         {'branch': 'Artificial Intelligence and Data Science', 'year': 2, 'semester': 3, 'code': 'AD306',
          'name': 'Computer Workshop/Introduction to Python', 'lectures': 0, 'tutorials': 0, 'practical': 4,
          'credits': 2},
+        {'branch': 'Artificial Intelligence and Data Science', 'year': 2, 'semester': 3, 'code': 'BT107',
+         'name': 'Internship-I', 'lectures': 0, 'tutorials': 0, 'practical': 2,
+         'credits': 1},
 
         # ---------- 4th Semester (AD) ----------
         {'branch': 'Artificial Intelligence and Data Science', 'year': 2, 'semester': 4, 'code': 'BT401', 'name': 'Mathematics III', 'lectures': 3,
