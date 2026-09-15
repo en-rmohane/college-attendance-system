@@ -10,7 +10,9 @@ env/
 # Database
 *.db
 *.sqlite3
-instance/college_attendance.db
+*.db-wal
+*.db-shm
+instance/
 
 # IDE
 .idea/

@@ -77,11 +77,19 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = IS_VERCEL or (os.environ.get('FLASK_ENV') == 'production')
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=12)
 
+import gzip
+import io
+import sqlite3
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+from cache_manager import ram_cache
+
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_pre_ping": True,
-    "pool_recycle": 280,
-    "pool_size": 5,
-    "max_overflow": 2,
+    "pool_recycle": 1800,
+    "pool_size": 25,
+    "max_overflow": 50,
+    "pool_timeout": 30,
 }
 
 
@@ -89,7 +97,7 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 import re
 
 class EnterpriseWAF:
-    """Intelligent Custom Web Application Firewall & Bot Blocker"""
+    """Intelligent Custom Web Application Firewall, Anti-Bot & Smart Rate Limiter"""
     def __init__(self):
         # Known Attack Tools, Scanners & Malicious Bots
         self.malicious_agents = [
@@ -113,9 +121,12 @@ class EnterpriseWAF:
 
         # Rate Limiting & Blacklist Storage
         self.request_history = {} # ip -> [timestamps]
+        self.auth_history = {}    # ip -> [timestamps] for sensitive login attempts
         self.blacklisted_ips = {} # ip -> unban_timestamp
-        self.max_requests_per_minute = 100
-        self.ban_duration_seconds = 1800 # 30 mins
+        self.max_requests_per_minute = 600 # High throughput to support entire college on shared campus Wi-Fi / NAT IP
+        self.max_auth_per_minute = 25      # Strict protection against credential brute-forcing
+        self.ban_duration_seconds = 600    # 10 mins ban
+        self._last_clean = datetime.now()
 
     def get_client_ip(self, req):
         """Accurately extract client IP even behind Vercel / Cloudflare Proxies"""
@@ -124,25 +135,45 @@ class EnterpriseWAF:
             return forwarded.split(',')[0].strip()
         return req.headers.get('CF-Connecting-IP') or req.remote_addr or '127.0.0.1'
 
+    def _cleanup_old_records(self, now):
+        """Periodic cleanup to keep memory usage minimal under heavy traffic"""
+        if (now - self._last_clean).total_seconds() > 300:
+            self._last_clean = now
+            # Clean request history
+            for ip in list(self.request_history.keys()):
+                self.request_history[ip] = [t for t in self.request_history[ip] if (now - t).total_seconds() < 60]
+                if not self.request_history[ip]:
+                    del self.request_history[ip]
+            # Clean auth history
+            for ip in list(self.auth_history.keys()):
+                self.auth_history[ip] = [t for t in self.auth_history[ip] if (now - t).total_seconds() < 60]
+                if not self.auth_history[ip]:
+                    del self.auth_history[ip]
+            # Clean expired bans
+            for ip in list(self.blacklisted_ips.keys()):
+                if now >= self.blacklisted_ips[ip]:
+                    del self.blacklisted_ips[ip]
+
     def inspect_request(self, req):
         """Inspect incoming HTTP request for threats, scanners, bots and exploits"""
         ip = self.get_client_ip(req)
         now = datetime.now()
+        self._cleanup_old_records(now)
 
         # 1. Check if IP is already in temporary ban list
         if ip in self.blacklisted_ips:
             if now < self.blacklisted_ips[ip]:
                 remaining = int((self.blacklisted_ips[ip] - now).total_seconds() // 60) + 1
-                return False, f"🚨 Access Blocked: Your IP is banned by the WAF Firewall for malicious activity ({remaining} min remaining).", 403
+                return False, f"🚨 Access Blocked: Your IP is banned by the WAF Firewall for suspicious activity ({remaining} min remaining).", 403
             else:
                 del self.blacklisted_ips[ip]
 
         # 2. Check Malicious User-Agent / Scanner Bots
         user_agent = (req.headers.get('User-Agent') or '').lower()
         if not user_agent or len(user_agent) < 4:
-            # Block blank / headless bot user agents
+            # Block blank / headless bot user agents except for static assets
             if not req.path.startswith('/static'):
-                return False, "🚨 Access Denied: Headless automated bot detected.", 403
+                return False, "🚨 Access Denied: Automated bot probe detected.", 403
 
         for bot_sig in self.malicious_agents:
             if bot_sig in user_agent:
@@ -158,18 +189,27 @@ class EnterpriseWAF:
                 print(f"[WAF SHIELD] Exploit probe '{pattern}' BLOCKED from {ip}")
                 return False, "🚨 WAF Security Shield: Malicious attack payload / exploit probe blocked.", 403
 
-        # 4. Anti-DDoS & High-Speed Scraper Rate Limiting
-        if ip not in self.request_history:
-            self.request_history[ip] = []
-        
-        # Retain last 60 seconds of history
-        self.request_history[ip] = [t for t in self.request_history[ip] if (now - t).total_seconds() < 60]
-        self.request_history[ip].append(now)
+        # 4. Strict Login / Auth Brute Force Protection
+        path_lower = req.path.lower()
+        if req.method == 'POST' and any(auth_kw in path_lower for auth_kw in ['login', 'reset_password', 'otp']):
+            if ip not in self.auth_history:
+                self.auth_history[ip] = []
+            self.auth_history[ip] = [t for t in self.auth_history[ip] if (now - t).total_seconds() < 60]
+            self.auth_history[ip].append(now)
+            if len(self.auth_history[ip]) > self.max_auth_per_minute:
+                self.blacklisted_ips[ip] = now + timedelta(seconds=300) # Ban 5 min
+                return False, "🚨 Rate Limit Exceeded: Too many authentication attempts. Please wait 5 minutes.", 429
 
-        if len(self.request_history[ip]) > self.max_requests_per_minute:
-            self.blacklisted_ips[ip] = now + timedelta(seconds=300) # Ban for 5 mins
-            print(f"[WAF SHIELD] Rate Limit Exceeded by {ip} ({len(self.request_history[ip])} req/min). Banned for 5m.")
-            return False, "🚨 DDoS / Rapid Scraping Defense: Too many requests. Temporarily blocked for 5 minutes.", 429
+        # 5. General Route Rate Limiting (Campus NAT Friendly)
+        if not req.path.startswith('/static'):
+            if ip not in self.request_history:
+                self.request_history[ip] = []
+            self.request_history[ip] = [t for t in self.request_history[ip] if (now - t).total_seconds() < 60]
+            self.request_history[ip].append(now)
+            if len(self.request_history[ip]) > self.max_requests_per_minute:
+                self.blacklisted_ips[ip] = now + timedelta(seconds=180) # Ban 3 mins
+                print(f"[WAF SHIELD] Traffic Spike Protection: Extreme request rate from {ip}. Banned for 3m.")
+                return False, "🚨 Traffic Spike Protection: Extreme request rate detected. Please retry in 3 minutes.", 429
 
         return True, None, 200
 
@@ -179,7 +219,7 @@ waf = EnterpriseWAF()
 @app.before_request
 def firewall_inspection():
     """Execute Custom WAF Inspection on every request"""
-    # Allow static assets
+    # Allow static assets directly
     if request.path.startswith('/static/'):
         return None
 
@@ -216,14 +256,38 @@ def firewall_inspection():
 
 
 @app.after_request
-def apply_enterprise_security_headers(response):
-    """Enterprise Security Headers against XSS, Clickjacking, MIME-sniffing and data caching"""
+def apply_enterprise_security_and_compression(response):
+    """Enterprise Security Headers, Static Asset Browser Caching & Transparent Gzip Compression"""
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    if 'Cache-Control' not in response.headers:
-        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+
+    # 1. High Performance Static Asset Browser Caching
+    if request.path.startswith('/static/'):
+        # Static assets can be cached aggressively by the browser for 7 days
+        response.headers['Cache-Control'] = 'public, max-age=604800, immutable'
+    else:
+        # Dynamic pages keep secure cache control unless explicitly set
+        if 'Cache-Control' not in response.headers:
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+
+    # 2. Transparent Gzip Response Compression (70-85% Bandwidth & Latency Reduction)
+    if (response.status_code < 300 and 
+        'gzip' in request.headers.get('Accept-Encoding', '').lower() and 
+        'Content-Encoding' not in response.headers and
+        response.content_type and any(t in response.content_type for t in ['text/', 'application/json', 'application/javascript'])):
+        try:
+            response_data = response.get_data()
+            if len(response_data) > 500:  # Only compress payloads larger than 500 bytes
+                compressed_data = gzip.compress(response_data, compresslevel=6)
+                response.set_data(compressed_data)
+                response.headers['Content-Encoding'] = 'gzip'
+                response.headers['Content-Length'] = len(compressed_data)
+                response.headers['Vary'] = 'Accept-Encoding'
+        except Exception:
+            pass
+
     return response
 
 
@@ -267,6 +331,26 @@ def setup_database():
 app.config["SQLALCHEMY_DATABASE_URI"] = setup_database()
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+# SQLite High-Concurrency WAL (Write-Ahead Logging) Mode Optimization
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    """
+    Configure SQLite for high concurrency:
+    - WAL mode: Non-blocking simultaneous readers and writers
+    - synchronous=NORMAL: 5x faster disk commits without corruption risk
+    - busy_timeout=15000: Wait up to 15s before giving 'database is locked' error
+    - cache_size=-64000: 64MB high-speed RAM query cache
+    - temp_store=MEMORY: Keep temp tables in RAM for ultra-fast sorting
+    """
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA busy_timeout=15000")
+        cursor.execute("PRAGMA cache_size=-64000")
+        cursor.execute("PRAGMA temp_store=MEMORY")
+        cursor.close()
+
 # ========== SAFE EXTENSION INITIALIZATION ==========
 # Initialize extensions ONLY if not already initialized
 if 'db' not in globals():
@@ -274,6 +358,15 @@ if 'db' not in globals():
 else:
     # If db already exists, just init the app with it
     db.init_app(app)
+
+# Clean DB Session Teardown to prevent connection leaks
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    """Ensure database connections are released immediately to the pool after each request"""
+    try:
+        db.session.remove()
+    except Exception:
+        pass
 
 if 'login_manager' not in globals():
     login_manager = LoginManager()
