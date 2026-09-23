@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+
+{% block title %}Central Library Management Dashboard - SBITM{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-warning text-dark fw-bold px-3 py-1 text-uppercase">LMS Portal</span>
+                <span class="badge bg-primary-subtle text-primary fw-bold px-3 py-1">Central Library</span>
+            </div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-book-half text-primary me-2"></i>Central Library & LMS Dashboard</h2>
+            <p class="text-muted mb-0">Search student enrollment records, book catalog, accession copies, circulation desk & dues clearance</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="#studentLookupSection" class="btn btn-primary fw-bold px-3">
+                <i class="bi bi-person-bounding-box me-1"></i> Student Dues Lookup
+            </a>
+        </div>
+    </div>
+
+    <!-- Overview KPI Cards -->
+    <div class="row g-3 mb-4">
+        <!-- 1. Total Catalog Titles -->
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 bg-primary text-white h-100 rounded-3">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-white-50 text-uppercase fw-bold small">Catalog Titles</span>
+                            <h3 class="fw-bold mt-2 mb-0">{{ total_books }}</h3>
+                            <small class="text-white-50 mt-1 d-block">{{ total_copies }} Physical Copies</small>
+                        </div>
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3">
+                            <i class="bi bi-journal-bookmark-fill fs-3 text-white"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Available Copies -->
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 bg-success text-white h-100 rounded-3">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-white-50 text-uppercase fw-bold small">Available Copies</span>
+                            <h3 class="fw-bold mt-2 mb-0">{{ available_copies }}</h3>
+                            <small class="text-white-50 mt-1 d-block">Ready for Issue on Racks</small>
+                        </div>
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3">
+                            <i class="bi bi-check-circle-fill fs-3 text-white"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Currently Issued Books -->
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 bg-info text-white h-100 rounded-3">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-white-50 text-uppercase fw-bold small">Currently Issued</span>
+                            <h3 class="fw-bold mt-2 mb-0">{{ issued_copies }}</h3>
+                            <small class="text-white-50 mt-1 d-block">{{ total_members }} Active Borrowers</small>
+                        </div>
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3">
+                            <i class="bi bi-arrow-repeat fs-3 text-white"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Overdue Books & Fines -->
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm border-0 bg-danger text-white h-100 rounded-3">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-white-50 text-uppercase fw-bold small">Overdue Items</span>
+                            <h3 class="fw-bold mt-2 mb-0">{{ overdue_count }}</h3>
+                            <small class="text-white-50 mt-1 d-block">Unpaid Fines: ₹{{ "{:,.2f}".format(total_fines_unpaid) }}</small>
+                        </div>
+                        <div class="rounded-circle bg-white bg-opacity-25 p-3">
+                            <i class="bi bi-exclamation-triangle-fill fs-3 text-white"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 1. STUDENT ENROLLMENT LOOKUP & CLEARANCE DOSSIER ==================== -->
+    <div id="studentLookupSection" class="card shadow-sm border-0 rounded-3 mb-4 border-start border-4 border-primary">
+        <div class="card-header bg-transparent py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-search text-primary me-2"></i>Student Enrollment & Library Dues Clearance Lookup
+                </h5>
+                <small class="text-muted">Search any student by Enrollment / Roll Number to instantly inspect issued books, due dates, late fines & clearance eligibility</small>
+            </div>
+            <span class="badge bg-primary px-3 py-2">Multi-Role: Accountant / Librarian / Admin</span>
+        </div>
+        <div class="card-body p-4">
+            <!-- Search Form -->
+            <form method="GET" action="{{ url_for('librarian_dashboard') }}#studentLookupSection" class="row g-3 mb-3" id="webLookupForm">
+                <div class="col-md-8 col-sm-12">
+                    <div class="input-group input-group-lg shadow-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-person-vcard text-primary fs-5"></i></span>
+                        <input
+                            type="text"
+                            name="roll"
+                            id="rollSearchInput"
+                            class="form-control border-start-0 text-uppercase fw-bold"
+                            placeholder="Enter Student Roll / Enrollment No. (e.g. 0545CS211001, 0101CS221001)..."
+                            value="{{ searched_roll }}"
+                            list="studentsDatalist"
+                            autocomplete="off"
+                            required
+                        >
+                        <datalist id="studentsDatalist">
+                            {% if all_students %}
+                                {% for st in all_students %}
+                                <option value="{{ st.roll }}">{{ st.name }} ({{ st.branch }}, Year {{ st.year }})</option>
+                                {% endfor %}
+                            {% endif %}
+                        </datalist>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">
+                            <i class="bi bi-search me-1"></i> Search Record
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4 col-sm-12 d-flex align-items-center gap-2">
+                    {% if searched_roll %}
+                    <a href="{{ url_for('librarian_dashboard') }}#studentLookupSection" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-x-circle me-1"></i> Clear
+                    </a>
+                    {% endif %}
+                    <!-- Quick sample pills -->
+                    <div class="d-flex flex-wrap gap-1 align-items-center">
+                        <small class="text-muted me-1">Quick:</small>
+                        <a href="?roll=0545CS211001#studentLookupSection" class="badge bg-light text-primary border text-decoration-none p-2">0545CS211001</a>
+                        <a href="?roll=0545CS211002#studentLookupSection" class="badge bg-light text-primary border text-decoration-none p-2">0545CS211002</a>
+                        <a href="?roll=0101CS221001#studentLookupSection" class="badge bg-light text-primary border text-decoration-none p-2">0101CS221001</a>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Loading Spinner (for AJAX) -->
+            <div id="ajaxLoadingSpinner" class="text-center py-4 d-none">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="text-muted mt-2 small">Accessing Student Library Records...</p>
+            </div>
+
+            <!-- SEARCH RESULTS: STUDENT LIBRARY RECORD DOSSIER -->
+            {% if searched_member_data %}
+            <div id="studentDossierContainer" class="mt-4 p-4 rounded-3 border bg-light bg-opacity-50">
+                <!-- Top Student Header & Clearance Status -->
+                <div class="row align-items-center g-3 mb-3">
+                    <div class="col-md-7">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-primary text-white fw-bold fs-4 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
+                                {{ searched_member_data.student.name[:2]|upper if searched_member_data.student else 'ST' }}
+                            </div>
+                            <div>
+                                <h4 class="fw-bold mb-0 text-dark">{{ searched_member_data.student.name if searched_member_data.student else searched_member_data.member.member_code }}</h4>
+                                <div class="text-muted small">
+                                    <span class="badge bg-primary-subtle text-primary font-monospace me-1">{{ searched_member_data.student.roll if searched_member_data.student else searched_member_data.member.member_code }}</span>
+                                    • Branch: <strong>{{ searched_member_data.student.branch if searched_member_data.student else 'CSE' }}</strong>
+                                    • Year: <strong>{{ searched_member_data.student.year if searched_member_data.student else '1' }}</strong>
+                                    • Max Quota: <strong>{{ searched_member_data.member.max_books }} Books</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-5 text-md-end">
+                        {% if searched_member_data.is_clear %}
+                            <div class="alert alert-success border-2 border-success py-2 px-3 mb-0 d-inline-block text-start shadow-sm">
+                                <div class="fw-bold fs-6"><i class="bi bi-patch-check-fill text-success me-1 fs-5"></i> LIBRARY CLEARANCE: APPROVED (NO DUES)</div>
+                                <small class="text-success-emphasis d-block">Zero active borrowings & ₹0 pending fine. Cleared for exam admit card & fee approval.</small>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-danger border-2 border-danger py-2 px-3 mb-0 d-inline-block text-start shadow-sm">
+                                <div class="fw-bold fs-6"><i class="bi bi-exclamation-diamond-fill text-danger me-1 fs-5"></i> LIBRARY CLEARANCE: BLOCKED / PENDING DUES</div>
+                                <small class="text-danger-emphasis d-block">
+                                    {% if searched_member_data.issued_count > 0 %}{{ searched_member_data.issued_count }} Unreturned Books in Hand. {% endif %}
+                                    {% if searched_member_data.outstanding_fine > 0 %}₹{{ searched_member_data.outstanding_fine }} Late Fine Pending.{% endif %}
+                                </small>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 3 Mini Stats -->
+                <div class="row g-2 mb-4">
+                    <div class="col-md-4">
+                        <div class="card border-0 bg-white shadow-sm p-3 rounded-3 text-center">
+                            <span class="text-muted small fw-bold text-uppercase">Currently Borrowed</span>
+                            <h4 class="fw-bold mt-1 mb-0 text-primary">{{ searched_member_data.issued_count }} / {{ searched_member_data.member.max_books }}</h4>
+                            <small class="text-muted">Active Textbooks in Hand</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 bg-white shadow-sm p-3 rounded-3 text-center">
+                            <span class="text-muted small fw-bold text-uppercase">Overdue Books</span>
+                            <h4 class="fw-bold mt-1 mb-0 text-danger">{{ searched_member_data.overdue_count }}</h4>
+                            <small class="text-muted">Late beyond due date</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 bg-white shadow-sm p-3 rounded-3 text-center">
+                            <span class="text-muted small fw-bold text-uppercase">Pending Late Fine</span>
+                            <h4 class="fw-bold mt-1 mb-0 text-danger">₹{{ "{:,.2f}".format(searched_member_data.outstanding_fine) }}</h4>
+                            <small class="text-muted">Must clear at Accounts counter</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs: Active Loans vs History vs Fines -->
+                <ul class="nav nav-pills mb-3" id="studentDossierTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active fw-bold" id="active-loans-tab" data-bs-toggle="pill" data-bs-target="#active-loans" type="button">
+                            <i class="bi bi-book me-1"></i> Active Borrowings ({{ searched_member_data.active_books|length }})
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold" id="history-tab" data-bs-toggle="pill" data-bs-target="#history" type="button">
+                            <i class="bi bi-clock-history me-1"></i> Past Borrowing History ({{ searched_member_data.history|length }})
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold" id="fines-tab" data-bs-toggle="pill" data-bs-target="#fines" type="button">
+                            <i class="bi bi-receipt me-1"></i> Fine Records ({{ searched_member_data.fines|length }})
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content bg-white p-3 rounded-3 border shadow-sm" id="studentDossierTabContent">
+                    <!-- Tab 1: Active Issued Books -->
+                    <div class="tab-pane fade show active" id="active-loans" role="tabpanel">
+                        {% if searched_member_data.active_books %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Accession / Barcode</th>
+                                        <th>Book Title</th>
+                                        <th>Author</th>
+                                        <th>Shelf Location</th>
+                                        <th>Issue Date</th>
+                                        <th>Due Date</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for b in searched_member_data.active_books %}
+                                    <tr class="{{ 'table-danger' if b.is_overdue else '' }}">
+                                        <td><span class="badge bg-secondary font-monospace">{{ b.accession_no }}</span></td>
+                                        <td class="fw-bold">{{ b.title }}</td>
+                                        <td class="text-muted">{{ b.author }}</td>
+                                        <td><span class="badge bg-light text-dark border">{{ b.shelf_location or 'Main Library' }}</span></td>
+                                        <td>{{ b.issue_date }}</td>
+                                        <td class="fw-bold {{ 'text-danger' if b.is_overdue else 'text-dark' }}">{{ b.due_date }}</td>
+                                        <td>
+                                            {% if b.is_overdue %}
+                                                <span class="badge bg-danger"><i class="bi bi-exclamation-circle me-1"></i>{{ b.days_remaining|abs }}d Overdue</span>
+                                            {% elif b.is_due_soon %}
+                                                <span class="badge bg-warning text-dark">{{ b.days_remaining }}d Remaining</span>
+                                            {% else %}
+                                                <span class="badge bg-success">{{ b.days_remaining }}d Active</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-check-circle text-success fs-1 d-block mb-2"></i>
+                            <h6 class="fw-bold text-dark">No Active Book Borrowings</h6>
+                            <p class="small text-muted mb-0">Student does not hold any issued books from the library.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Tab 2: Past History -->
+                    <div class="tab-pane fade" id="history" role="tabpanel">
+                        {% if searched_member_data.history %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Accession No</th>
+                                        <th>Book Title</th>
+                                        <th>Author</th>
+                                        <th>Issue Date</th>
+                                        <th>Return Date</th>
+                                        <th>Fine Paid</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for h in searched_member_data.history %}
+                                    <tr>
+                                        <td><span class="badge bg-secondary font-monospace">{{ h.accession_no }}</span></td>
+                                        <td class="fw-bold">{{ h.title }}</td>
+                                        <td class="text-muted">{{ h.author }}</td>
+                                        <td>{{ h.issue_date }}</td>
+                                        <td class="text-success fw-bold">{{ h.return_date }}</td>
+                                        <td>
+                                            {% if h.fine_paid and h.fine_paid > 0 %}
+                                                <span class="badge bg-warning text-dark">₹{{ h.fine_paid }}</span>
+                                            {% else %}
+                                                <span class="text-muted">₹0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td><span class="badge bg-secondary">Returned</span></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <p class="small text-muted mb-0">No past return history records found for this student.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Tab 3: Fine Records -->
+                    <div class="tab-pane fade" id="fines" role="tabpanel">
+                        {% if searched_member_data.fines %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Fine Code</th>
+                                        <th>Assessed Date</th>
+                                        <th>Type</th>
+                                        <th>Total Amount</th>
+                                        <th>Balance Unpaid</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for f in searched_member_data.fines %}
+                                    <tr>
+                                        <td><span class="badge bg-secondary font-monospace">{{ f.fine_code }}</span></td>
+                                        <td>{{ f.assessed_date.strftime('%d-%b-%Y') if f.assessed_date else '' }}</td>
+                                        <td>{{ f.fine_type }}</td>
+                                        <td class="fw-bold">₹{{ f.amount }}</td>
+                                        <td class="fw-bold text-danger">₹{{ f.balance_amount }}</td>
+                                        <td>
+                                            {% if f.status == 'Unpaid' %}
+                                                <span class="badge bg-danger">Unpaid</span>
+                                            {% elif f.status == 'Paid' %}
+                                                <span class="badge bg-success">Paid</span>
+                                            {% else %}
+                                                <span class="badge bg-info">{{ f.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-shield-check text-success fs-2 d-block mb-1"></i>
+                            <p class="small text-muted mb-0">Zero fine records assessed. Student has a clean financial record with the Library.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% elif searched_roll %}
+            <div class="alert alert-warning mt-3 mb-0">
+                <i class="bi bi-exclamation-triangle me-2"></i>No student or library record found for Enrollment Roll: <strong>{{ searched_roll }}</strong>. Please check the roll number and try again.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Main Content Row -->
+    <div class="row g-4">
+        <!-- Left: Recent Circulation Table -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 rounded-3">
+                <div class="card-header bg-transparent py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-clock-history text-primary me-2"></i>Recent Book Issues & Returns</h5>
+                    <span class="badge bg-light text-dark border">{{ recent_issues|length }} Transactions</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Copy Code</th>
+                                    <th>Book Title</th>
+                                    <th>Member Identifier</th>
+                                    <th>Issue Date</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if recent_issues %}
+                                    {% for iss in recent_issues %}
+                                    <tr>
+                                        <td><span class="badge bg-secondary font-monospace">{{ iss.copy_identifier or ('CPY-' ~ iss.copy_id) }}</span></td>
+                                        <td class="fw-semibold">{{ iss.book.title if iss.book else 'Central Catalog Title' }}</td>
+                                        <td>
+                                            <a href="{{ url_for('librarian_dashboard') }}?roll={{ iss.member.identifier if iss.member else '' }}#studentLookupSection" class="fw-bold text-primary text-decoration-none">
+                                                {{ iss.member.identifier if iss.member else 'Student' }}
+                                            </a>
+                                            <small class="text-muted d-block">{{ iss.member.name if iss.member else '' }}</small>
+                                        </td>
+                                        <td class="small">{{ iss.issue_date.strftime('%d-%b-%Y') if iss.issue_date else 'N/A' }}</td>
+                                        <td class="small">{{ iss.due_date.strftime('%d-%b-%Y') if iss.due_date else 'N/A' }}</td>
+                                        <td>
+                                            {% if iss.status == 'Issued' %}
+                                                <span class="badge bg-success">Active Loan</span>
+                                            {% elif iss.status == 'Returned' %}
+                                                <span class="badge bg-secondary">Returned</span>
+                                            {% elif iss.status == 'Overdue' %}
+                                                <span class="badge bg-danger">Overdue</span>
+                                            {% else %}
+                                                <span class="badge bg-info">{{ iss.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">
+                                            <i class="bi bi-inbox fs-3 d-block mb-2 text-muted"></i>
+                                            No recent circulation records found.
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Catalog Categories Breakdown & Audit Log -->
+        <div class="col-lg-4">
+            <!-- Categories List -->
+            <div class="card shadow-sm border-0 rounded-3 mb-4">
+                <div class="card-header bg-transparent py-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-tags text-primary me-2"></i>Subject Categories</h5>
+                </div>
+                <div class="card-body p-3">
+                    <div class="list-group list-group-flush">
+                        {% for cat in categories %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                            <div>
+                                <span class="fw-bold">{{ cat.name }}</span>
+                                <small class="text-muted d-block font-monospace">{{ cat.code }}</small>
+                            </div>
+                            <span class="badge bg-primary-subtle text-primary rounded-pill px-3">{{ cat.books|length if cat.books else 0 }} titles</span>
+                        </div>
+                        {% else %}
+                        <div class="text-muted small py-2">No categories configured yet.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent LMS Audit Activity -->
+            <div class="card shadow-sm border-0 rounded-3">
+                <div class="card-header bg-transparent py-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-shield-check text-success me-2"></i>LMS Audit Log</h5>
+                </div>
+                <div class="card-body p-3">
+                    <div class="small">
+                        {% for log in recent_audit_logs %}
+                        <div class="mb-3 pb-2 border-bottom">
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-bold text-dark">{{ log.action }}</span>
+                                <span class="text-muted" style="font-size: 0.75rem;">{{ log.timestamp.strftime('%d-%b %H:%M') if log.timestamp else '' }}</span>
+                            </div>
+                            <p class="mb-0 text-muted" style="font-size: 0.8rem;">{{ log.details }}</p>
+                        </div>
+                        {% else %}
+                        <div class="text-muted small">No audit records logged yet.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

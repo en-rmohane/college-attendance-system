@@ -25,3 +25,13 @@ instance/
 # Uploads
 uploads/
 reports/
+
+# Node & Mobile
+node_modules/
+.expo/
+dist/
+.DS_Store
+*.log
+logs/
+generated_reports/
+backups/

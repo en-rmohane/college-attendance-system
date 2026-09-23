@@ -725,23 +725,61 @@ class FeePayment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     receipt_no = db.Column(db.String(50), unique=True, nullable=False)
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
-    year = db.Column(db.Integer, nullable=False)
+    year = db.Column(db.Integer, nullable=False, default=1)
     academic_year = db.Column(db.Integer, nullable=False, default=2026)
-    amount_paid = db.Column(db.Float, nullable=False)
+    academic_year_name = db.Column(db.String(50), nullable=False, default="2026-27")
+    installment_no = db.Column(db.Integer, nullable=True, default=1)
+    
+    # Financial Freeze Fields (Authoritative Server Snapshot)
+    base_amount = db.Column(db.Float, nullable=False, default=13750.0)
+    late_days = db.Column(db.Integer, nullable=False, default=0)
+    late_fee_rate = db.Column(db.Float, nullable=False, default=25.0)
     late_fee_paid = db.Column(db.Float, nullable=False, default=0.0)
+    discount_amount = db.Column(db.Float, nullable=False, default=0.0)
+    net_amount = db.Column(db.Float, nullable=False, default=13750.0)
+    amount_paid = db.Column(db.Float, nullable=False, default=13750.0)
+    
     payment_mode = db.Column(db.String(50), nullable=False, default='UPI') # UPI, Card, Net Banking, Cash, Cheque, DD
     transaction_id = db.Column(db.String(100), nullable=True)
     payment_date = db.Column(db.DateTime, default=datetime.now)
-    status = db.Column(db.String(20), nullable=False, default='Success')
+    
+    # Workflow Statuses
+    payment_status = db.Column(db.String(20), nullable=False, default='SUCCESS') # INITIATED, PENDING, SUCCESS, FAILED, CANCELLED, REFUNDED
+    approval_status = db.Column(db.String(30), nullable=False, default='APPROVED') # PENDING_APPROVAL, APPROVED, REJECTED
+    rejection_reason = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), nullable=False, default='Success') # For backwards compatibility
+    
+    # Security & Verification
+    is_locked = db.Column(db.Boolean, default=False)
+    qr_token = db.Column(db.String(100), unique=True, nullable=True)
+    
     collected_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    approved_at = db.Column(db.DateTime, nullable=True)
     remarks = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     student = db.relationship('Student', backref=db.backref('payments', lazy=True))
-    collector = db.relationship('User', backref=db.backref('collected_payments', lazy=True))
+    collector = db.relationship('User', foreign_keys=[collected_by], backref=db.backref('collected_payments', lazy=True))
+    approver = db.relationship('User', foreign_keys=[approved_by], backref=db.backref('approved_fee_payments', lazy=True))
 
 
 # ==================== ENTERPRISE ERP FEE MANAGEMENT MODELS ====================
+
+class FeeSchedule(db.Model):
+    __tablename__ = 'fee_schedules'
+
+    id = db.Column(db.Integer, primary_key=True)
+    academic_year = db.Column(db.String(50), nullable=False, default="2026-27")
+    student_year = db.Column(db.Integer, nullable=False, default=1) # 1=1st Year, 2=2nd Year, 3=3rd Year, 4=4th Year
+    annual_fee = db.Column(db.Float, nullable=False, default=55000.0)
+    late_fee_per_day = db.Column(db.Float, nullable=False, default=25.0)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+
+    installments = db.relationship('FeeInstallment', backref='schedule', lazy=True, cascade='all, delete-orphan')
+
 
 class AcademicYear(db.Model):
     __tablename__ = 'academic_years'
@@ -805,17 +843,29 @@ class FeeInstallment(db.Model):
     __tablename__ = 'fee_installments'
 
     id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    schedule_id = db.Column(db.Integer, db.ForeignKey('fee_schedules.id'), nullable=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=True)
     academic_year_id = db.Column(db.Integer, db.ForeignKey('academic_years.id'), nullable=True)
-    installment_no = db.Column(db.Integer, nullable=False)
+    academic_year_name = db.Column(db.String(50), nullable=False, default="2026-27")
+    student_year = db.Column(db.Integer, nullable=False, default=1) # 1=1st Year, 2=2nd Year, 3=3rd Year, 4=4th Year
+    installment_no = db.Column(db.Integer, nullable=False, default=1)
     title = db.Column(db.String(100), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
+    amount = db.Column(db.Float, nullable=False, default=13750.0)
     paid_amount = db.Column(db.Float, nullable=False, default=0.0)
+    
+    release_date = db.Column(db.Date, nullable=True)
     due_date = db.Column(db.Date, nullable=False)
+    late_fee_rate = db.Column(db.Float, nullable=False, default=25.0)
     late_fee_amount = db.Column(db.Float, nullable=False, default=0.0)
-    status = db.Column(db.String(20), nullable=False, default='Upcoming') # Upcoming, Pending, Partial, Paid, Overdue
+    
+    is_released = db.Column(db.Boolean, default=False)
+    released_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    released_at = db.Column(db.DateTime, nullable=True)
+    
+    status = db.Column(db.String(20), nullable=False, default='DRAFT') # DRAFT, RELEASED, PENDING, PARTIAL, PAID, OVERDUE
 
     student = db.relationship('Student', backref=db.backref('installments', lazy=True))
+    releaser = db.relationship('User', foreign_keys=[released_by], backref=db.backref('released_installments', lazy=True))
 
 
 class FeeLedger(db.Model):
@@ -1065,6 +1115,300 @@ class TransportApplication(db.Model):
     student = db.relationship('Student', backref=db.backref('transport_applications', lazy=True))
     route = db.relationship('BusRoute', backref=db.backref('applications', lazy=True))
     stop = db.relationship('BusStop', backref=db.backref('applications', lazy=True))
+
+
+class TransportPayment(db.Model):
+    __tablename__ = 'transport_payments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    receipt_no = db.Column(db.String(50), unique=True, nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    route_id = db.Column(db.Integer, db.ForeignKey('bus_routes.id'), nullable=False)
+    stop_id = db.Column(db.Integer, db.ForeignKey('bus_stops.id'), nullable=False)
+    academic_year = db.Column(db.String(50), nullable=False, default="2026-27")
+    
+    annual_fee = db.Column(db.Float, nullable=False, default=15000.0)
+    amount_paid = db.Column(db.Float, nullable=False, default=15000.0)
+    payment_mode = db.Column(db.String(50), nullable=False, default='UPI')
+    transaction_id = db.Column(db.String(100), nullable=True)
+    payment_date = db.Column(db.DateTime, default=datetime.now)
+    
+    payment_status = db.Column(db.String(20), nullable=False, default='SUCCESS') # INITIATED, SUCCESS, FAILED, CANCELLED
+    approval_status = db.Column(db.String(30), nullable=False, default='PENDING_APPROVAL') # PENDING_APPROVAL, APPROVED, REJECTED
+    rejection_reason = db.Column(db.Text, nullable=True)
+    
+    is_locked = db.Column(db.Boolean, default=False)
+    qr_token = db.Column(db.String(100), unique=True, nullable=True)
+    
+    collected_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    student = db.relationship('Student', backref=db.backref('transport_payments', lazy=True))
+    route = db.relationship('BusRoute', backref=db.backref('payments', lazy=True))
+    stop = db.relationship('BusStop', backref=db.backref('payments', lazy=True))
+    collector = db.relationship('User', foreign_keys=[collected_by], backref=db.backref('collected_transport_payments', lazy=True))
+    approver = db.relationship('User', foreign_keys=[approved_by], backref=db.backref('approved_transport_payments', lazy=True))
+
+
+# ==================== ENTERPRISE LIBRARY MANAGEMENT SYSTEM (LMS) MODELS ====================
+
+class LibraryCategory(db.Model):
+    __tablename__ = 'library_categories'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False) # e.g. Computer Science, Artificial Intelligence, Mathematics
+    code = db.Column(db.String(50), unique=True, nullable=False) # e.g. CS, AI, MATH, ENG
+    description = db.Column(db.Text, nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    books = db.relationship('LibraryBook', backref='category_rel', lazy=True)
+
+
+class LibraryBook(db.Model):
+    __tablename__ = 'library_books'
+
+    id = db.Column(db.Integer, primary_key=True)
+    book_code = db.Column(db.String(50), unique=True, nullable=False) # e.g. BK-CS-001
+    isbn = db.Column(db.String(30), nullable=True, index=True)
+    title = db.Column(db.String(255), nullable=False, index=True)
+    subtitle = db.Column(db.String(255), nullable=True)
+    author = db.Column(db.String(200), nullable=False, index=True)
+    co_authors = db.Column(db.String(255), nullable=True)
+    publisher = db.Column(db.String(150), nullable=True)
+    publication_year = db.Column(db.Integer, nullable=True)
+    edition = db.Column(db.String(50), nullable=True, default="1st Edition")
+    language = db.Column(db.String(50), nullable=False, default="English")
+    
+    category_id = db.Column(db.Integer, db.ForeignKey('library_categories.id'), nullable=True)
+    subject = db.Column(db.String(100), nullable=True)
+    department = db.Column(db.String(100), nullable=True, default="CSE") # CSE, AD, ALL
+    course = db.Column(db.String(100), nullable=True, default="B.Tech")
+    semester = db.Column(db.Integer, nullable=True)
+    
+    description = db.Column(db.Text, nullable=True)
+    keywords = db.Column(db.String(255), nullable=True)
+    cover_image = db.Column(db.String(255), nullable=True)
+    
+    total_copies = db.Column(db.Integer, nullable=False, default=1)
+    available_copies = db.Column(db.Integer, nullable=False, default=1)
+    
+    # Location Hierarchy
+    shelf = db.Column(db.String(50), nullable=True, default="Shelf A1")
+    rack = db.Column(db.String(50), nullable=True, default="Rack 1")
+    row_num = db.Column(db.String(50), nullable=True, default="Row 2")
+    location = db.Column(db.String(100), nullable=True, default="Main Library - 2nd Floor")
+    
+    price = db.Column(db.Float, nullable=False, default=500.0)
+    status = db.Column(db.String(20), nullable=False, default="Available") # Available, Out of Stock, Discontinued
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+
+    copies = db.relationship('LibraryBookCopy', backref='book', lazy=True, cascade='all, delete-orphan')
+    issues = db.relationship('LibraryIssue', backref='book', lazy=True)
+    reservations = db.relationship('LibraryReservation', backref='book', lazy=True)
+
+
+class LibraryBookCopy(db.Model):
+    __tablename__ = 'library_book_copies'
+
+    id = db.Column(db.Integer, primary_key=True)
+    book_id = db.Column(db.Integer, db.ForeignKey('library_books.id'), nullable=False)
+    copy_number = db.Column(db.Integer, nullable=False, default=1)
+    accession_no = db.Column(db.String(50), unique=True, nullable=False, index=True) # e.g. CN-001, ACC-2026-0042
+    barcode = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    qr_code = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    
+    status = db.Column(db.String(30), nullable=False, default="Available") # Available, Issued, Reserved, Lost, Damaged, Under Repair, Removed
+    condition = db.Column(db.String(30), nullable=False, default="Good") # New, Good, Fair, Poor, Damaged
+    shelf_location = db.Column(db.String(100), nullable=True)
+    price = db.Column(db.Float, nullable=False, default=500.0)
+    acquisition_date = db.Column(db.Date, nullable=False, default=datetime.now)
+    remarks = db.Column(db.Text, nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    issues = db.relationship('LibraryIssue', backref='copy', lazy=True)
+    returns = db.relationship('LibraryReturn', backref='copy', lazy=True)
+
+
+class LibraryMember(db.Model):
+    __tablename__ = 'library_members'
+
+    id = db.Column(db.Integer, primary_key=True)
+    member_code = db.Column(db.String(50), unique=True, nullable=False, index=True) # e.g. LIB-STU-0101, LIB-FAC-005
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=True)
+    faculty_id = db.Column(db.Integer, db.ForeignKey('faculties.id'), nullable=True)
+    
+    member_type = db.Column(db.String(20), nullable=False, default="Student") # Student, Faculty, Staff
+    max_books = db.Column(db.Integer, nullable=False, default=3) # Student=3, Faculty=10
+    loan_period_days = db.Column(db.Integer, nullable=False, default=14) # Student=14, Faculty=30
+    current_issued_count = db.Column(db.Integer, nullable=False, default=0)
+    outstanding_fine = db.Column(db.Float, nullable=False, default=0.0)
+    
+    membership_date = db.Column(db.Date, nullable=False, default=datetime.now)
+    expiry_date = db.Column(db.Date, nullable=True)
+    status = db.Column(db.String(20), nullable=False, default="Active") # Active, Suspended, Expired
+    remarks = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    user = db.relationship('User', backref=db.backref('library_membership', uselist=False, lazy=True))
+    student = db.relationship('Student', backref=db.backref('library_membership', uselist=False, lazy=True))
+    faculty = db.relationship('Faculty', backref=db.backref('library_membership', uselist=False, lazy=True))
+    issues = db.relationship('LibraryIssue', backref='member', lazy=True)
+    reservations = db.relationship('LibraryReservation', backref='member', lazy=True)
+    fines = db.relationship('LibraryFine', backref='member', lazy=True)
+
+
+class LibraryIssue(db.Model):
+    __tablename__ = 'library_issues'
+
+    id = db.Column(db.Integer, primary_key=True)
+    issue_code = db.Column(db.String(50), unique=True, nullable=False, index=True) # e.g. ISS-2026-0001
+    member_id = db.Column(db.Integer, db.ForeignKey('library_members.id'), nullable=False)
+    book_id = db.Column(db.Integer, db.ForeignKey('library_books.id'), nullable=False)
+    copy_id = db.Column(db.Integer, db.ForeignKey('library_book_copies.id'), nullable=False)
+    accession_no = db.Column(db.String(50), nullable=False)
+    
+    issue_date = db.Column(db.Date, nullable=False, default=datetime.now)
+    due_date = db.Column(db.Date, nullable=False)
+    return_date = db.Column(db.Date, nullable=True)
+    
+    status = db.Column(db.String(20), nullable=False, default="Issued") # Issued, Returned, Overdue, Lost, Damaged
+    renew_count = db.Column(db.Integer, nullable=False, default=0)
+    max_renewals = db.Column(db.Integer, nullable=False, default=2)
+    fine_accrued = db.Column(db.Float, nullable=False, default=0.0)
+    fine_paid = db.Column(db.Float, nullable=False, default=0.0)
+    
+    issued_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    returned_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    condition_on_issue = db.Column(db.String(30), nullable=False, default="Good")
+    condition_on_return = db.Column(db.String(30), nullable=True)
+    remarks = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+
+    issuer = db.relationship('User', foreign_keys=[issued_by], backref=db.backref('issued_library_books', lazy=True))
+    return_receiver = db.relationship('User', foreign_keys=[returned_by], backref=db.backref('received_library_books', lazy=True))
+    renewals = db.relationship('LibraryRenewal', backref='issue', lazy=True, cascade='all, delete-orphan')
+    returns = db.relationship('LibraryReturn', backref='issue', lazy=True, cascade='all, delete-orphan')
+
+
+class LibraryReturn(db.Model):
+    __tablename__ = 'library_returns'
+
+    id = db.Column(db.Integer, primary_key=True)
+    issue_id = db.Column(db.Integer, db.ForeignKey('library_issues.id'), nullable=False)
+    copy_id = db.Column(db.Integer, db.ForeignKey('library_book_copies.id'), nullable=False)
+    member_id = db.Column(db.Integer, db.ForeignKey('library_members.id'), nullable=False)
+    
+    return_date = db.Column(db.Date, nullable=False, default=datetime.now)
+    days_late = db.Column(db.Integer, nullable=False, default=0)
+    fine_amount = db.Column(db.Float, nullable=False, default=0.0)
+    fine_status = db.Column(db.String(20), nullable=False, default="None") # None, Paid, Pending, Waived
+    book_condition = db.Column(db.String(30), nullable=False, default="Good")
+    processed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    remarks = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    processor = db.relationship('User', foreign_keys=[processed_by], backref=db.backref('processed_library_returns', lazy=True))
+    member = db.relationship('LibraryMember', foreign_keys=[member_id], backref=db.backref('returns', lazy=True))
+
+
+class LibraryRenewal(db.Model):
+    __tablename__ = 'library_renewals'
+
+    id = db.Column(db.Integer, primary_key=True)
+    issue_id = db.Column(db.Integer, db.ForeignKey('library_issues.id'), nullable=False)
+    renewal_date = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    old_due_date = db.Column(db.Date, nullable=False)
+    new_due_date = db.Column(db.Date, nullable=False)
+    renewal_number = db.Column(db.Integer, nullable=False, default=1)
+    renewed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    remarks = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    renewer = db.relationship('User', foreign_keys=[renewed_by], backref=db.backref('renewed_library_books', lazy=True))
+
+
+class LibraryReservation(db.Model):
+    __tablename__ = 'library_reservations'
+
+    id = db.Column(db.Integer, primary_key=True)
+    reservation_code = db.Column(db.String(50), unique=True, nullable=False, index=True) # e.g. RES-2026-0001
+    member_id = db.Column(db.Integer, db.ForeignKey('library_members.id'), nullable=False)
+    book_id = db.Column(db.Integer, db.ForeignKey('library_books.id'), nullable=False)
+    copy_id = db.Column(db.Integer, db.ForeignKey('library_book_copies.id'), nullable=True)
+    
+    reservation_date = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    queue_position = db.Column(db.Integer, nullable=False, default=1)
+    status = db.Column(db.String(30), nullable=False, default="Pending") # Pending, Ready for Pickup, Completed, Cancelled, Expired
+    notified_at = db.Column(db.DateTime, nullable=True)
+    expiry_date = db.Column(db.Date, nullable=True)
+    fulfilled_issue_id = db.Column(db.Integer, db.ForeignKey('library_issues.id'), nullable=True)
+    remarks = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+
+class LibraryFine(db.Model):
+    __tablename__ = 'library_fines'
+
+    id = db.Column(db.Integer, primary_key=True)
+    fine_code = db.Column(db.String(50), unique=True, nullable=False, index=True) # e.g. FIN-2026-0001
+    member_id = db.Column(db.Integer, db.ForeignKey('library_members.id'), nullable=False)
+    issue_id = db.Column(db.Integer, db.ForeignKey('library_issues.id'), nullable=True)
+    
+    amount = db.Column(db.Float, nullable=False, default=0.0)
+    paid_amount = db.Column(db.Float, nullable=False, default=0.0)
+    balance_amount = db.Column(db.Float, nullable=False, default=0.0)
+    fine_type = db.Column(db.String(30), nullable=False, default="Overdue") # Overdue, Lost Book, Damaged Book, Manual
+    status = db.Column(db.String(20), nullable=False, default="Unpaid") # Unpaid, Partial, Paid, Waived
+    
+    assessed_date = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    paid_date = db.Column(db.DateTime, nullable=True)
+    waived_amount = db.Column(db.Float, nullable=False, default=0.0)
+    waived_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    waiver_reason = db.Column(db.Text, nullable=True)
+    receipt_no = db.Column(db.String(50), nullable=True)
+    payment_mode = db.Column(db.String(50), nullable=True, default="Cash")
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    issue = db.relationship('LibraryIssue', backref=db.backref('fine_records', lazy=True))
+    waiver_authorizer = db.relationship('User', foreign_keys=[waived_by], backref=db.backref('authorized_library_waivers', lazy=True))
+
+
+class LibrarySetting(db.Model):
+    __tablename__ = 'library_settings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(100), unique=True, nullable=False)
+    value = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.String(255), nullable=True)
+    category = db.Column(db.String(50), nullable=False, default="General") # Borrowing, Fines, Reservation, General
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+class LibraryAuditLog(db.Model):
+    __tablename__ = 'library_audit_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    role = db.Column(db.String(50), nullable=True)
+    action = db.Column(db.String(100), nullable=False) # BOOK_CREATED, BOOK_ISSUED, BOOK_RETURNED, BOOK_RENEWED, FINE_WAIVED, etc.
+    entity_type = db.Column(db.String(100), nullable=False) # Book, Copy, Member, Issue, Fine, Settings
+    entity_id = db.Column(db.String(100), nullable=True)
+    details = db.Column(db.Text, nullable=True)
+    old_value = db.Column(db.Text, nullable=True)
+    new_value = db.Column(db.Text, nullable=True)
+    ip_address = db.Column(db.String(50), nullable=True)
+    timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
+
+    user = db.relationship('User', backref=db.backref('library_audit_actions', lazy=True))
+
+
 
 
 

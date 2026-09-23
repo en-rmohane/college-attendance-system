@@ -35,12 +35,15 @@ def sync_sqlite_to_postgres():
         'academic_years', 'users', 'faculties', 'students', 'subjects',
         'professor_subjects', 'rgpv_schemes', 'current_semester', 'timetable_slots',
         'fee_structures', 'fee_heads', 'fee_structure_items', 'student_fee_records',
-        'fee_demands', 'fee_installments', 'fee_payments', 'fee_ledger',
+        'fee_demands', 'fee_schedules', 'fee_installments', 'fee_payments', 'fee_ledger',
         'payment_allocations', 'payment_gateway_transactions', 'late_fee_rules',
         'late_fee_waivers', 'discount_scholarships', 'refund_records', 'audit_logs',
         'no_dues_certificates', 'bus_routes', 'bus_stops', 'bus_passes',
-        'bus_attendances', 'transport_applications', 'notices', 'tests',
-        'question_sections', 'questions', 'test_attempts', 'student_answers',
+        'bus_attendances', 'transport_applications', 'transport_payments',
+        'library_categories', 'library_members', 'library_settings',
+        'library_books', 'library_book_copies', 'library_issues', 'library_returns',
+        'library_renewals', 'library_reservations', 'library_fines', 'library_audit_logs',
+        'notices', 'tests', 'question_sections', 'questions', 'test_attempts', 'student_answers',
         'attendance', 'attendance_reports', 'mid_term_marks', 'notes',
         'password_reset_otps', 'email_log'
     ]

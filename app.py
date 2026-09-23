@@ -27,11 +27,15 @@ from fix_database import get_timetable_from_db, generate_monthly_attendance_exce
 from models import db, User, Student, Subject, ProfessorSubject, Attendance, AttendanceReport, PasswordResetOTP, \
     EmailLog, RGPVScheme, TimetableSlot, CurrentSemester, MidTermMarks, Notes, Notice, Test, Question, \
     TestAttempt, StudentAnswer, QuestionSection, Faculty, FeeStructure, StudentFeeRecord, FeePayment, \
-    AcademicYear, FeeHead, FeeStructureItem, FeeDemand, FeeInstallment, FeeLedger, PaymentAllocation, \
+    FeeSchedule, AcademicYear, FeeHead, FeeStructureItem, FeeDemand, FeeInstallment, FeeLedger, PaymentAllocation, \
     PaymentGatewayTransaction, LateFeeRule, LateFeeWaiver, DiscountScholarship, RefundRecord, AuditLog, NoDuesCertificate, \
-    BusRoute, BusStop, BusPass, BusAttendance, TransportApplication
+    BusRoute, BusStop, BusPass, BusAttendance, TransportApplication, TransportPayment, \
+    LibraryCategory, LibraryBook, LibraryBookCopy, LibraryMember, \
+    LibraryIssue, LibraryReturn, LibraryRenewal, LibraryReservation, \
+    LibraryFine, LibrarySetting, LibraryAuditLog
 
 from fee_service import LedgerService, AuditService, PaymentGatewayService, LateFeeEngine, PaymentAllocationEngine
+from library_service import LibraryRBAC, LibraryMemberService, LibraryCatalogService, LibraryCirculationService, LibraryReportService, LibraryAuditService
 
 from datetime import datetime
 
@@ -76,6 +80,14 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = IS_VERCEL or (os.environ.get('FLASK_ENV') == 'production')
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=12)
+
+# Register Mobile REST API Blueprint
+try:
+    from mobile_api import api_bp
+    app.register_blueprint(api_bp)
+    print("OK Mobile REST API Blueprint registered at /api")
+except Exception as e:
+    print(f"Warning: Failed to register mobile_api blueprint: {e}")
 
 import gzip
 import io
@@ -367,6 +379,64 @@ def shutdown_session(exception=None):
         db.session.remove()
     except Exception:
         pass
+
+def _auto_migrate_fee_and_transport_schema():
+    """Ensure all required columns and tables for College Fee & Transport exist seamlessly"""
+    try:
+        with app.app_context():
+            db.create_all()
+            # SQLite safe column additions if they are missing from existing tables
+            engine = db.engine
+            if 'sqlite' in str(engine.url):
+                with engine.connect() as conn:
+                    # Check fee_installments
+                    try:
+                        res = conn.execute(text("PRAGMA table_info(fee_installments);")).fetchall()
+                        cols = [r[1] for r in res]
+                        for c, t in [
+                            ("schedule_id", "INTEGER"),
+                            ("academic_year_name", "VARCHAR(50) DEFAULT '2026-27'"),
+                            ("release_date", "DATE"),
+                            ("late_fee_rate", "FLOAT DEFAULT 25.0"),
+                            ("is_released", "BOOLEAN DEFAULT 0"),
+                            ("released_by", "INTEGER"),
+                            ("released_at", "DATETIME")
+                        ]:
+                            if c not in cols:
+                                conn.execute(text(f"ALTER TABLE fee_installments ADD COLUMN {c} {t};"))
+                    except Exception as e:
+                        pass
+
+                    # Check fee_payments
+                    try:
+                        res = conn.execute(text("PRAGMA table_info(fee_payments);")).fetchall()
+                        cols = [r[1] for r in res]
+                        for c, t in [
+                            ("academic_year_name", "VARCHAR(50) DEFAULT '2026-27'"),
+                            ("installment_no", "INTEGER DEFAULT 1"),
+                            ("base_amount", "FLOAT DEFAULT 13750.0"),
+                            ("late_days", "INTEGER DEFAULT 0"),
+                            ("late_fee_rate", "FLOAT DEFAULT 25.0"),
+                            ("discount_amount", "FLOAT DEFAULT 0.0"),
+                            ("net_amount", "FLOAT DEFAULT 13750.0"),
+                            ("payment_status", "VARCHAR(20) DEFAULT 'SUCCESS'"),
+                            ("approval_status", "VARCHAR(30) DEFAULT 'APPROVED'"),
+                            ("rejection_reason", "TEXT"),
+                            ("is_locked", "BOOLEAN DEFAULT 0"),
+                            ("qr_token", "VARCHAR(100)"),
+                            ("approved_by", "INTEGER"),
+                            ("approved_at", "DATETIME")
+                        ]:
+                            if c not in cols:
+                                conn.execute(text(f"ALTER TABLE fee_payments ADD COLUMN {c} {t};"))
+                    except Exception as e:
+                        pass
+                    conn.commit()
+    except Exception as e:
+        print(f"Schema check notice: {e}")
+
+_auto_migrate_fee_and_transport_schema()
+
 
 if 'login_manager' not in globals():
     login_manager = LoginManager()
@@ -2755,6 +2825,8 @@ def login():
             return redirect(url_for('admin_dashboard'))
         elif current_user.role == 'accountant':
             return redirect(url_for('accountant_dashboard'))
+        elif current_user.role == 'librarian':
+            return redirect(url_for('librarian_dashboard'))
         elif current_user.role == 'professor':
             return redirect(url_for('prof_dashboard'))
         else:
@@ -2777,6 +2849,14 @@ def login():
         if not user:
             user = User.query.filter(db.func.lower(User.username) == login_input.lower()).first()
 
+        # Handle accountant and librarian aliases
+        if not user:
+            clean_login = login_input.lower().strip()
+            if clean_login in ['accountant', 'accounts', 'accountant@college.com', 'accounts@college.com', 'accountant@sbitm.edu.in', 'accounts@sbitm.edu.in', 'finance', 'fee']:
+                user = User.query.filter(db.func.lower(User.role) == 'accountant').first()
+            elif clean_login in ['librarian', 'library', 'librarian@college.com', 'librarian@sbitm.edu.in', 'library@sbitm.edu.in', 'lms']:
+                user = User.query.filter(db.func.lower(User.role) == 'librarian').first()
+
         if user:
             print(f"[DEBUG] User found: '{user.username}' (Input: '{login_input}')")
             
@@ -2786,7 +2866,7 @@ def login():
                 # Reset failed counter on successful login
                 login_limiter.record_success(client_ip, login_input)
 
-                if not user.email_verified and user.role not in ['admin', 'student', 'accountant']:
+                if not user.email_verified and user.role not in ['admin', 'student', 'accountant', 'librarian']:
                     flash('Please verify your email before logging in', 'warning')
                     return redirect(url_for('login'))
 
@@ -2797,6 +2877,8 @@ def login():
                     return redirect(url_for('admin_dashboard'))
                 elif user.role == 'accountant':
                     return redirect(url_for('accountant_dashboard'))
+                elif user.role == 'librarian':
+                    return redirect(url_for('librarian_dashboard'))
                 elif user.role == 'professor':
                     return redirect(url_for('prof_dashboard'))
                 else:
@@ -7081,6 +7163,126 @@ def student_fee_receipt(payment_id):
     )
 
 
+# ==================== LIBRARIAN / CENTRAL LIBRARY LMS ROUTES ====================
+
+@app.route('/librarian')
+@app.route('/librarian/dashboard')
+@login_required
+def librarian_dashboard():
+    """Central Library / LMS Dashboard"""
+    if current_user.role not in ['librarian', 'admin', 'accountant']:
+        flash('Access restricted to Library / Accounts / Admin only', 'danger')
+        return redirect(url_for('index'))
+
+    # Overall Library KPIs
+    total_books = LibraryBook.query.count()
+    total_copies = LibraryBookCopy.query.count()
+    available_copies = LibraryBookCopy.query.filter_by(status='Available').count()
+    issued_copies = LibraryBookCopy.query.filter_by(status='Issued').count()
+
+    today = date.today()
+    active_issues = LibraryIssue.query.filter_by(status='Issued').all()
+    overdue_count = sum(1 for iss in active_issues if iss.due_date and iss.due_date < today)
+    
+    total_members = LibraryMember.query.count()
+    total_fines_unpaid = sum(f.balance_amount for f in LibraryFine.query.filter_by(status='Unpaid').all())
+
+    recent_issues = LibraryIssue.query.order_by(LibraryIssue.issue_date.desc()).limit(10).all()
+    recent_audit_logs = LibraryAuditLog.query.order_by(LibraryAuditLog.timestamp.desc()).limit(10).all()
+    categories = LibraryCategory.query.all()
+    # Student Enrollment / Roll Search Handling
+    roll = request.args.get('roll', '').strip()
+    searched_member_data = None
+    if roll:
+        searched_student = Student.query.filter_by(roll=roll).first()
+        mem = LibraryMemberService.get_member_by_code_or_roll(roll)
+        if not mem and searched_student:
+            mem = LibraryMemberService.get_or_create_student_member(searched_student)
+            
+        if mem:
+            summary = LibraryReportService.get_my_library_summary(mem)
+            fines = LibraryFine.query.filter_by(member_id=mem.id).order_by(LibraryFine.created_at.desc()).all()
+            searched_member_data = {
+                'member': mem,
+                'student': mem.student or searched_student,
+                'summary': summary,
+                'fines': fines,
+                'active_books': summary.get('issued_books', []),
+                'history': summary.get('history', []),
+                'issued_count': summary.get('issued_count', 0),
+                'overdue_count': summary.get('overdue_count', 0),
+                'outstanding_fine': summary.get('outstanding_fine', 0),
+                'is_clear': (summary.get('issued_count', 0) == 0 and summary.get('outstanding_fine', 0) == 0)
+            }
+
+    all_students = Student.query.order_by(Student.roll.asc()).limit(300).all()
+
+    return render_template(
+        'librarian/dashboard.html',
+        total_books=total_books,
+        total_copies=total_copies,
+        available_copies=available_copies,
+        issued_copies=issued_copies,
+        overdue_count=overdue_count,
+        total_members=total_members,
+        total_fines_unpaid=total_fines_unpaid,
+        recent_issues=recent_issues,
+        recent_audit_logs=recent_audit_logs,
+        categories=categories,
+        searched_roll=roll,
+        searched_member_data=searched_member_data,
+        all_students=all_students
+    )
+
+
+@app.route('/librarian/ajax-student-dossier/<string:roll>')
+@login_required
+def ajax_student_dossier(roll):
+    """Instant AJAX lookup for student library clearance and borrowing records"""
+    if current_user.role not in ['librarian', 'admin', 'accountant']:
+        return jsonify({"success": False, "error": "Unauthorized"}), 403
+
+    roll = roll.strip()
+    searched_student = Student.query.filter_by(roll=roll).first()
+    mem = LibraryMemberService.get_member_by_code_or_roll(roll)
+    if not mem and searched_student:
+        mem = LibraryMemberService.get_or_create_student_member(searched_student)
+
+    if not mem:
+        return jsonify({"success": False, "error": f"No student or library record found for '{roll}'"}), 404
+
+    summary = LibraryReportService.get_my_library_summary(mem)
+    fines = LibraryFine.query.filter_by(member_id=mem.id).order_by(LibraryFine.created_at.desc()).all()
+
+    stud = mem.student or searched_student
+    return jsonify({
+        "success": True,
+        "member": {
+            "id": mem.id,
+            "member_code": mem.member_code,
+            "name": stud.name if stud else "Student",
+            "roll": stud.roll if stud else mem.member_code,
+            "branch": stud.branch if stud else "CSE",
+            "year": stud.year if stud else 1,
+            "status": mem.status,
+            "max_books": mem.max_books
+        },
+        "issued_books": summary.get("issued_books", []),
+        "history": summary.get("history", []),
+        "issued_count": summary.get("issued_count", 0),
+        "overdue_count": summary.get("overdue_count", 0),
+        "outstanding_fine": summary.get("outstanding_fine", 0),
+        "is_clear": (summary.get("issued_count", 0) == 0 and summary.get("outstanding_fine", 0) == 0),
+        "fines": [{
+            "fine_code": f.fine_code,
+            "amount": f.amount,
+            "balance_amount": f.balance_amount,
+            "status": f.status,
+            "date": f.assessed_date.strftime('%d-%b-%Y') if f.assessed_date else ""
+        } for f in fines]
+    })
+
+
 # ==================== ACCOUNTANT / FEE ADMIN ROUTES ====================
 
 @app.route('/accountant')
@@ -8464,10 +8666,39 @@ def transport_mark_pass_paid(pass_id):
 
 
 @app.route('/verify-bus-pass/<qr_token>')
+@app.route('/verify/pass/<qr_token>')
 def public_verify_bus_pass(qr_token):
-    """Public QR code scanner verification for bus conductor / security"""
+    """Public QR code scanner verification for bus conductor / security staff"""
     pass_rec = BusPass.query.filter_by(qr_token=qr_token).first()
+    if request.headers.get('Accept') == 'application/json' or request.args.get('format') == 'json':
+        from fee_service import TransportFeeService
+        return jsonify(TransportFeeService.verify_bus_pass_qr(qr_token))
     return render_template('public/verify_bus_pass.html', pass_rec=pass_rec, now=datetime.now())
+
+
+@app.route('/verify/receipt/<qr_token>')
+def public_verify_fee_receipt(qr_token):
+    """Public QR code verification for official fee receipt"""
+    payment = FeePayment.query.filter((FeePayment.qr_token == qr_token) | (FeePayment.receipt_no == qr_token)).first()
+    if not payment:
+        payment = TransportPayment.query.filter((TransportPayment.qr_token == qr_token) | (TransportPayment.receipt_no == qr_token)).first()
+    if not payment:
+        return jsonify({"valid": False, "error": "Receipt verification token invalid or expired"}), 404
+
+    student = Student.query.get(payment.student_id)
+    return jsonify({
+        "valid": True,
+        "receipt_no": payment.receipt_no,
+        "student_name": student.name if student else "N/A",
+        "student_roll": student.roll if student else "N/A",
+        "amount_paid": payment.amount_paid,
+        "payment_mode": payment.payment_mode,
+        "approval_status": payment.approval_status,
+        "payment_date": payment.payment_date.strftime('%d/%m/%Y %H:%M') if payment.payment_date else "Today",
+        "college": "Shri Balaji Institute of Technology & Management (SBITM)",
+        "status": "OFFICIAL VERIFIED RECEIPT"
+    })
+
 
 
 # WSGI Entrypoint aliases for Vercel / Gunicorn
