@@ -74,7 +74,7 @@ const librarianProfile: UserProfile = {
 import { Platform } from 'react-native';
 
 // Production Render backend connected to Neon PostgreSQL
-export const PROD_API_BASE = 'https://sbitm-attendance.onrender.com/api';
+export const PROD_API_BASE = 'https://college-attendance-system-35yw.onrender.com/api';
 
 const API_BASE =
   process.env.EXPO_PUBLIC_API_URL ||
