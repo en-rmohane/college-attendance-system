@@ -1184,6 +1184,96 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
     );
   };
 
+  // --- 4B. STUDENT RESERVATIONS TAB ---
+  const renderReservationsTab = () => {
+    const reservations = myLibrary?.reservations || [];
+    return (
+      <View style={styles.sectionContainer}>
+        <Text style={[styles.sectionHeading, { color: colors.text }]}>My Book Reservations ({reservations.length})</Text>
+        {reservations.length === 0 ? (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, alignItems: 'center', padding: 30 }]}>
+            <Ionicons name="time-outline" size={48} color={colors.textMuted} />
+            <Text style={[styles.cardTitle, { color: colors.text, marginTop: 12 }]}>No Active Reservations</Text>
+            <Text style={[styles.cardSubtitle, { color: colors.textSecondary, textAlign: 'center' }]}>
+              When a textbook is currently issued to another student, you can reserve it from the Browse Catalog tab.
+            </Text>
+          </View>
+        ) : (
+          reservations.map((r: any, idx: number) => (
+            <View key={idx} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginBottom: 10 }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={[styles.bookTitle, { color: colors.text }]}>{r.title}</Text>
+                <View style={[styles.badgePill, { backgroundColor: colors.softLavender }]}>
+                  <Text style={[styles.badgePillText, { color: colors.purple }]}>Queue #{r.queue_position || 1}</Text>
+                </View>
+              </View>
+              <Text style={[styles.bookAuthor, { color: colors.textSecondary, marginTop: 2 }]}>By {r.author}</Text>
+              <Text style={[styles.bookMeta, { color: colors.textMuted, marginTop: 4 }]}>
+                Status: <Text style={{ color: colors.green, fontWeight: '700' }}>{r.status}</Text> • Reserved on: {r.reservation_date}
+              </Text>
+              <TouchableOpacity
+                onPress={() => handleCancelReservation(r.reservation_id)}
+                style={[styles.smallActionBtn, { backgroundColor: colors.softPeach, alignSelf: 'flex-start', marginTop: 10 }]}
+              >
+                <Text style={[styles.smallActionBtnText, { color: colors.coral }]}>Cancel Reservation</Text>
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
+      </View>
+    );
+  };
+
+  // --- 4C. STUDENT HISTORY & FINES TAB ---
+  const renderHistoryTab = () => {
+    const history = myLibrary?.history || [];
+    const fines = myLibrary?.fines || [];
+    return (
+      <View style={styles.sectionContainer}>
+        <Text style={[styles.sectionHeading, { color: colors.text }]}>Borrowing History ({history.length})</Text>
+        {history.length === 0 ? (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, alignItems: 'center', padding: 24, marginBottom: 16 }]}>
+            <Ionicons name="receipt-outline" size={40} color={colors.textMuted} />
+            <Text style={[styles.cardTitle, { color: colors.text, marginTop: 8 }]}>No Returned History</Text>
+            <Text style={[styles.cardSubtitle, { color: colors.textSecondary, textAlign: 'center' }]}>
+              Completed book issues and returned transactions will be archived here.
+            </Text>
+          </View>
+        ) : (
+          history.map((h: any, idx: number) => (
+            <View key={idx} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginBottom: 8 }]}>
+              <Text style={[styles.bookTitle, { color: colors.text }]}>{h.title}</Text>
+              <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>By {h.author}</Text>
+              <View style={[styles.datesRow, { marginTop: 6 }]}>
+                <Text style={[styles.dateSub, { color: colors.textSecondary }]}>Issued: {h.issue_date}</Text>
+                <Text style={[styles.dateSub, { color: colors.green, fontWeight: '700' }]}>Returned: {h.return_date}</Text>
+              </View>
+            </View>
+          ))
+        )}
+
+        <Text style={[styles.sectionHeading, { color: colors.text, marginTop: 16 }]}>Fine Records & Dues</Text>
+        {fines.length === 0 ? (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, alignItems: 'center', padding: 20 }]}>
+            <Ionicons name="checkmark-circle-outline" size={36} color={colors.green} />
+            <Text style={[styles.cardTitle, { color: colors.text, marginTop: 6 }]}>No Dues Pending 🎉</Text>
+            <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>Your library account has zero outstanding fines.</Text>
+          </View>
+        ) : (
+          fines.map((f: any, idx: number) => (
+            <View key={idx} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.coral, marginBottom: 8 }]}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={[styles.bookTitle, { color: colors.text }]}>{f.fine_type || 'Late Return Fine'}</Text>
+                <Text style={{ color: colors.coral, fontWeight: '800' }}>₹{f.balance_amount || f.amount}</Text>
+              </View>
+              <Text style={[styles.bookMeta, { color: colors.textSecondary, marginTop: 4 }]}>Status: {f.status}</Text>
+            </View>
+          ))
+        )}
+      </View>
+    );
+  };
+
   // --- 5. OVERDUE & FINES DESK (ADMIN / LIBRARIAN) ---
   const renderOverdueFinesTab = () => {
     const totalOverdue = overdueList.length;
@@ -1492,6 +1582,8 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
             {activeTab === 'catalog' || activeTab === 'browse' ? renderCatalogTab() : null}
             {activeTab === 'members' ? renderMembersTab() : null}
             {activeTab === 'my_books' ? renderMyBooksTab() : null}
+            {activeTab === 'reservations' ? renderReservationsTab() : null}
+            {activeTab === 'history' ? renderHistoryTab() : null}
             {activeTab === 'overdue_fines' ? renderOverdueFinesTab() : null}
           </>
         )}

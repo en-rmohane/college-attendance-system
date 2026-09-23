@@ -312,8 +312,12 @@ app.config['MAIL_PASSWORD'] = 'vhr1SkHnaPgq5Jjb'
 app.config['MAIL_DEFAULT_SENDER'] = 'sbitmstudy@gmail.com'''
 import os
 
+NEON_PRODUCTION_URL = "postgresql://neondb_owner:npg_YHD8B2QrRzkj@ep-divine-brook-b4rm51oj-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require"
+
 def setup_database():
     db_url = os.environ.get('DATABASE_URL')
+    if not db_url and (os.environ.get('RENDER') or os.environ.get('PORT') or os.environ.get('GUNICORN_CMD_ARGS')):
+        db_url = NEON_PRODUCTION_URL
 
     if db_url:
         # Render ka URL mostly 'postgres://...'
