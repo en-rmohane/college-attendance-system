@@ -480,6 +480,8 @@ class LibraryCatalogService:
         if not scan_code:
             return None
         code = str(scan_code).strip()
+        
+        # 1. Exact Accession No, Barcode, or QR Code
         copy = LibraryBookCopy.query.filter(
             or_(
                 LibraryBookCopy.accession_no.ilike(code),
@@ -487,7 +489,25 @@ class LibraryCatalogService:
                 LibraryBookCopy.qr_code.ilike(code)
             )
         ).first()
-        return copy
+        if copy:
+            return copy
+
+        # 2. Search by Book Code, ISBN, or Title for first available copy
+        book = LibraryBook.query.filter(
+            or_(
+                LibraryBook.book_code.ilike(code),
+                LibraryBook.isbn.ilike(code),
+                LibraryBook.title.ilike(code)
+            )
+        ).first()
+        if book:
+            available_copy = LibraryBookCopy.query.filter_by(book_id=book.id, status='Available', is_active=True).first()
+            if available_copy:
+                return available_copy
+            # Return any copy if none available for status message
+            return LibraryBookCopy.query.filter_by(book_id=book.id).first()
+
+        return None
 
 
 # ==================== 6. CIRCULATION (ISSUE / RETURN / RENEW / RESERVE) ====================
