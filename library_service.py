@@ -1224,25 +1224,32 @@ class LibraryReportService:
         """Personal library dashboard for Student or Faculty"""
         today = date.today()
         member = None
-        if isinstance(user_or_student, LibraryMember) or hasattr(user_or_student, 'member_code'):
+        
+        if isinstance(user_or_student, LibraryMember):
             member = user_or_student
         elif hasattr(user_or_student, 'roll'):
-            # Student model
-            member = LibraryMember.query.filter_by(student_id=user_or_student.id).first()
+            # Student object
+            member = LibraryMemberService.get_member_by_code_or_roll(user_or_student.roll) or LibraryMember.query.filter_by(student_id=user_or_student.id).first()
         elif hasattr(user_or_student, 'student_roll') and user_or_student.student_roll:
-            st = Student.query.filter_by(roll=user_or_student.student_roll).first()
-            if st:
-                member = LibraryMember.query.filter_by(student_id=st.id).first()
-        elif hasattr(user_or_student, 'email'):
-            fac = Faculty.query.filter_by(email=user_or_student.email).first()
-            if fac:
-                member = LibraryMember.query.filter_by(faculty_id=fac.id).first()
+            # User object with student_roll
+            member = LibraryMemberService.get_member_by_code_or_roll(user_or_student.student_roll)
+        elif hasattr(user_or_student, 'username') and user_or_student.username:
+            # User object with username
+            member = LibraryMemberService.get_member_by_code_or_roll(user_or_student.username)
+        elif isinstance(user_or_student, str):
+            member = LibraryMemberService.get_member_by_code_or_roll(user_or_student)
+        elif isinstance(user_or_student, int):
+            user = User.query.get(user_or_student)
+            if user:
+                member = LibraryMemberService.get_member_by_code_or_roll(user.student_roll or user.username or user.email)
+            if not member:
+                member = LibraryMember.query.get(user_or_student)
 
         if not member and user_or_student:
             if hasattr(user_or_student, 'roll'):
                 member = LibraryMemberService.get_or_create_student_member(user_or_student)
-            elif hasattr(user_or_student, 'student_roll') and user_or_student.student_roll:
-                st = Student.query.filter_by(roll=user_or_student.student_roll).first()
+            elif isinstance(user_or_student, str):
+                st = Student.query.filter(or_(Student.roll.ilike(user_or_student), Student.name.ilike(f"%{user_or_student}%"))).first()
                 if st:
                     member = LibraryMemberService.get_or_create_student_member(st)
 

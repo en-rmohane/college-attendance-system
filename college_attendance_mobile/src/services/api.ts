@@ -842,29 +842,65 @@ class ApiService {
 
   // ==================== LIBRARY MANAGEMENT SYSTEM (LMS) ====================
 
+  private localIssuedBooks: any[] = [];
+
   async getLibraryDashboard(role = 'student', roll?: string, userId?: number) {
     let url = `/library/dashboard?role=${encodeURIComponent(role)}`;
     if (roll) url += `&roll=${encodeURIComponent(roll)}`;
     if (userId) url += `&user_id=${userId}`;
     const live = await this.fetchApi<any>(url);
-    if (live?.success) return live;
+    if (live?.success) {
+      if (roll && live.my_library) {
+        const rollClean = roll.toUpperCase().trim();
+        const extra = this.localIssuedBooks.filter(
+          (b) => (b.roll && b.roll.includes(rollClean)) || (b.member_code && b.member_code.includes(rollClean))
+        );
+        for (const item of extra) {
+          if (!live.my_library.issued_books.some((ib: any) => ib.accession_no === item.accession_no || ib.issue_id === item.issue_id)) {
+            live.my_library.issued_books.unshift(item);
+            live.my_library.issued_count = (live.my_library.issued_count || 0) + 1;
+          }
+        }
+      }
+      return live;
+    }
+
+    const cleanRoll = (roll || '').toUpperCase().trim();
+    const relevantIssues = this.localIssuedBooks.filter(
+      (b) => (b.roll && b.roll.includes(cleanRoll)) || (b.member_code && b.member_code.includes(cleanRoll))
+    );
+
     return {
       success: true,
       metrics: {
-        total_books: 6,
-        total_copies: 45,
-        available_copies: 38,
-        issued_copies: 7,
+        total_books: 21,
+        total_copies: 119,
+        available_copies: 119 - relevantIssues.length,
+        issued_copies: relevantIssues.length,
         reserved_copies: 0,
         overdue_issues: 0,
         due_today: 0,
-        issued_today: 0,
+        issued_today: relevantIssues.length,
         returned_today: 0,
         total_outstanding_fines: 0,
-        active_members: 120,
+        active_members: 281,
       },
       categories: [],
-      my_library: null,
+      my_library: roll ? {
+        member: {
+          member_code: `LIB-S-${cleanRoll}`,
+          roll: cleanRoll,
+          max_books: 4,
+          status: 'Active'
+        },
+        issued_books: relevantIssues,
+        issued_count: relevantIssues.length,
+        due_soon_count: 0,
+        overdue_count: 0,
+        outstanding_fine: 0,
+        reservations: [],
+        history: []
+      } : null,
       recent_activity: [],
     };
   }
@@ -936,7 +972,22 @@ class ApiService {
 
   async getLibraryMemberProfile(identifier: string) {
     const live = await this.fetchApi<any>(`/library/members/${encodeURIComponent(identifier)}`);
-    if (live && live.success) return live;
+    const cleanId = (identifier || '').toUpperCase().trim();
+    const relevantIssues = this.localIssuedBooks.filter(
+      (b) => (b.roll && b.roll.includes(cleanId)) || (b.member_code && b.member_code.includes(cleanId))
+    );
+
+    if (live && live.success) {
+      if (live.issued_books) {
+        for (const item of relevantIssues) {
+          if (!live.issued_books.some((ib: any) => ib.accession_no === item.accession_no || ib.issue_id === item.issue_id)) {
+            live.issued_books.unshift(item);
+            live.issued_count = (live.issued_count || 0) + 1;
+          }
+        }
+      }
+      return live;
+    }
 
     // Offline / Demo Fallback
     const term = identifier.trim().toLowerCase();
@@ -963,79 +1014,17 @@ class ApiService {
           member_type: 'Student',
           max_books: 4,
           loan_period_days: 14,
-          current_issued_count: 2,
+          current_issued_count: relevantIssues.length,
           outstanding_fine: 0,
           status: 'Active',
         },
-        issued_books: [
-          {
-            issue_id: 101,
-            issue_code: 'ISS-2026-00101',
-            title: 'Database System Concepts (7th Edition)',
-            author: 'Abraham Silberschatz',
-            accession_no: 'CS-0004-001',
-            shelf_location: 'Shelf A4 / Rack 2',
-            issue_date: '10-Sep-2026',
-            due_date: '24-Sep-2026',
-            days_remaining: 3,
-            is_overdue: false,
-            is_due_soon: false,
-            renew_count: 0,
-            max_renewals: 2,
-          },
-          {
-            issue_id: 102,
-            issue_code: 'ISS-2026-00102',
-            title: 'Introduction to Algorithms (4th Edition)',
-            author: 'Thomas H. Cormen',
-            accession_no: 'CS-0003-002',
-            shelf_location: 'Shelf A3 / Rack 2',
-            issue_date: '02-Sep-2026',
-            due_date: '16-Sep-2026',
-            days_remaining: -5,
-            is_overdue: true,
-            is_due_soon: false,
-            renew_count: 1,
-            max_renewals: 2,
-          },
-        ],
-        issued_count: 2,
+        issued_books: relevantIssues,
+        issued_count: relevantIssues.length,
         due_soon_count: 0,
-        overdue_count: 1,
-        outstanding_fine: 25.0,
-        reservations: [
-          {
-            reservation_id: 501,
-            reservation_code: 'RES-2026-00501',
-            title: 'Artificial Intelligence: A Modern Approach',
-            author: 'Stuart Russell',
-            queue_position: 1,
-            status: 'Ready for Pickup',
-            reservation_date: '18-Sep-2026',
-          },
-        ],
-        history: [
-          {
-            issue_id: 91,
-            title: 'Computer Networks (5th Edition)',
-            author: 'Andrew S. Tanenbaum',
-            accession_no: 'CS-0001-003',
-            issue_date: '12-Aug-2026',
-            return_date: '26-Aug-2026',
-            due_date: '26-Aug-2026',
-            fine_paid: 0,
-          },
-          {
-            issue_id: 85,
-            title: 'Higher Engineering Mathematics (44th Ed)',
-            author: 'B.S. Grewal',
-            accession_no: 'MATH-0001-005',
-            issue_date: '15-Jul-2026',
-            return_date: '29-Jul-2026',
-            due_date: '29-Jul-2026',
-            fine_paid: 0,
-          },
-        ],
+        overdue_count: 0,
+        outstanding_fine: 0,
+        reservations: [],
+        history: [],
         fines: [],
       };
     }
@@ -1048,25 +1037,44 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(payload),
     });
-    if (live) return live;
 
-    // Resilient local simulation if offline
     const due = new Date();
     due.setDate(due.getDate() + 14);
-    const slip = {
-      issue_id: Math.floor(Math.random() * 9000) + 1000,
+    const slip = live?.receipt || {
+      issue_id: live?.issue_id || Math.floor(Math.random() * 9000) + 1000,
       issue_code: `ISS-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 9000) + 1000}`,
       member_name: payload.member_identifier.toUpperCase(),
       member_code: payload.member_identifier.toUpperCase(),
+      roll: payload.member_identifier.toUpperCase(),
       book_title: `Library Book (${payload.copy_identifier})`,
+      title: `Library Book (${payload.copy_identifier})`,
+      author: 'Prescribed Text',
       accession_no: payload.copy_identifier.toUpperCase(),
+      shelf_location: 'Shelf A1 / Rack 1',
       issue_date: new Date().toISOString().slice(0, 10),
       due_date: due.toISOString().slice(0, 10),
       loan_period_days: 14,
+      is_overdue: false,
+      is_due_soon: false,
+      renew_count: 0,
+      max_renewals: 2,
       condition_on_issue: 'Good',
       issued_by_name: 'Central Librarian',
       remarks: payload.remarks || 'Issued successfully at counter'
     };
+
+    // Save to local issued books cache for instant student view synchronization
+    this.localIssuedBooks.unshift({
+      ...slip,
+      roll: payload.member_identifier.toUpperCase(),
+      title: slip.book_title || slip.title || `Library Book (${payload.copy_identifier})`,
+      author: slip.author || 'Prescribed Text',
+      accession_no: slip.accession_no || payload.copy_identifier.toUpperCase(),
+      shelf_location: slip.shelf_location || 'Shelf A1 / Rack 1',
+    });
+
+    if (live) return live;
+
     return {
       success: true,
       message: `Book copy '${payload.copy_identifier}' issued successfully to ${payload.member_identifier}`,

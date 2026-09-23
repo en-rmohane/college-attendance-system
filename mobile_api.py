@@ -1587,20 +1587,12 @@ def get_library_dashboard():
         for c in LibraryCategory.query.filter_by(is_active=True).all()
     ]
 
-    # 3. Personal summary if student or faculty roll provided
+    # 3. Personal summary if student or faculty roll/user_id provided
     my_summary = None
     if roll:
-        student = Student.query.filter(Student.roll.ilike(roll)).first()
-        if student:
-            my_summary = LibraryReportService.get_my_library_summary(student)
-        else:
-            user = User.query.filter((User.username.ilike(roll)) | (User.student_roll.ilike(roll))).first()
-            if user:
-                my_summary = LibraryReportService.get_my_library_summary(user)
+        my_summary = LibraryReportService.get_my_library_summary(roll)
     elif user_id:
-        user = User.query.get(user_id)
-        if user:
-            my_summary = LibraryReportService.get_my_library_summary(user)
+        my_summary = LibraryReportService.get_my_library_summary(user_id)
 
     # 4. Today's recent activity for Librarian
     recent_issues = []

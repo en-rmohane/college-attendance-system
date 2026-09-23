@@ -164,8 +164,20 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
       if (res?.success) {
         setMetrics(res.metrics || null);
         setCategories(res.categories || []);
-        setMyLibrary(res.my_library || null);
+        let myLib = res.my_library || null;
+        if (!myLib && studentRoll) {
+          const directProfile = await api.getLibraryMemberProfile(studentRoll);
+          if (directProfile?.success && directProfile.member) {
+            myLib = directProfile;
+          }
+        }
+        setMyLibrary(myLib);
         setRecentActivity(res.recent_activity || []);
+      } else if (studentRoll) {
+        const directProfile = await api.getLibraryMemberProfile(studentRoll);
+        if (directProfile?.success && directProfile.member) {
+          setMyLibrary(directProfile);
+        }
       }
 
       // Load books
