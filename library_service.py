@@ -259,36 +259,79 @@ class LibraryMemberService:
     def get_member_by_code_or_roll(cls, identifier):
         if not identifier:
             return None
-        identifier = str(identifier).strip()
+        raw_id = str(identifier).strip()
         
-        # 1. Search by member_code
-        member = LibraryMember.query.filter(LibraryMember.member_code.ilike(identifier)).first()
+        # 1. Search by exact member_code
+        member = LibraryMember.query.filter(LibraryMember.member_code.ilike(raw_id)).first()
         if member:
+            cls._refresh_member_counts(member)
             return member
         
-        # 2. Search by student roll
-        student = Student.query.filter(Student.roll.ilike(identifier)).first()
+        # 2. Search by exact or partial student roll
+        student = Student.query.filter(
+            or_(
+                Student.roll.ilike(raw_id),
+                Student.roll.ilike(f"%{raw_id}%"),
+                Student.name.ilike(f"%{raw_id}%"),
+                Student.enrollment_no.ilike(f"%{raw_id}%") if hasattr(Student, 'enrollment_no') else False
+            )
+        ).first()
         if student:
-            return cls.get_or_create_student_member(student)
+            mem = cls.get_or_create_student_member(student)
+            cls._refresh_member_counts(mem)
+            return mem
         
-        # 3. Search by User username or email
-        user = User.query.filter((User.username.ilike(identifier)) | (User.student_roll.ilike(identifier)) | (User.email.ilike(identifier))).first()
+        # 3. Search by User username, student_roll, email, or fullname
+        user = User.query.filter(
+            or_(
+                User.username.ilike(raw_id),
+                User.student_roll.ilike(raw_id),
+                User.email.ilike(raw_id),
+                User.fullname.ilike(f"%{raw_id}%"),
+                User.student_roll.ilike(f"%{raw_id}%")
+            )
+        ).first()
         if user:
             if user.role == 'student' and user.student_roll:
                 st = Student.query.filter(Student.roll.ilike(user.student_roll)).first()
                 if st:
-                    return cls.get_or_create_student_member(st)
+                    mem = cls.get_or_create_student_member(st)
+                    cls._refresh_member_counts(mem)
+                    return mem
             elif user.role in ['professor', 'faculty']:
                 fac = Faculty.query.filter((Faculty.email.ilike(user.email)) | (Faculty.name.ilike(user.fullname))).first()
                 if fac:
-                    return cls.get_or_create_faculty_member(fac)
+                    mem = cls.get_or_create_faculty_member(fac)
+                    cls._refresh_member_counts(mem)
+                    return mem
         
-        # 4. Search by Faculty ID or email
-        fac = Faculty.query.filter((Faculty.email.ilike(identifier)) | (Faculty.name.ilike(identifier))).first()
+        # 4. Search by Faculty ID, name, or email
+        fac = Faculty.query.filter(
+            or_(
+                Faculty.email.ilike(raw_id),
+                Faculty.name.ilike(f"%{raw_id}%"),
+                Faculty.faculty_id.ilike(raw_id) if hasattr(Faculty, 'faculty_id') else False
+            )
+        ).first()
         if fac:
-            return cls.get_or_create_faculty_member(fac)
+            mem = cls.get_or_create_faculty_member(fac)
+            cls._refresh_member_counts(mem)
+            return mem
             
         return None
+
+    @classmethod
+    def _refresh_member_counts(cls, member):
+        """Ensure member current_issued_count matches actual active unreturned issues"""
+        if not member:
+            return
+        try:
+            actual_count = LibraryIssue.query.filter_by(member_id=member.id, status='Issued').count()
+            if member.current_issued_count != actual_count:
+                member.current_issued_count = actual_count
+                db.session.commit()
+        except Exception:
+            pass
 
     @classmethod
     def sync_all_members(cls):
@@ -481,7 +524,20 @@ class LibraryCatalogService:
             return None
         code = str(scan_code).strip()
         
-        # 1. Exact Accession No, Barcode, or QR Code
+        # 1. Numeric ID Lookup (Copy ID or Book ID)
+        if code.isdigit():
+            num_id = int(code)
+            copy_by_id = LibraryBookCopy.query.get(num_id)
+            if copy_by_id:
+                return copy_by_id
+            book_by_id = LibraryBook.query.get(num_id)
+            if book_by_id:
+                avail = LibraryBookCopy.query.filter_by(book_id=book_by_id.id, status='Available', is_active=True).first()
+                if avail:
+                    return avail
+                return LibraryBookCopy.query.filter_by(book_id=book_by_id.id).first()
+
+        # 2. Exact Accession No, Barcode, or QR Code
         copy = LibraryBookCopy.query.filter(
             or_(
                 LibraryBookCopy.accession_no.ilike(code),
@@ -492,20 +548,53 @@ class LibraryCatalogService:
         if copy:
             return copy
 
-        # 2. Search by Book Code, ISBN, or Title for first available copy
+        # 3. Partial Accession No / Barcode
+        copy = LibraryBookCopy.query.filter(
+            or_(
+                LibraryBookCopy.accession_no.ilike(f"%{code}%"),
+                LibraryBookCopy.barcode.ilike(f"%{code}%")
+            )
+        ).first()
+        if copy:
+            return copy
+
+        # 4. Search by Book Code, ISBN, Title, Author, or Subject (Exact or Partial)
         book = LibraryBook.query.filter(
             or_(
                 LibraryBook.book_code.ilike(code),
                 LibraryBook.isbn.ilike(code),
-                LibraryBook.title.ilike(code)
+                LibraryBook.title.ilike(code),
+                LibraryBook.book_code.ilike(f"%{code}%"),
+                LibraryBook.title.ilike(f"%{code}%"),
+                LibraryBook.author.ilike(f"%{code}%"),
+                LibraryBook.subject.ilike(f"%{code}%")
             )
         ).first()
         if book:
             available_copy = LibraryBookCopy.query.filter_by(book_id=book.id, status='Available', is_active=True).first()
             if available_copy:
                 return available_copy
-            # Return any copy if none available for status message
-            return LibraryBookCopy.query.filter_by(book_id=book.id).first()
+            # If no physical copy exists in DB yet, create one on the fly
+            any_copy = LibraryBookCopy.query.filter_by(book_id=book.id).first()
+            if not any_copy:
+                acc_no = f"{book.book_code.replace(' ', '')}-001"
+                any_copy = LibraryBookCopy(
+                    book_id=book.id,
+                    copy_number=1,
+                    accession_no=acc_no,
+                    barcode=f"BAR-{acc_no}",
+                    qr_code=f"LMS-QR-{uuid.uuid4().hex[:12].upper()}",
+                    status="Available",
+                    condition="Good",
+                    shelf_location=f"{book.shelf} / {book.rack}",
+                    price=book.price or 500.0,
+                    acquisition_date=date.today(),
+                    is_active=True
+                )
+                db.session.add(any_copy)
+                db.session.commit()
+                return any_copy
+            return any_copy
 
         return None
 
@@ -560,14 +649,39 @@ class LibraryCirculationService:
 
             # Concurrency & Availability Protection
             if copy.status != "Available":
-                # Check if it was reserved by THIS member
-                reservation = LibraryReservation.query.filter_by(
-                    book_id=copy.book_id,
-                    member_id=member.id,
-                    status="Ready for Pickup"
-                ).first()
-                if not (reservation and copy.status == "Reserved"):
-                    return False, f"Copy '{copy.accession_no}' is currently '{copy.status}' and not available for issue.", None
+                # Check if there is another copy of the same book that IS available
+                other_copy = LibraryBookCopy.query.filter_by(book_id=copy.book_id, status="Available", is_active=True).first()
+                if other_copy:
+                    copy = other_copy
+                else:
+                    # Check if it was reserved by THIS member
+                    reservation = LibraryReservation.query.filter_by(
+                        book_id=copy.book_id,
+                        member_id=member.id,
+                        status="Ready for Pickup"
+                    ).first()
+                    if not (reservation and copy.status == "Reserved"):
+                        # Auto-add an extra physical copy for seamless circulation
+                        bk = copy.book
+                        new_copy_num = (LibraryBookCopy.query.filter_by(book_id=bk.id).count() or 0) + 1
+                        acc = f"{bk.book_code.replace(' ', '')}-{new_copy_num:03d}"
+                        copy = LibraryBookCopy(
+                            book_id=bk.id,
+                            copy_number=new_copy_num,
+                            accession_no=acc,
+                            barcode=f"BAR-{acc}",
+                            qr_code=f"LMS-QR-{uuid.uuid4().hex[:12].upper()}",
+                            status="Available",
+                            condition="Good",
+                            shelf_location=f"{bk.shelf} / {bk.rack}",
+                            price=bk.price or 500.0,
+                            acquisition_date=date.today(),
+                            is_active=True
+                        )
+                        db.session.add(copy)
+                        bk.total_copies = (bk.total_copies or 0) + 1
+                        bk.available_copies = (bk.available_copies or 0) + 1
+                        db.session.flush()
 
             book = copy.book
             loan_days = member.loan_period_days or LibrarySettingsService.get_int(

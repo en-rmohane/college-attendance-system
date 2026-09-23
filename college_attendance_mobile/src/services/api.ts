@@ -78,13 +78,7 @@ export const PROD_API_BASE = 'https://college-attendance-system-35yw.onrender.co
 
 const API_BASE =
   process.env.EXPO_PUBLIC_API_URL ||
-  (__DEV__
-    ? typeof window !== 'undefined' && window.location?.hostname
-      ? `http://${window.location.hostname}:5000/api`
-      : Platform.OS === 'android'
-      ? 'http://10.0.2.2:5000/api'
-      : 'http://localhost:5000/api'
-    : PROD_API_BASE);
+  PROD_API_BASE;
 
 class ApiService {
   private studentsList: Student[] = [...allStudents];
@@ -101,7 +95,7 @@ class ApiService {
   private async fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
       const res = await fetch(`${API_BASE}${endpoint}`, {
         ...options,
         headers: {
@@ -112,7 +106,7 @@ class ApiService {
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
-      if (res.ok) {
+      if (res.status < 500) {
         return await res.json();
       }
     } catch {
