@@ -37,18 +37,14 @@ app.config['MAIL_DEFAULT_SENDER'] = 'your-email@gmail.com'
 basedir = os.path.abspath(os.path.dirname(__file__))
 IS_VERCEL = os.environ.get('VERCEL') == '1'
 
-if not IS_VERCEL:
-    instance_dir = os.path.join(basedir, 'instance')
-    os.makedirs(instance_dir, exist_ok=True)
-    db_path = os.path.join(instance_dir, 'college_attendance.db')
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
-else:
-    # On Vercel, handle PostgreSQL driver prefix for psycopg (v3)
-    db_url = os.environ.get('DATABASE_URL', 'sqlite:///')
+db_url = os.environ.get('DATABASE_URL')
+
+if db_url:
+    # Standardize postgresql URL
     if db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql+psycopg://", 1)
-    elif db_url.startswith("postgresql://"):
-        db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+    elif db_url.startswith("postgresql+psycopg://"):
+        db_url = db_url.replace("postgresql+psycopg://", "postgresql://", 1)
     
     # Ensure SSL for Neon/Supabase if not present
     if "postgresql" in db_url and "sslmode" not in db_url:
@@ -58,6 +54,13 @@ else:
             db_url += "?sslmode=require"
             
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+elif not IS_VERCEL:
+    instance_dir = os.path.join(basedir, 'instance')
+    os.makedirs(instance_dir, exist_ok=True)
+    db_path = os.path.join(instance_dir, 'college_attendance.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/college_attendance.db'
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
