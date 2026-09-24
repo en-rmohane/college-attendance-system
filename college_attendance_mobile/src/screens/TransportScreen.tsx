@@ -875,31 +875,85 @@ export default function TransportScreen({ navigation, route }: any) {
               </View>
             </View>
 
-            {/* LIVE OPTICAL CAMERA SCANNER LAUNCH CARD */}
-            <TouchableOpacity
-              style={[
-                styles.cameraLaunchCard,
-                { backgroundColor: colors.purple, borderColor: colors.purple },
-              ]}
-              onPress={() => setShowCameraScanner(true)}
-              activeOpacity={0.88}
-            >
-              <View style={styles.cameraLaunchLeft}>
-                <View style={styles.cameraIconCircle}>
-                  <Ionicons name="camera" size={26} color="#FFF" />
-                </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.cameraLaunchTitle}>Open Optical Camera Scanner</Text>
-                  <Text style={styles.cameraLaunchSub}>
-                    Point mobile camera at student bus pass barcode or QR for instant boarding check
+            {/* EMBEDDED LIVE OPTICAL CAMERA VIEWFINDER (DIRECT ON SCREEN) */}
+            <View style={{ backgroundColor: '#0B0F19', borderRadius: 20, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', overflow: 'hidden' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#10B981' }} />
+                  <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 }}>
+                    OPTICAL TRANSIT SCANNER (ACTIVE)
                   </Text>
                 </View>
+                <TouchableOpacity
+                  onPress={() => setShowCameraScanner(true)}
+                  style={{ backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                >
+                  <Feather name="maximize-2" size={12} color="#FFF" />
+                  <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '700' }}>FULLSCREEN</Text>
+                </TouchableOpacity>
               </View>
-              <View style={styles.cameraLaunchBtn}>
-                <Feather name="maximize" size={16} color="#FFF" />
-                <Text style={styles.cameraLaunchBtnText}>SCAN NOW</Text>
+
+              {/* Viewfinder Frame */}
+              <View
+                style={{
+                  height: 180,
+                  borderRadius: 14,
+                  backgroundColor: 'rgba(15,23,42,0.8)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.1)',
+                  position: 'relative',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Corner Brackets */}
+                <View style={{ position: 'absolute', top: 0, left: 0, width: 20, height: 20, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 10, borderColor: '#38BDF8' }} />
+                <View style={{ position: 'absolute', top: 0, right: 0, width: 20, height: 20, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 10, borderColor: '#38BDF8' }} />
+                <View style={{ position: 'absolute', bottom: 0, left: 0, width: 20, height: 20, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 10, borderColor: '#38BDF8' }} />
+                <View style={{ position: 'absolute', bottom: 0, right: 0, width: 20, height: 20, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 10, borderColor: '#38BDF8' }} />
+
+                {/* Animated Laser Scanning Line */}
+                <Animated.View
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 12,
+                    right: 12,
+                    height: 3,
+                    backgroundColor: '#EF4444',
+                    borderRadius: 2,
+                    shadowColor: '#EF4444',
+                    shadowOffset: { width: 0, height: 0 },
+                    shadowOpacity: 1,
+                    shadowRadius: 8,
+                    transform: [
+                      {
+                        translateY: scanLineAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [10, 160],
+                        }),
+                      },
+                    ],
+                  }}
+                />
+
+                <MaterialCommunityIcons name="barcode-scan" size={44} color="rgba(255,255,255,0.3)" />
+                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: '800', letterSpacing: 2, marginTop: 6 }}>
+                  POINT AT STUDENT BARCODE
+                </Text>
               </View>
-            </TouchableOpacity>
+
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                <TouchableOpacity
+                  style={{ flex: 1, backgroundColor: colors.purple, paddingVertical: 10, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  onPress={() => setShowCameraScanner(true)}
+                >
+                  <Ionicons name="camera" size={16} color="#FFF" />
+                  <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '800' }}>Open Full Camera View</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
 
             <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={[styles.inputLabel, { color: colors.text }]}>Manual Barcode / Pass Token Lookup</Text>
@@ -914,7 +968,7 @@ export default function TransportScreen({ navigation, route }: any) {
               {/* Quick-test Presets for Bus Incharge */}
               <View style={{ marginTop: 8, marginBottom: 12 }}>
                 <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>
-                  Quick Test Barcode Tokens ({issuedPasses.length} Registered Students):
+                  Tap to Scan Student Barcode ({issuedPasses.length} Active Bus Students):
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
                   {issuedPasses.slice(0, 8).map((p) => (
@@ -923,10 +977,13 @@ export default function TransportScreen({ navigation, route }: any) {
                       style={{
                         backgroundColor: colors.surfaceSubtle,
                         paddingHorizontal: 10,
-                        paddingVertical: 5,
-                        borderRadius: 6,
+                        paddingVertical: 6,
+                        borderRadius: 8,
                         borderWidth: 1,
                         borderColor: colors.border,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
                       }}
                       onPress={() => {
                         setVerifyToken(p.pass_number);
@@ -946,27 +1003,33 @@ export default function TransportScreen({ navigation, route }: any) {
                               },
                             });
                           }
+                          Alert.alert(
+                            'BOARDING APPROVED ✅',
+                            `Student: ${p.student_name} (${p.student_roll})\nRoute: ${p.route_name} • Stop: ${p.stop_name}\nBus: ${p.bus_number}\nPass Status: ACTIVE & VERIFIED`
+                          );
                         });
                       }}
                     >
-                      <Text style={{ fontSize: 11, color: colors.textSecondary }}>{p.student_name.split(' ')[0]} ({p.pass_number})</Text>
+                      <Ionicons name="barcode" size={14} color={colors.primary} />
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: colors.text }}>{p.student_name.split(' ')[0]}</Text>
                     </TouchableOpacity>
                   ))}
                   <TouchableOpacity
                     style={{
                       backgroundColor: colors.softPeach,
                       paddingHorizontal: 10,
-                      paddingVertical: 5,
-                      borderRadius: 6,
+                      paddingVertical: 6,
+                      borderRadius: 8,
                       borderWidth: 1,
                       borderColor: colors.coral,
                     }}
                     onPress={() => {
                       setVerifyToken('INVALID-PASS-999');
                       setVerifyResult({ valid: false, message: 'No registered bus pass found for token INVALID-PASS-999' });
+                      Alert.alert('ACCESS DENIED ❌', 'Invalid or Expired Bus Pass Token');
                     }}
                   >
-                    <Text style={{ fontSize: 11, color: colors.coral }}>Test Invalid Token</Text>
+                    <Text style={{ fontSize: 11, color: colors.coral, fontWeight: '700' }}>Test Invalid Token</Text>
                   </TouchableOpacity>
                 </ScrollView>
               </View>

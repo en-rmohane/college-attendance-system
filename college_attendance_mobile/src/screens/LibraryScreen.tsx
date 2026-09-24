@@ -2768,6 +2768,162 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
           </View>
         </View>
       </Modal>
+
+      {/* 9. Live Optical Barcode / QR Camera Scanner Modal */}
+      <Modal
+        visible={scannerVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setScannerVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#0B0F19', paddingTop: insets.top }}>
+          {/* Scanner Header */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' }}>
+            <TouchableOpacity
+              onPress={() => setScannerVisible(false)}
+              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name="close" size={24} color="#FFF" />
+            </TouchableOpacity>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '800' }}>
+                {scannerTarget === 'counter_member' ? 'Scan Student QR / Roll ID' : (scannerTarget === 'counter_copy' ? 'Scan Book Barcode Sticker' : 'Library Optical Scanner')}
+              </Text>
+              <Text style={{ color: '#94A3B8', fontSize: 11, marginTop: 2 }}>
+                {scannerTarget === 'counter_member' ? 'Align Student ID Card within frame' : 'Align Book Accession Barcode within frame'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setScannerFlashlight(!scannerFlashlight)}
+              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: scannerFlashlight ? '#F59E0B' : 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Ionicons name={scannerFlashlight ? 'flashlight' : 'flashlight-outline'} size={20} color={scannerFlashlight ? '#000' : '#FFF'} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Viewfinder Area */}
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 }}>
+            <View
+              style={{
+                width: 280,
+                height: 220,
+                borderRadius: 16,
+                backgroundColor: 'rgba(15,23,42,0.6)',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.15)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                position: 'relative',
+              }}
+            >
+              {/* Corner brackets */}
+              <View style={{ position: 'absolute', top: 0, left: 0, width: 24, height: 24, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: 12, borderColor: '#38BDF8' }} />
+              <View style={{ position: 'absolute', top: 0, right: 0, width: 24, height: 24, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 12, borderColor: '#38BDF8' }} />
+              <View style={{ position: 'absolute', bottom: 0, left: 0, width: 24, height: 24, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 12, borderColor: '#38BDF8' }} />
+              <View style={{ position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: 12, borderColor: '#38BDF8' }} />
+
+              {/* Laser beam */}
+              <Animated.View
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 12,
+                  right: 12,
+                  height: 3,
+                  backgroundColor: '#EF4444',
+                  borderRadius: 2,
+                  shadowColor: '#EF4444',
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 1,
+                  shadowRadius: 8,
+                  transform: [
+                    {
+                      translateY: scanAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [10, 190],
+                      }),
+                    },
+                  ],
+                }}
+              />
+
+              <MaterialCommunityIcons
+                name={scannerTarget === 'counter_member' ? 'qrcode-scan' : 'barcode-scan'}
+                size={54}
+                color="rgba(255,255,255,0.25)"
+              />
+              <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '800', letterSpacing: 2, marginTop: 8 }}>
+                {scannerTarget === 'counter_member' ? 'ALIGN STUDENT ID QR' : 'ALIGN BOOK BARCODE'}
+              </Text>
+            </View>
+
+            {/* Quick manual entry within camera */}
+            <View style={{ width: '100%', marginTop: 24, paddingHorizontal: 10 }}>
+              <View style={{ flexDirection: 'row', backgroundColor: '#1E293B', borderRadius: 12, paddingHorizontal: 12, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
+                <TextInput
+                  placeholder={scannerTarget === 'counter_member' ? 'Type Student Roll or paste code...' : 'Type Barcode / Accession No...'}
+                  placeholderTextColor="#64748B"
+                  value={customScanInput}
+                  onChangeText={setCustomScanInput}
+                  style={{ flex: 1, color: '#FFF', paddingVertical: 10, fontSize: 13 }}
+                  autoCapitalize="characters"
+                />
+                {customScanInput ? (
+                  <TouchableOpacity
+                    onPress={() => handleScanResult(customScanInput)}
+                    style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
+                  >
+                    <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>USE</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </View>
+          </View>
+
+          {/* Quick presets strip below camera */}
+          <View style={{ backgroundColor: '#0F172A', paddingVertical: 14, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' }}>
+            <Text style={{ color: '#94A3B8', fontSize: 10, fontWeight: '800', letterSpacing: 0.5, paddingHorizontal: 16, marginBottom: 8 }}>
+              {scannerTarget === 'counter_member' ? 'TAP SAMPLE REGISTERED STUDENT:' : 'TAP SAMPLE BOOK ACCESSION / BARCODE:'}
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+              {scannerTarget === 'counter_member' ? (
+                [
+                  { code: '0545CS231001', name: 'Ravi Kumar (CSE)' },
+                  { code: '0545CS231002', name: 'Priya Sharma (CSE)' },
+                  { code: '0545AD231005', name: 'Aman Verma (AD)' },
+                  { code: '0545EC231003', name: 'Anjali Patel (EC)' },
+                ].map((s) => (
+                  <TouchableOpacity
+                    key={s.code}
+                    onPress={() => handleScanResult(s.code)}
+                    style={{ backgroundColor: '#1E293B', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#38BDF8', alignItems: 'center' }}
+                  >
+                    <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>{s.name}</Text>
+                    <Text style={{ color: '#38BDF8', fontSize: 10, marginTop: 2 }}>{s.code}</Text>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                [
+                  { code: 'LIB-BC-2026-0001', name: 'Database Management Systems' },
+                  { code: 'LIB-BC-2026-0002', name: 'Computer Networks (Tanenbaum)' },
+                  { code: 'LIB-BC-2026-0003', name: 'Operating System Concepts' },
+                  { code: 'LIB-BC-2026-0004', name: 'Let Us C (Kanetkar)' },
+                ].map((b) => (
+                  <TouchableOpacity
+                    key={b.code}
+                    onPress={() => handleScanResult(b.code)}
+                    style={{ backgroundColor: '#1E293B', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#10B981', alignItems: 'center' }}
+                  >
+                    <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>{b.name}</Text>
+                    <Text style={{ color: '#10B981', fontSize: 10, marginTop: 2 }}>*{b.code}*</Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
