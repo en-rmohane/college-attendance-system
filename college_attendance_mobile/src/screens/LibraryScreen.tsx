@@ -81,6 +81,7 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
       handleCounterLookup(cleanCode);
     } else if (scannerTarget === 'counter_copy') {
       setCounterCopyInput(cleanCode);
+      handleBookLookup(cleanCode);
     } else if (scannerTarget === 'catalog_search') {
       setSearchQuery(cleanCode);
     } else if (scannerTarget === 'member_lookup') {
@@ -131,8 +132,19 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
   const [bookModalVisible, setBookModalVisible] = useState(false);
   const [extraCopiesCount, setExtraCopiesCount] = useState('1');
 
+  // Barcode Batch Generator States
+  const [barcodeModalVisible, setBarcodeModalVisible] = useState(false);
+  const [batchBarcodeCount, setBatchBarcodeCount] = useState('10');
+  const [generatedBarcodesList, setGeneratedBarcodesList] = useState<any[]>([]);
+  const [generatingBarcodes, setGeneratingBarcodes] = useState(false);
+
+  // Live Counter Book Lookup State
+  const [counterBookSnapshot, setCounterBookSnapshot] = useState<any>(null);
+  const [counterSearchingBook, setCounterSearchingBook] = useState(false);
+
   // Add Book Modal
   const [addBookModalVisible, setAddBookModalVisible] = useState(false);
+  const [newBookBarcode, setNewBookBarcode] = useState('');
   const [newBookTitle, setNewBookTitle] = useState('');
   const [newBookAuthor, setNewBookAuthor] = useState('');
   const [newBookISBN, setNewBookISBN] = useState('');
@@ -244,6 +256,56 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
       setCounterStudentSnapshot(null);
     } finally {
       setCounterSearchingStudent(false);
+    }
+  };
+
+  const handleBookLookup = async (code: string) => {
+    if (!code.trim()) {
+      setCounterBookSnapshot(null);
+      return;
+    }
+    setCounterSearchingBook(true);
+    try {
+      const res = await api.getLibraryCopies(code.trim());
+      if (res?.success && res.copies && res.copies.length > 0) {
+        setCounterBookSnapshot(res.copies[0]);
+      } else {
+        const bRes = await api.getLibraryBooks({ search: code.trim() });
+        if (bRes?.success && bRes.books && bRes.books.length > 0) {
+          const matched = bRes.books[0];
+          setCounterBookSnapshot({
+            accession_no: code.trim().toUpperCase(),
+            book_id: matched.id,
+            title: matched.title,
+            author: matched.author,
+            shelf_location: `${matched.shelf || 'Shelf A1'} / ${matched.rack || 'Rack 1'}`,
+            status: matched.available_copies > 0 ? 'Available' : 'Issued',
+            price: matched.price || 500,
+            available_copies: matched.available_copies,
+            total_copies: matched.total_copies,
+          });
+        } else {
+          setCounterBookSnapshot(null);
+        }
+      }
+    } catch {
+      setCounterBookSnapshot(null);
+    } finally {
+      setCounterSearchingBook(false);
+    }
+  };
+
+  const handleGenerateBatchBarcodes = async (countNum: number) => {
+    setGeneratingBarcodes(true);
+    try {
+      const res = await api.generateLibraryBarcodes(countNum);
+      if (res?.success && res.barcodes) {
+        setGeneratedBarcodesList(res.barcodes);
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Could not generate barcodes');
+    } finally {
+      setGeneratingBarcodes(false);
     }
   };
 
@@ -380,6 +442,45 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
       Alert.alert('Error', e.message || 'Return failed');
     } finally {
       setCounterProcessing(false);
+    }
+  };
+
+  const handleAddBookSubmit = async () => {
+    if (!newBookTitle.trim() || !newBookAuthor.trim()) {
+      Alert.alert('Required', 'Please enter at least Book Title and Author');
+      return;
+    }
+    try {
+      setLoading(true);
+      const res = await api.addLibraryBook({
+        title: newBookTitle.trim(),
+        author: newBookAuthor.trim(),
+        isbn: newBookISBN.trim() || undefined,
+        publisher: newBookPublisher.trim() || undefined,
+        department: newBookDept,
+        shelf: newBookShelf,
+        rack: newBookRack,
+        price: parseFloat(newBookPrice) || 500,
+        total_copies: parseInt(newBookCopies) || 1,
+        barcode: newBookBarcode.trim() || undefined,
+        category_id: newBookCategory?.id || (categories[0]?.id || 1),
+        user_id: user?.id,
+      });
+
+      if (res?.success) {
+        Alert.alert(
+          'Book Registered 🎉',
+          `"${newBookTitle}" has been registered in the catalog with Barcode: ${newBookBarcode || 'Auto-generated'}`
+        );
+        setAddBookModalVisible(false);
+        loadData();
+      } else {
+        Alert.alert('Failed', res?.error || 'Could not add book');
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -693,15 +794,56 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
         </View>
       </View>
 
-      {/* Fast Counter Quick Button */}
+      {/* Librarian Quick Workflow Actions */}
       {isLibrarian && (
-        <TouchableOpacity
-          onPress={() => setActiveTab('counter')}
-          style={[styles.primaryActionBtn, { backgroundColor: colors.primary }]}
-        >
-          <Ionicons name="barcode-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
-          <Text style={styles.primaryActionBtnText}>Open Circulation Counter (Issue / Return)</Text>
-        </TouchableOpacity>
+        <View style={{ gap: 10, marginTop: 10 }}>
+          <TouchableOpacity
+            onPress={() => setActiveTab('counter')}
+            style={[styles.primaryActionBtn, { backgroundColor: colors.primary }]}
+          >
+            <Ionicons name="swap-horizontal" size={20} color="#FFF" style={{ marginRight: 8 }} />
+            <Text style={styles.primaryActionBtnText}>Open Circulation Counter (Scan Issue / Return)</Text>
+          </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity
+              onPress={() => {
+                handleGenerateBatchBarcodes(Number(batchBarcodeCount) || 10);
+                setBarcodeModalVisible(true);
+              }}
+              style={[
+                styles.primaryActionBtn,
+                { flex: 1, backgroundColor: colors.purple, paddingVertical: 10, marginTop: 0 },
+              ]}
+            >
+              <Ionicons name="barcode-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
+              <Text style={[styles.primaryActionBtnText, { fontSize: 12 }]}>Generate Book Barcodes</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setNewBookBarcode('');
+                setNewBookTitle('');
+                setNewBookAuthor('');
+                setNewBookISBN('');
+                setNewBookPublisher('');
+                setNewBookDept('CSE');
+                setNewBookShelf('Shelf A1');
+                setNewBookRack('Rack 1');
+                setNewBookPrice('500');
+                setNewBookCopies('1');
+                setAddBookModalVisible(true);
+              }}
+              style={[
+                styles.primaryActionBtn,
+                { flex: 1, backgroundColor: colors.green, paddingVertical: 10, marginTop: 0 },
+              ]}
+            >
+              <Ionicons name="add-circle-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
+              <Text style={[styles.primaryActionBtnText, { fontSize: 12 }]}>+ Register Book with Barcode</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       )}
 
       {/* Recent Activity Table */}
@@ -887,14 +1029,32 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
           <View style={[styles.inputWrapper, { flex: 1, backgroundColor: colors.surfaceSubtle, borderColor: colors.border }]}>
             <Ionicons name="barcode-outline" size={18} color={colors.textSecondary} style={{ marginRight: 8 }} />
             <TextInput
-              placeholder="e.g. CS-0001-001, BAR-CS-0001-001"
+              placeholder="e.g. LIB-BC-2026-0001, CS-0001-001"
               placeholderTextColor={colors.textMuted}
               value={counterCopyInput}
-              onChangeText={setCounterCopyInput}
+              onChangeText={(txt) => {
+                setCounterCopyInput(txt);
+                if (txt.length >= 3) {
+                  handleBookLookup(txt);
+                } else if (txt.length === 0) {
+                  setCounterBookSnapshot(null);
+                }
+              }}
               style={[styles.textInput, { color: colors.text }]}
               autoCapitalize="characters"
             />
           </View>
+          <TouchableOpacity
+            onPress={() => handleBookLookup(counterCopyInput)}
+            style={[styles.lookupBtn, { backgroundColor: colors.primary }]}
+            activeOpacity={0.8}
+          >
+            {counterSearchingBook ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <Ionicons name="search" size={18} color="#FFF" />
+            )}
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => openScanner('counter_copy')}
             style={[styles.lookupBtn, { backgroundColor: colors.teal }]}
@@ -903,6 +1063,52 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
             <Ionicons name="barcode-outline" size={18} color="#FFF" />
           </TouchableOpacity>
         </View>
+
+        {/* Live Book Details Snapshot Card */}
+        {counterBookSnapshot && (
+          <View style={[styles.studentSnapshotCard, { backgroundColor: colors.softGreen, borderColor: `${colors.green}40`, marginTop: 10 }]}>
+            <View style={styles.snapshotTopRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.snapshotName, { color: colors.text }]}>
+                  {counterBookSnapshot.title || 'Book Title'}
+                </Text>
+                <Text style={[styles.snapshotSub, { color: colors.textSecondary }]}>
+                  By {counterBookSnapshot.author || 'Author'} • Shelf: <Text style={{ fontWeight: '700', color: colors.text }}>{counterBookSnapshot.shelf_location || `${counterBookSnapshot.shelf || 'Shelf A'} / ${counterBookSnapshot.rack || 'Rack 1'}`}</Text>
+                </Text>
+                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 3 }}>
+                  Barcode/Acc: <Text style={{ fontWeight: '800', color: colors.primary }}>{counterBookSnapshot.accession_no || counterCopyInput}</Text> • Price: ₹{counterBookSnapshot.price || 500}
+                </Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <View
+                  style={[
+                    styles.availBadge,
+                    {
+                      backgroundColor:
+                        (counterBookSnapshot.available_copies > 0 || counterBookSnapshot.status === 'Available')
+                          ? colors.softGreen
+                          : colors.softPeach,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.availBadgeText,
+                      {
+                        color:
+                          (counterBookSnapshot.available_copies > 0 || counterBookSnapshot.status === 'Available')
+                            ? colors.green
+                            : colors.coral,
+                      },
+                    ]}
+                  >
+                    {counterBookSnapshot.status || (counterBookSnapshot.available_copies > 0 ? 'AVAILABLE' : 'ISSUED')}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Condition Selector for Returns */}
         <Text style={[styles.inputLabel, { color: colors.text, marginTop: 12 }]}>Book Physical Condition (on Return)</Text>
@@ -2304,6 +2510,296 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
                 <Text style={{ color: '#FFF', fontWeight: '700' }}>Scan</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 7. Batch Barcode Generator Modal for Librarian */}
+      <Modal visible={barcodeModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: colors.card, maxHeight: '88%' }]}>
+            <View style={styles.modalHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="barcode-outline" size={22} color={colors.purple} />
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Batch Barcode Generator</Text>
+              </View>
+              <TouchableOpacity onPress={() => setBarcodeModalVisible(false)}>
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.cardSubtitle, { color: colors.textSecondary, marginBottom: 12 }]}>
+              Enter how many book barcode stickers you want to generate. Stick them onto books, then scan to register.
+            </Text>
+
+            {/* Quantity Selector */}
+            <Text style={[styles.inputLabel, { color: colors.text }]}>Number of Barcode Stickers to Generate</Text>
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginVertical: 8 }}>
+              {['5', '10', '25', '50', '100'].map((qty) => (
+                <TouchableOpacity
+                  key={qty}
+                  onPress={() => {
+                    setBatchBarcodeCount(qty);
+                    handleGenerateBatchBarcodes(parseInt(qty));
+                  }}
+                  style={[
+                    styles.smallPill,
+                    batchBarcodeCount === qty && { backgroundColor: colors.purple, borderColor: colors.purple },
+                  ]}
+                >
+                  <Text style={{ color: batchBarcodeCount === qty ? '#FFF' : colors.text, fontSize: 12, fontWeight: '700' }}>
+                    {qty}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Generate Trigger */}
+            <TouchableOpacity
+              onPress={() => handleGenerateBatchBarcodes(parseInt(batchBarcodeCount) || 10)}
+              disabled={generatingBarcodes}
+              style={[styles.primaryActionBtn, { backgroundColor: colors.purple, marginTop: 4, marginBottom: 12 }]}
+            >
+              {generatingBarcodes ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="refresh" size={16} color="#FFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.primaryActionBtnText}>Generate {batchBarcodeCount} Barcodes</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {/* Generated Barcode List (Visual Code128 Stickers) */}
+            <Text style={[styles.sectionHeading, { color: colors.text, fontSize: 13, marginTop: 4 }]}>
+              Generated Stickers Sheet ({generatedBarcodesList.length} Ready):
+            </Text>
+            <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
+              {generatedBarcodesList.map((item: any, idx: number) => (
+                <View
+                  key={idx}
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: 10,
+                    padding: 12,
+                    marginBottom: 10,
+                    borderWidth: 1,
+                    borderColor: '#E2E8F0',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ fontSize: 9, fontWeight: '800', color: '#64748B', letterSpacing: 1 }}>
+                    SBITM CENTRAL LIBRARY • OFFICIAL BARCODE
+                  </Text>
+
+                  {/* Striped Barcode Graphic */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', height: 32, gap: 2, marginVertical: 6 }}>
+                    {[3, 1, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3, 1, 4, 2, 3, 1, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3, 2, 4, 1, 2, 3, 1, 4, 2, 1, 3, 4, 2, 1, 3, 2].map((w, i) => (
+                      <View
+                        key={i}
+                        style={{
+                          width: w,
+                          height: '100%',
+                          backgroundColor: i % 2 === 0 ? '#0F172A' : '#F1F5F9',
+                          borderRadius: 0.5,
+                        }}
+                      />
+                    ))}
+                  </View>
+
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#0F172A', letterSpacing: 2.5, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+                    *{item.barcode}*
+                  </Text>
+
+                  {/* Actions for this barcode */}
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, width: '100%' }}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setBarcodeModalVisible(false);
+                        setNewBookBarcode(item.barcode);
+                        setAddBookModalVisible(true);
+                      }}
+                      style={{
+                        flex: 1,
+                        backgroundColor: colors.primary,
+                        paddingVertical: 6,
+                        borderRadius: 6,
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '700' }}>Register Book with this Code</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => {
+                        Alert.alert('Barcode Copied', `Sticker Code: ${item.barcode}`);
+                      }}
+                      style={{
+                        backgroundColor: colors.surfaceSubtle,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 6,
+                        alignItems: 'center',
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }}
+                    >
+                      <Ionicons name="copy-outline" size={14} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 8. Register New Book with Barcode Modal */}
+      <Modal visible={addBookModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: colors.card, maxHeight: '90%' }]}>
+            <View style={styles.modalHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="book-outline" size={22} color={colors.green} />
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Register Book with Barcode</Text>
+              </View>
+              <TouchableOpacity onPress={() => setAddBookModalVisible(false)}>
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Barcode Field */}
+              <Text style={[styles.inputLabel, { color: colors.text }]}>Barcode Sticker / Accession Code *</Text>
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                <TextInput
+                  placeholder="e.g. LIB-BC-2026-0001 or scan sticker"
+                  placeholderTextColor={colors.textMuted}
+                  value={newBookBarcode}
+                  onChangeText={setNewBookBarcode}
+                  style={[styles.textInput, { flex: 1, backgroundColor: colors.surfaceSubtle, color: colors.text }]}
+                  autoCapitalize="characters"
+                />
+                <TouchableOpacity
+                  onPress={() => {
+                    const generated = `LIB-BC-2026-${Math.floor(Math.random() * 90000 + 10000)}`;
+                    setNewBookBarcode(generated);
+                  }}
+                  style={[styles.smallBtn, { backgroundColor: colors.purple, paddingHorizontal: 12 }]}
+                >
+                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '700' }}>Auto Code</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Title */}
+              <Text style={[styles.inputLabel, { color: colors.text }]}>Book Title *</Text>
+              <TextInput
+                placeholder="e.g. Let Us C, Operating Systems Concepts"
+                placeholderTextColor={colors.textMuted}
+                value={newBookTitle}
+                onChangeText={setNewBookTitle}
+                style={[styles.textInput, { backgroundColor: colors.surfaceSubtle, color: colors.text, marginBottom: 10 }]}
+              />
+
+              {/* Author */}
+              <Text style={[styles.inputLabel, { color: colors.text }]}>Author Name *</Text>
+              <TextInput
+                placeholder="e.g. Yashavant Kanetkar, Silberschatz"
+                placeholderTextColor={colors.textMuted}
+                value={newBookAuthor}
+                onChangeText={setNewBookAuthor}
+                style={[styles.textInput, { backgroundColor: colors.surfaceSubtle, color: colors.text, marginBottom: 10 }]}
+              />
+
+              {/* ISBN / Publisher */}
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>ISBN (Optional)</Text>
+                  <TextInput
+                    placeholder="978-0131103627"
+                    placeholderTextColor={colors.textMuted}
+                    value={newBookISBN}
+                    onChangeText={setNewBookISBN}
+                    style={[styles.textInput, { backgroundColor: colors.surfaceSubtle, color: colors.text }]}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Publisher</Text>
+                  <TextInput
+                    placeholder="BPB / Pearson"
+                    placeholderTextColor={colors.textMuted}
+                    value={newBookPublisher}
+                    onChangeText={setNewBookPublisher}
+                    style={[styles.textInput, { backgroundColor: colors.surfaceSubtle, color: colors.text }]}
+                  />
+                </View>
+              </View>
+
+              {/* Department & Shelf */}
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Department</Text>
+                  <TextInput
+                    placeholder="CSE / AD / ME / EC"
+                    placeholderTextColor={colors.textMuted}
+                    value={newBookDept}
+                    onChangeText={setNewBookDept}
+                    style={[styles.textInput, { backgroundColor: colors.surfaceSubtle, color: colors.text }]}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Rack / Shelf</Text>
+                  <TextInput
+                    placeholder="Rack 2 / Shelf B1"
+                    placeholderTextColor={colors.textMuted}
+                    value={newBookShelf}
+                    onChangeText={setNewBookShelf}
+                    style={[styles.textInput, { backgroundColor: colors.surfaceSubtle, color: colors.text }]}
+                  />
+                </View>
+              </View>
+
+              {/* Price & Copies */}
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Price (₹)</Text>
+                  <TextInput
+                    placeholder="500"
+                    placeholderTextColor={colors.textMuted}
+                    value={newBookPrice}
+                    onChangeText={setNewBookPrice}
+                    keyboardType="numeric"
+                    style={[styles.textInput, { backgroundColor: colors.surfaceSubtle, color: colors.text }]}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.inputLabel, { color: colors.text }]}>Number of Copies</Text>
+                  <TextInput
+                    placeholder="1"
+                    placeholderTextColor={colors.textMuted}
+                    value={newBookCopies}
+                    onChangeText={setNewBookCopies}
+                    keyboardType="numeric"
+                    style={[styles.textInput, { backgroundColor: colors.surfaceSubtle, color: colors.text }]}
+                  />
+                </View>
+              </View>
+
+              {/* Submit Button */}
+              <TouchableOpacity
+                onPress={handleAddBookSubmit}
+                disabled={loading}
+                style={[styles.primaryActionBtn, { backgroundColor: colors.green, marginTop: 4 }]}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.primaryActionBtnText}>Register Book into Central Library</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </Modal>
