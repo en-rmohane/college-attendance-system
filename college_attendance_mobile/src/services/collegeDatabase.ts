@@ -675,8 +675,11 @@ export function getAdminAnalytics(): AdminAnalytics {
   };
 }
 
-export function getBusPassForStudent(roll: string): BusPassCard {
-  const student = getStudentByRoll(roll) || allStudents[0];
+export function getBusPassForStudent(roll: string): BusPassCard | null {
+  const student = getStudentByRoll(roll);
+  if (!student || !student.busPassActive) {
+    return null;
+  }
   const route = allBusRoutes[0];
   const stop = route.stops[0];
 

@@ -840,6 +840,10 @@ class ApiService {
     return live || { valid: false, message: 'Could not connect to verification server' };
   }
 
+  async getStudentBusPass(roll: string) {
+    return await this.fetchApi<any>(`/transport/pass/${encodeURIComponent(roll)}`);
+  }
+
   // ==================== LIBRARY MANAGEMENT SYSTEM (LMS) ====================
 
   private localIssuedBooks: any[] = [];

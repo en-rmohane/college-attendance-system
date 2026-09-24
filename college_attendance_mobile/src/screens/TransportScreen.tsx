@@ -88,8 +88,8 @@ export default function TransportScreen({ navigation, route }: any) {
   const [selectedApplyRoute, setSelectedApplyRoute] = useState(1);
   const [applyPaymentMode, setApplyPaymentMode] = useState('UPI');
   const [applyTxnId, setApplyTxnId] = useState('');
+  const [studentBusPass, setStudentBusPass] = useState<any>(null);
 
-  const busPass = getBusPassForStudent(user?.roll || '0545CS231001');
   const routes = allBusRoutes;
   const currentRoute = routes.find((r) => r.id === selectedRouteId) || routes[0];
 
@@ -100,6 +100,22 @@ export default function TransportScreen({ navigation, route }: any) {
         const res = await api.getAccountantTransportApprovals('PENDING_APPROVAL', '2026-27');
         if (res?.success && res.requests) {
           setTransportApprovals(res.requests);
+        }
+      } else {
+        const studentRoll = user?.roll || user?.student_roll;
+        if (studentRoll) {
+          try {
+            const passRes = await api.getStudentBusPass(studentRoll);
+            if (passRes?.success && passRes.busPass) {
+              setStudentBusPass(passRes.busPass);
+            } else {
+              const localPass = getBusPassForStudent(studentRoll);
+              setStudentBusPass(localPass);
+            }
+          } catch {
+            const localPass = getBusPassForStudent(studentRoll);
+            setStudentBusPass(localPass);
+          }
         }
       }
     } catch (e) {
@@ -126,9 +142,10 @@ export default function TransportScreen({ navigation, route }: any) {
   };
 
   const handleSharePass = async () => {
+    if (!studentBusPass) return;
     try {
       await Share.share({
-        message: `SBITM Digital Bus Pass\nPass ID: ${busPass.passNumber}\nStudent: ${busPass.studentName} (${busPass.studentRoll})\nRoute: ${busPass.routeName} (Bus: ${busPass.busNumber})\nPickup: ${busPass.stopName} at ${busPass.pickupTime}\nStatus: VALID`,
+        message: `SBITM Digital Bus Pass\nPass ID: ${studentBusPass.passNumber || studentBusPass.pass_number}\nStudent: ${studentBusPass.studentName || studentBusPass.student_name} (${studentBusPass.studentRoll || studentBusPass.student_roll})\nRoute: ${studentBusPass.routeName || studentBusPass.route_name} (Bus: ${studentBusPass.busNumber || studentBusPass.bus_number})\nPickup: ${studentBusPass.stopName || studentBusPass.stop_name || 'Campus Gate'}\nStatus: ${studentBusPass.status || 'ACTIVE'}`,
       });
     } catch (e) {
       console.log(e);
@@ -792,68 +809,97 @@ export default function TransportScreen({ navigation, route }: any) {
             ========================================================================= */}
         {!isStaff && activeTab === 'pass' && (
           <View>
-            <View style={[styles.passCard, { backgroundColor: '#0F172A', borderColor: '#1E293B' }]}>
-              {/* College Branding */}
-              <View style={styles.passHeader}>
-                <View>
-                  <Text style={styles.passCollege}>SHRI BABAJI INSTITUTE OF TECH</Text>
-                  <Text style={styles.passSub}>CAMPUS COMMUTER PASS 2026-27</Text>
+            {studentBusPass ? (
+              <View style={[styles.passCard, { backgroundColor: '#0F172A', borderColor: '#1E293B' }]}>
+                {/* College Branding */}
+                <View style={styles.passHeader}>
+                  <View>
+                    <Text style={styles.passCollege}>SHRI BABAJI INSTITUTE OF TECH</Text>
+                    <Text style={styles.passSub}>CAMPUS COMMUTER PASS 2026-27</Text>
+                  </View>
+                  <View style={styles.statusPill}>
+                    <Text style={styles.statusPillText}>{studentBusPass.status || 'ACTIVE'}</Text>
+                  </View>
                 </View>
-                <View style={styles.statusPill}>
-                  <Text style={styles.statusPillText}>ACTIVE</Text>
+
+                {/* Student details */}
+                <View style={styles.passBody}>
+                  <View style={styles.passStudentInfo}>
+                    <Text style={styles.studentName}>
+                      {studentBusPass.studentName || studentBusPass.student_name}
+                    </Text>
+                    <Text style={styles.studentRoll}>
+                      {studentBusPass.studentRoll || studentBusPass.student_roll} • {studentBusPass.branch || user?.branch || 'CSE'}
+                    </Text>
+                    <Text style={styles.passId}>Pass No: {studentBusPass.passNumber || studentBusPass.pass_number}</Text>
+                  </View>
+
+                  {/* QR Code Container */}
+                  <View style={styles.qrContainer}>
+                    <MaterialCommunityIcons name="qrcode-scan" size={54} color="#0F172A" />
+                    <Text style={styles.qrLabel}>SCAN TO VERIFY</Text>
+                  </View>
                 </View>
+
+                <View style={styles.passDivider} />
+
+                {/* Route & Stop info */}
+                <View style={styles.passRouteDetails}>
+                  <View style={styles.detailRow}>
+                    <Feather name="map-pin" size={13} color="#818CF8" />
+                    <Text style={styles.detailLabel}>Assigned Route:</Text>
+                    <Text style={styles.detailVal}>
+                      {studentBusPass.routeName || studentBusPass.route_name || 'Betul Campus Corridor'}
+                    </Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Feather name="navigation" size={13} color="#818CF8" />
+                    <Text style={styles.detailLabel}>Boarding Stop:</Text>
+                    <Text style={styles.detailVal}>
+                      {studentBusPass.stopName || studentBusPass.stop_name || 'Designated Stop'} ({studentBusPass.pickupTime || '07:45 AM'})
+                    </Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Feather name="truck" size={13} color="#818CF8" />
+                    <Text style={styles.detailLabel}>Bus Number:</Text>
+                    <Text style={styles.detailVal}>
+                      {studentBusPass.busNumber || studentBusPass.bus_number || 'MP-48-PA-1204'}
+                    </Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Feather name="calendar" size={13} color="#818CF8" />
+                    <Text style={styles.detailLabel}>Valid Upto:</Text>
+                    <Text style={styles.detailVal}>
+                      {studentBusPass.validTill || studentBusPass.valid_upto || '30 June 2027'}
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity style={styles.shareBtn} onPress={handleSharePass} activeOpacity={0.8}>
+                  <Feather name="share-2" size={15} color="#FFFFFF" />
+                  <Text style={styles.shareBtnText}>Share / Save Digital Pass</Text>
+                </TouchableOpacity>
               </View>
-
-              {/* Student details */}
-              <View style={styles.passBody}>
-                <View style={styles.passStudentInfo}>
-                  <Text style={styles.studentName}>{busPass.studentName}</Text>
-                  <Text style={styles.studentRoll}>
-                    {busPass.studentRoll} • {busPass.branch}
-                  </Text>
-                  <Text style={styles.passId}>Pass No: {busPass.passNumber}</Text>
+            ) : (
+              <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, alignItems: 'center', paddingVertical: 28, marginVertical: 8 }]}>
+                <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surfaceSubtle, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                  <FontAwesome5 name="bus" size={28} color={colors.textSecondary} />
                 </View>
-
-                {/* QR Code Container */}
-                <View style={styles.qrContainer}>
-                  <MaterialCommunityIcons name="qrcode-scan" size={54} color="#0F172A" />
-                  <Text style={styles.qrLabel}>SCAN TO VERIFY</Text>
-                </View>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 8 }}>
+                  No Active Bus Pass
+                </Text>
+                <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, paddingHorizontal: 20, marginBottom: 20 }}>
+                  Aapke account par abhi koi active bus pass issue nahi hua hai. Jab Accountant aapki transport application aur fee payment approve karke pass issue karega, tabhi aapka Digital QR Bus Pass yahan activate hokar dikhayi dega.
+                </Text>
+                <TouchableOpacity
+                  style={{ backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                  onPress={() => setActiveTab('apply')}
+                >
+                  <Feather name="plus-circle" size={16} color="#FFF" />
+                  <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 14 }}>Apply for Bus Pass</Text>
+                </TouchableOpacity>
               </View>
-
-              <View style={styles.passDivider} />
-
-              {/* Route & Stop info */}
-              <View style={styles.passRouteDetails}>
-                <View style={styles.detailRow}>
-                  <Feather name="map-pin" size={13} color="#818CF8" />
-                  <Text style={styles.detailLabel}>Assigned Route:</Text>
-                  <Text style={styles.detailVal}>{busPass.routeName}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Feather name="navigation" size={13} color="#818CF8" />
-                  <Text style={styles.detailLabel}>Boarding Stop:</Text>
-                  <Text style={styles.detailVal}>
-                    {busPass.stopName} ({busPass.pickupTime})
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Feather name="truck" size={13} color="#818CF8" />
-                  <Text style={styles.detailLabel}>Bus Number:</Text>
-                  <Text style={styles.detailVal}>{busPass.busNumber}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Feather name="calendar" size={13} color="#818CF8" />
-                  <Text style={styles.detailLabel}>Valid Upto:</Text>
-                  <Text style={styles.detailVal}>{busPass.validTill}</Text>
-                </View>
-              </View>
-
-              <TouchableOpacity style={styles.shareBtn} onPress={handleSharePass} activeOpacity={0.8}>
-                <Feather name="share-2" size={15} color="#FFFFFF" />
-                <Text style={styles.shareBtnText}>Share / Save Digital Pass</Text>
-              </TouchableOpacity>
-            </View>
+            )}
 
             {/* Helpline Section */}
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Transport Helpdesk</Text>
