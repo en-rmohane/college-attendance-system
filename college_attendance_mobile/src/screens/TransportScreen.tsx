@@ -24,15 +24,17 @@ export default function TransportScreen({ navigation, route }: any) {
 
   const isAccountant = (user?.role as string) === 'accountant' || (user?.role as string) === 'fee_manager';
   const isAdmin = user?.role === 'admin';
-  const isStaff = isAccountant || isAdmin;
+  const isBusIncharge = (user?.role as string) === 'bus_incharge' || (user?.role as string) === 'transport_incharge' || (user?.role as string) === 'driver';
+  const isStaff = isAccountant || isAdmin || isBusIncharge;
 
-  // Active Tab State (Accountant defaults to 'routes' or 'approvals', Student to 'pass')
+  // Active Tab State (Bus Incharge defaults to 'scanner', Accountant to 'approvals', Student to 'pass')
   const [activeTab, setActiveTab] = useState<string>(
-    route?.params?.initialTab || (isStaff ? 'routes' : 'pass')
+    route?.params?.initialTab || (isBusIncharge ? 'scanner' : (isAccountant ? 'approvals' : (isAdmin ? 'routes' : 'pass')))
   );
 
   const [selectedRouteId, setSelectedRouteId] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [passSearchQuery, setPassSearchQuery] = useState('');
   const [transportApprovals, setTransportApprovals] = useState<any[]>([]);
   const [issuedPasses, setIssuedPasses] = useState<any[]>([
     {
@@ -255,10 +257,18 @@ export default function TransportScreen({ navigation, route }: any) {
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Text style={[styles.headerTitle, { color: colors.text }]}>
-              {isStaff ? 'Campus Transport Desk' : 'Campus Transport'}
+              {isBusIncharge
+                ? 'Transit & Bus Incharge Desk'
+                : isAccountant
+                ? 'Transport Accounts Desk'
+                : isAdmin
+                ? 'Fleet & Transport Hub'
+                : 'Campus Transport'}
             </Text>
             <Text style={[styles.headerSub, { color: colors.textSecondary }]}>
-              {isStaff
+              {isBusIncharge
+                ? 'Scan student barcodes, verify passes & check bus roster'
+                : isStaff
                 ? 'Fleet Routes, Pass Approvals, Roster & QR Verification'
                 : 'Digital Bus Passes, Routes & Live Driver Helplines'}
             </Text>
@@ -270,7 +280,81 @@ export default function TransportScreen({ navigation, route }: any) {
           {/* STAFF TABS */}
           {isStaff ? (
             <>
-              {/* 1. Fleet & Routes */}
+              {/* 1. QR / Barcode Verifier (Priority for Bus Incharge) */}
+              {(isBusIncharge || isAdmin) && (
+                <TouchableOpacity
+                  style={[
+                    styles.tabPill,
+                    {
+                      backgroundColor: activeTab === 'scanner' ? colors.purple : colors.surfaceSubtle,
+                      borderColor: activeTab === 'scanner' ? colors.purple : colors.border,
+                    },
+                  ]}
+                  onPress={() => setActiveTab('scanner')}
+                >
+                  <MaterialCommunityIcons
+                    name="qrcode-scan"
+                    size={13}
+                    color={activeTab === 'scanner' ? '#FFF' : colors.purple}
+                  />
+                  <Text
+                    style={[
+                      styles.tabPillText,
+                      { color: activeTab === 'scanner' ? '#FFF' : colors.purple },
+                    ]}
+                  >
+                    Barcode Verifier
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* 2. Approvals Queue (Accountant & Admin) */}
+              {(isAccountant || isAdmin) && (
+                <TouchableOpacity
+                  style={[
+                    styles.tabPill,
+                    {
+                      backgroundColor: activeTab === 'approvals' ? colors.amber : colors.surfaceSubtle,
+                      borderColor: activeTab === 'approvals' ? colors.amber : colors.border,
+                    },
+                  ]}
+                  onPress={() => setActiveTab('approvals')}
+                >
+                  <Feather name="check-square" size={13} color={activeTab === 'approvals' ? '#FFF' : colors.amber} />
+                  <Text
+                    style={[
+                      styles.tabPillText,
+                      { color: activeTab === 'approvals' ? '#FFF' : colors.amber },
+                    ]}
+                  >
+                    Approvals ({transportApprovals.length})
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* 3. Issued Passes Roster (All Staff: Accountant & Bus Incharge) */}
+              <TouchableOpacity
+                style={[
+                  styles.tabPill,
+                  {
+                    backgroundColor: activeTab === 'passes' ? colors.green : colors.surfaceSubtle,
+                    borderColor: activeTab === 'passes' ? colors.green : colors.border,
+                  },
+                ]}
+                onPress={() => setActiveTab('passes')}
+              >
+                <FontAwesome5 name="id-badge" size={13} color={activeTab === 'passes' ? '#FFF' : colors.green} />
+                <Text
+                  style={[
+                    styles.tabPillText,
+                    { color: activeTab === 'passes' ? '#FFF' : colors.green },
+                  ]}
+                >
+                  Issued Passes ({issuedPasses.length})
+                </Text>
+              </TouchableOpacity>
+
+              {/* 4. Fleet & Routes */}
               <TouchableOpacity
                 style={[
                   styles.tabPill,
@@ -292,75 +376,33 @@ export default function TransportScreen({ navigation, route }: any) {
                 </Text>
               </TouchableOpacity>
 
-              {/* 2. Approvals Queue */}
-              <TouchableOpacity
-                style={[
-                  styles.tabPill,
-                  {
-                    backgroundColor: activeTab === 'approvals' ? colors.amber : colors.surfaceSubtle,
-                    borderColor: activeTab === 'approvals' ? colors.amber : colors.border,
-                  },
-                ]}
-                onPress={() => setActiveTab('approvals')}
-              >
-                <Feather name="check-square" size={13} color={activeTab === 'approvals' ? '#FFF' : colors.amber} />
-                <Text
+              {/* QR Scanner Verifier for Accountant if not already rendered */}
+              {isAccountant && !isBusIncharge && (
+                <TouchableOpacity
                   style={[
-                    styles.tabPillText,
-                    { color: activeTab === 'approvals' ? '#FFF' : colors.amber },
+                    styles.tabPill,
+                    {
+                      backgroundColor: activeTab === 'scanner' ? colors.purple : colors.surfaceSubtle,
+                      borderColor: activeTab === 'scanner' ? colors.purple : colors.border,
+                    },
                   ]}
+                  onPress={() => setActiveTab('scanner')}
                 >
-                  Approvals ({transportApprovals.length})
-                </Text>
-              </TouchableOpacity>
-
-              {/* 3. Passes Roster */}
-              <TouchableOpacity
-                style={[
-                  styles.tabPill,
-                  {
-                    backgroundColor: activeTab === 'passes' ? colors.green : colors.surfaceSubtle,
-                    borderColor: activeTab === 'passes' ? colors.green : colors.border,
-                  },
-                ]}
-                onPress={() => setActiveTab('passes')}
-              >
-                <FontAwesome5 name="id-badge" size={13} color={activeTab === 'passes' ? '#FFF' : colors.green} />
-                <Text
-                  style={[
-                    styles.tabPillText,
-                    { color: activeTab === 'passes' ? '#FFF' : colors.green },
-                  ]}
-                >
-                  Issued Passes
-                </Text>
-              </TouchableOpacity>
-
-              {/* 4. QR Scanner & Verification */}
-              <TouchableOpacity
-                style={[
-                  styles.tabPill,
-                  {
-                    backgroundColor: activeTab === 'scanner' ? colors.purple : colors.surfaceSubtle,
-                    borderColor: activeTab === 'scanner' ? colors.purple : colors.border,
-                  },
-                ]}
-                onPress={() => setActiveTab('scanner')}
-              >
-                <MaterialCommunityIcons
-                  name="qrcode-scan"
-                  size={13}
-                  color={activeTab === 'scanner' ? '#FFF' : colors.purple}
-                />
-                <Text
-                  style={[
-                    styles.tabPillText,
-                    { color: activeTab === 'scanner' ? '#FFF' : colors.purple },
-                  ]}
-                >
-                  QR Verifier
-                </Text>
-              </TouchableOpacity>
+                  <MaterialCommunityIcons
+                    name="qrcode-scan"
+                    size={13}
+                    color={activeTab === 'scanner' ? '#FFF' : colors.purple}
+                  />
+                  <Text
+                    style={[
+                      styles.tabPillText,
+                      { color: activeTab === 'scanner' ? '#FFF' : colors.purple },
+                    ]}
+                  >
+                    Barcode Verifier
+                  </Text>
+                </TouchableOpacity>
+              )}
             </>
           ) : (
             /* STUDENT TABS */
@@ -676,69 +718,154 @@ export default function TransportScreen({ navigation, route }: any) {
               <View>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Active Pass Holders ({issuedPasses.length})</Text>
                 <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>
-                  Authorized students with valid digital QR bus passes
+                  Authorized students with active digital transit barcodes & QR passes
                 </Text>
               </View>
             </View>
 
-            {issuedPasses.map((p) => (
-              <View key={p.id} style={[styles.passRosterCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <View style={styles.passRosterHeader}>
-                  <View style={[styles.passNumberPill, { backgroundColor: colors.softBlue }]}>
-                    <Text style={[styles.passNumberText, { color: colors.primary }]}>{p.pass_number}</Text>
-                  </View>
-                  <View style={[styles.activeStatusPill, { backgroundColor: colors.softGreen }]}>
-                    <Text style={[styles.activeStatusText, { color: colors.green }]}>ACTIVE</Text>
-                  </View>
-                </View>
-
-                <Text style={[styles.passStudentTitle, { color: colors.text }]}>{p.student_name}</Text>
-                <Text style={[styles.passStudentSub, { color: colors.textSecondary }]}>
-                  {p.student_roll} • {p.branch} • Year {p.year}
-                </Text>
-
-                <View style={[styles.passRosterDetails, { backgroundColor: colors.surfaceSubtle }]}>
-                  <View style={styles.rosterRow}>
-                    <Feather name="map-pin" size={12} color={colors.primary} />
-                    <Text style={[styles.rosterText, { color: colors.text }]}>{p.route_name}</Text>
-                  </View>
-                  <View style={styles.rosterRow}>
-                    <Feather name="navigation" size={12} color={colors.teal} />
-                    <Text style={[styles.rosterText, { color: colors.text }]}>{p.stop_name}</Text>
-                  </View>
-                  <View style={styles.rosterRow}>
-                    <Feather name="truck" size={12} color={colors.purple} />
-                    <Text style={[styles.rosterText, { color: colors.text }]}>{p.bus_number}</Text>
-                  </View>
-                </View>
+            {/* Search Filter Box */}
+            <View style={{ marginBottom: 12 }}>
+              <View style={[styles.searchInputBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Feather name="search" size={16} color={colors.textSecondary} />
+                <TextInput
+                  style={[styles.searchInput, { color: colors.text }]}
+                  placeholder="Search student name, roll number, or pass ID..."
+                  placeholderTextColor={colors.textMuted}
+                  value={passSearchQuery}
+                  onChangeText={setPassSearchQuery}
+                />
+                {passSearchQuery ? (
+                  <TouchableOpacity onPress={() => setPassSearchQuery('')}>
+                    <Feather name="x" size={16} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                ) : null}
               </View>
-            ))}
+            </View>
+
+            {issuedPasses.filter(
+              (p) =>
+                !passSearchQuery ||
+                p.student_name.toLowerCase().includes(passSearchQuery.toLowerCase()) ||
+                p.student_roll.toLowerCase().includes(passSearchQuery.toLowerCase()) ||
+                p.pass_number.toLowerCase().includes(passSearchQuery.toLowerCase()) ||
+                p.route_name.toLowerCase().includes(passSearchQuery.toLowerCase())
+            ).length === 0 ? (
+              <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Feather name="info" size={24} color={colors.textSecondary} />
+                <Text style={[styles.emptyTitle, { color: colors.text, marginTop: 8 }]}>No Pass Records Found</Text>
+                <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
+                  {passSearchQuery
+                    ? `No students matching "${passSearchQuery}"`
+                    : 'No student bus passes have been issued yet.'}
+                </Text>
+              </View>
+            ) : (
+              issuedPasses
+                .filter(
+                  (p) =>
+                    !passSearchQuery ||
+                    p.student_name.toLowerCase().includes(passSearchQuery.toLowerCase()) ||
+                    p.student_roll.toLowerCase().includes(passSearchQuery.toLowerCase()) ||
+                    p.pass_number.toLowerCase().includes(passSearchQuery.toLowerCase()) ||
+                    p.route_name.toLowerCase().includes(passSearchQuery.toLowerCase())
+                )
+                .map((p) => (
+                  <View key={p.id} style={[styles.passRosterCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <View style={styles.passRosterHeader}>
+                      <View style={[styles.passNumberPill, { backgroundColor: colors.softBlue }]}>
+                        <Text style={[styles.passNumberText, { color: colors.primary }]}>{p.pass_number}</Text>
+                      </View>
+                      <View style={[styles.activeStatusPill, { backgroundColor: colors.softGreen }]}>
+                        <Text style={[styles.activeStatusText, { color: colors.green }]}>ACTIVE</Text>
+                      </View>
+                    </View>
+
+                    <Text style={[styles.passStudentTitle, { color: colors.text }]}>{p.student_name}</Text>
+                    <Text style={[styles.passStudentSub, { color: colors.textSecondary }]}>
+                      {p.student_roll} • {p.branch} • Year {p.year}
+                    </Text>
+
+                    <View style={[styles.passRosterDetails, { backgroundColor: colors.surfaceSubtle }]}>
+                      <View style={styles.rosterRow}>
+                        <Feather name="map-pin" size={12} color={colors.primary} />
+                        <Text style={[styles.rosterText, { color: colors.text }]}>{p.route_name}</Text>
+                      </View>
+                      <View style={styles.rosterRow}>
+                        <Feather name="navigation" size={12} color={colors.teal} />
+                        <Text style={[styles.rosterText, { color: colors.text }]}>{p.stop_name}</Text>
+                      </View>
+                      <View style={styles.rosterRow}>
+                        <Feather name="truck" size={12} color={colors.purple} />
+                        <Text style={[styles.rosterText, { color: colors.text }]}>{p.bus_number}</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))
+            )}
           </View>
         )}
 
         {/* =========================================================================
-            STAFF TAB 4: QR PASS SCANNER & VERIFIER
+            STAFF TAB 4: QR & BARCODE VERIFIER (BUS INCHARGE / SECURITY)
             ========================================================================= */}
         {isStaff && activeTab === 'scanner' && (
           <View>
             <View style={styles.sectionHeaderRow}>
               <View>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Digital Pass Verifier</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Transit Barcode & QR Verifier</Text>
                 <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>
-                  Scan or enter secure QR token to verify authenticity
+                  Scan student transit barcode or enter token to authenticate boarding
                 </Text>
               </View>
             </View>
 
             <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.inputLabel, { color: colors.text }]}>Enter Student QR Token</Text>
+              <Text style={[styles.inputLabel, { color: colors.text }]}>Enter Student Barcode / Token</Text>
               <TextInput
                 style={[styles.tokenInput, { backgroundColor: colors.surfaceSubtle, color: colors.text, borderColor: colors.border }]}
                 value={verifyToken}
                 onChangeText={setVerifyToken}
-                placeholder="e.g. PASS-03AAD6E391154170B361"
+                placeholder="e.g. BP-2026-000001 or PASS-03AAD6E391154170B361"
                 placeholderTextColor={colors.textMuted}
               />
+
+              {/* Quick-test Presets for Bus Incharge */}
+              <View style={{ marginTop: 8, marginBottom: 12 }}>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>
+                  Quick Test Barcode Tokens:
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                  {issuedPasses.map((p) => (
+                    <TouchableOpacity
+                      key={p.id}
+                      style={{
+                        backgroundColor: colors.surfaceSubtle,
+                        paddingHorizontal: 10,
+                        paddingVertical: 5,
+                        borderRadius: 6,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }}
+                      onPress={() => setVerifyToken(p.pass_number)}
+                    >
+                      <Text style={{ fontSize: 11, color: colors.textSecondary }}>{p.pass_number}</Text>
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: colors.softPeach,
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                      borderRadius: 6,
+                      borderWidth: 1,
+                      borderColor: colors.coral,
+                    }}
+                    onPress={() => setVerifyToken('INVALID-PASS-999')}
+                  >
+                    <Text style={{ fontSize: 11, color: colors.coral }}>Test Invalid Token</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </View>
 
               <TouchableOpacity
                 style={[styles.verifyBtn, { backgroundColor: colors.primary }]}
@@ -749,8 +876,8 @@ export default function TransportScreen({ navigation, route }: any) {
                   <ActivityIndicator color="#FFF" size="small" />
                 ) : (
                   <>
-                    <MaterialCommunityIcons name="qrcode-scan" size={16} color="#FFF" />
-                    <Text style={styles.verifyBtnText}>Verify Pass Token</Text>
+                    <MaterialCommunityIcons name="barcode-scan" size={18} color="#FFF" />
+                    <Text style={styles.verifyBtnText}>Scan & Verify Barcode</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -778,25 +905,30 @@ export default function TransportScreen({ navigation, route }: any) {
                         { color: verifyResult.valid ? colors.green : colors.coral },
                       ]}
                     >
-                      {verifyResult.valid ? 'VALID ACTIVE BUS PASS' : 'INVALID / EXPIRED PASS'}
+                      {verifyResult.valid ? 'AUTHORIZED: VALID BUS PASS' : 'DENIED: INVALID / UNPAID PASS'}
                     </Text>
                   </View>
 
                   {verifyResult.valid && verifyResult.pass && (
                     <View style={{ gap: 4 }}>
-                      <Text style={[styles.verifyDataText, { color: colors.text }]}>
+                      <Text style={[styles.verifyDataText, { color: colors.text, fontWeight: '700' }]}>
                         Student: {verifyResult.pass.student_name} ({verifyResult.pass.student_roll})
                       </Text>
                       <Text style={[styles.verifyDataText, { color: colors.text }]}>
-                        Route: {verifyResult.pass.route_name} • Bus: {verifyResult.pass.bus_number}
+                        Assigned Route: {verifyResult.pass.route_name}
                       </Text>
                       <Text style={[styles.verifyDataText, { color: colors.text }]}>
-                        Valid Upto: {verifyResult.pass.valid_upto}
+                        Bus Number: {verifyResult.pass.bus_number} • Boarding: {verifyResult.pass.stop_name || 'Designated Stop'}
+                      </Text>
+                      <Text style={[styles.verifyDataText, { color: colors.text }]}>
+                        Valid Upto: {verifyResult.pass.valid_upto || '30/06/2027'}
                       </Text>
                     </View>
                   )}
                   {!verifyResult.valid && (
-                    <Text style={{ color: colors.coral, fontSize: 12 }}>{verifyResult.message}</Text>
+                    <Text style={{ color: colors.coral, fontSize: 12, fontWeight: '600' }}>
+                      {verifyResult.message || 'Pass not authorized. Student has not paid transport fee or pass expired.'}
+                    </Text>
                   )}
                 </View>
               )}
@@ -873,6 +1005,32 @@ export default function TransportScreen({ navigation, route }: any) {
                       {studentBusPass.validTill || studentBusPass.valid_upto || '30 June 2027'}
                     </Text>
                   </View>
+                </View>
+
+                {/* Official Digital Transit Barcode */}
+                <View style={{ backgroundColor: '#FFFFFF', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16, marginVertical: 12, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748B', letterSpacing: 1.5, marginBottom: 8 }}>
+                    OFFICIAL TRANSIT BARCODE (SCAN TO VERIFY)
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', height: 40, gap: 2 }}>
+                    {[3, 1, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3, 1, 4, 2, 3, 1, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3, 2, 4, 1, 2, 3, 1, 4, 2, 1, 3, 4, 2, 1, 3, 2].map((w, idx) => (
+                      <View
+                        key={idx}
+                        style={{
+                          width: w,
+                          height: '100%',
+                          backgroundColor: idx % 2 === 0 ? '#0F172A' : '#E2E8F0',
+                          borderRadius: 0.5,
+                        }}
+                      />
+                    ))}
+                  </View>
+                  <Text style={{ fontSize: 13, fontWeight: '900', color: '#0F172A', letterSpacing: 3, marginTop: 6, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+                    *{studentBusPass.passNumber || studentBusPass.pass_number || 'BP-2026-000001'}*
+                  </Text>
+                  <Text style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>
+                    Scan with Bus Incharge Mobile Terminal to authenticate
+                  </Text>
                 </View>
 
                 <TouchableOpacity style={styles.shareBtn} onPress={handleSharePass} activeOpacity={0.8}>

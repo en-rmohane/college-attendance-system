@@ -1,4 +1,4 @@
-export type UserRole = 'student' | 'professor' | 'faculty' | 'admin' | 'accountant' | 'librarian' | 'assistant_librarian';
+export type UserRole = 'student' | 'professor' | 'faculty' | 'admin' | 'accountant' | 'librarian' | 'assistant_librarian' | 'bus_incharge' | 'transport_manager';
 
 export interface UserProfile {
   id: number;

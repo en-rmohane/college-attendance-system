@@ -71,6 +71,15 @@ const librarianProfile: UserProfile = {
   department: 'Central Library LMS Section',
 };
 
+const busInchargeProfile: UserProfile = {
+  id: 205,
+  username: 'busincharge',
+  name: 'RAMESHWAR YADAV (BUS INCHARGE)',
+  email: 'transport@sbitm.edu.in',
+  role: 'bus_incharge',
+  department: 'Campus Fleet & Transit Section',
+};
+
 import { Platform } from 'react-native';
 
 // Production Render backend connected to Neon PostgreSQL
@@ -161,6 +170,13 @@ class ApiService {
         return { success: false, error: 'Incorrect password for Librarian (Default: librarian123 or 123456)' };
       }
       return { success: true, user: librarianProfile };
+    }
+
+    if (term === 'busincharge' || term === 'transport' || term === 'driver' || term === 'incharge') {
+      if (cleanPass !== '123456' && cleanPass !== 'admin123') {
+        return { success: false, error: 'Incorrect password for Transport Incharge (Default: 123456)' };
+      }
+      return { success: true, user: busInchargeProfile };
     }
 
     // 2. Check Professor / Faculty by username, full name, or email
