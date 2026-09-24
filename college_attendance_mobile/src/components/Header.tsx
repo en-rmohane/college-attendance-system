@@ -56,10 +56,44 @@ export const Header: React.FC<HeaderProps> = ({
   const isAdmin = role === 'admin';
   const isAccountant = role === 'accountant';
   const isProf = role === 'professor';
+  const isLibrarian = role === 'librarian' || role === 'assistant_librarian';
+  const isBusIncharge = role === 'bus_incharge' || role === 'transport_manager' || role === 'transport_incharge' || role === 'driver';
 
-  const roleLabel = isAdmin ? 'ADMIN' : isAccountant ? 'ACCOUNTS' : isProf ? 'FACULTY' : 'STUDENT';
-  const roleColor = isAdmin ? colors.coral : isAccountant ? colors.purple : isProf ? colors.teal : colors.amber;
-  const roleBg = isAdmin ? colors.softPeach : isAccountant ? colors.softLavender : isProf ? colors.softCyan : colors.softYellow;
+  const roleLabel = isAdmin
+    ? 'ADMIN'
+    : isAccountant
+    ? 'ACCOUNTS'
+    : isLibrarian
+    ? 'LIBRARIAN'
+    : isBusIncharge
+    ? 'BUS INCHARGE'
+    : isProf
+    ? 'FACULTY'
+    : 'STUDENT';
+
+  const roleColor = isAdmin
+    ? colors.coral
+    : isAccountant
+    ? colors.purple
+    : isLibrarian
+    ? colors.teal
+    : isBusIncharge
+    ? colors.coral
+    : isProf
+    ? colors.teal
+    : colors.amber;
+
+  const roleBg = isAdmin
+    ? colors.softPeach
+    : isAccountant
+    ? colors.softLavender
+    : isLibrarian
+    ? colors.softCyan
+    : isBusIncharge
+    ? colors.softPeach
+    : isProf
+    ? colors.softCyan
+    : colors.softYellow;
 
   return (
     <View

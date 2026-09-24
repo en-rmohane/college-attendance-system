@@ -31,6 +31,14 @@
       "ios",
       "web"
     ],
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow SBITM ERP to access camera for scanning QR codes and book barcodes."
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "00f5ccc4-52c3-4905-bcf6-f8eb15588f54"

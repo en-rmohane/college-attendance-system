@@ -19,6 +19,7 @@ import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { api } from '../services/api';
+import { RealCameraScanner } from '../components/common/RealCameraScanner';
 
 const { width } = Dimensions.get('window');
 
@@ -42,6 +43,18 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
   // Active Tab
   const defaultTab = isLibrarian ? 'dashboard' : (isAccountant ? 'members' : (isAdmin ? 'overview' : 'my_books'));
   const [activeTab, setActiveTab] = useState<string>(route?.params?.initialTab || defaultTab);
+
+  useEffect(() => {
+    if (route?.params?.initialTab) {
+      setActiveTab(route.params.initialTab);
+    }
+  }, [route?.params?.initialTab]);
+
+  useEffect(() => {
+    if (activeTab === 'barcodes' && generatedBarcodesList.length === 0) {
+      handleGenerateBatchBarcodes(10);
+    }
+  }, [activeTab]);
 
   // Barcode & QR Scanner Simulator Modal State
   const [scannerVisible, setScannerVisible] = useState(false);
@@ -622,6 +635,7 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
     if (isLibrarian) {
       tabs = [
         { id: 'dashboard', label: 'Overview', icon: 'grid-outline' },
+        { id: 'barcodes', label: 'Barcodes 🏷️', icon: 'barcode-outline' },
         { id: 'counter', label: 'Counter Desk', icon: 'swap-horizontal-outline' },
         { id: 'catalog', label: 'Book Catalog', icon: 'book-outline' },
         { id: 'members', label: 'Members', icon: 'people-outline' },
@@ -856,7 +870,193 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
     </View>
   );
 
-  // --- 2. LIBRARIAN COUNTER DESK (ISSUE / RETURN / RENEW) ---
+  // --- 2. LIBRARIAN BATCH BARCODE GENERATOR STUDIO ---
+  const renderBarcodesTab = () => (
+    <View style={styles.sectionContainer}>
+      {/* Top Banner Guide */}
+      <View style={[styles.card, { backgroundColor: colors.softLavender, borderColor: '#DDD6FE', marginBottom: 14 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.purple, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="barcode" size={20} color="#FFF" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.cardTitle, { color: colors.purple, marginBottom: 0 }]}>Library Barcode Studio 🏷️</Text>
+            <Text style={{ fontSize: 11, color: colors.textSecondary }}>Generate standard Code128 accession barcode stickers for books</Text>
+          </View>
+        </View>
+        <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginTop: 4 }}>
+          1. Select quantity below and tap <Text style={{ fontWeight: '700', color: colors.purple }}>Generate Barcodes</Text>.
+          {'\n'}2. Print stickers or write the accession number on physical books.
+          {'\n'}3. Tap <Text style={{ fontWeight: '700', color: colors.green }}>Register Book</Text> on any sticker to link it directly to catalog!
+        </Text>
+      </View>
+
+      {/* Generator Controls Card */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, marginBottom: 14 }]}>
+        <Text style={[styles.inputLabel, { color: colors.text, marginBottom: 8, fontSize: 13, fontWeight: '700' }]}>
+          Select Number of Barcodes to Generate:
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+          {['5', '10', '25', '50', '100'].map((qty) => (
+            <TouchableOpacity
+              key={qty}
+              onPress={() => {
+                setBatchBarcodeCount(qty);
+                handleGenerateBatchBarcodes(parseInt(qty));
+              }}
+              style={[
+                styles.smallPill,
+                batchBarcodeCount === qty && { backgroundColor: colors.purple, borderColor: colors.purple },
+              ]}
+            >
+              <Text style={{ color: batchBarcodeCount === qty ? '#FFF' : colors.text, fontSize: 13, fontWeight: '700' }}>
+                {qty} Stickers
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity
+          onPress={() => handleGenerateBatchBarcodes(parseInt(batchBarcodeCount) || 10)}
+          disabled={generatingBarcodes}
+          style={[styles.primaryActionBtn, { backgroundColor: colors.purple, marginTop: 0 }]}
+        >
+          {generatingBarcodes ? (
+            <ActivityIndicator color="#FFF" size="small" />
+          ) : (
+            <>
+              <Ionicons name="sparkles" size={18} color="#FFF" style={{ marginRight: 6 }} />
+              <Text style={styles.primaryActionBtnText}>Generate {batchBarcodeCount} Fresh Barcodes</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Generated Barcodes Sticker Sheet */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <Text style={[styles.sectionHeading, { color: colors.text, fontSize: 14 }]}>
+          Barcode Stickers Sheet ({generatedBarcodesList.length} Generated)
+        </Text>
+        {generatedBarcodesList.length > 0 && (
+          <TouchableOpacity
+            onPress={() => handleGenerateBatchBarcodes(parseInt(batchBarcodeCount) || 10)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+          >
+            <Ionicons name="refresh-outline" size={14} color={colors.purple} />
+            <Text style={{ color: colors.purple, fontSize: 12, fontWeight: '700' }}>Regenerate</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {generatedBarcodesList.length === 0 ? (
+        <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border, padding: 28, alignItems: 'center' }]}>
+          <Ionicons name="barcode-outline" size={48} color={colors.purple} style={{ opacity: 0.6, marginBottom: 8 }} />
+          <Text style={{ color: colors.text, fontWeight: '700', fontSize: 15, marginBottom: 4 }}>No Barcodes Generated Yet</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 12, textAlign: 'center', marginBottom: 14 }}>
+            Tap the button above to generate printable accession barcodes for your college library books.
+          </Text>
+          <TouchableOpacity
+            onPress={() => handleGenerateBatchBarcodes(10)}
+            style={[styles.smallBtn, { backgroundColor: colors.purple, paddingHorizontal: 16 }]}
+          >
+            <Text style={{ color: '#FFF', fontWeight: '700' }}>Generate 10 Barcodes Now</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        generatedBarcodesList.map((item: any, idx: number) => (
+          <View
+            key={idx}
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 12,
+              padding: 14,
+              marginBottom: 12,
+              borderWidth: 1,
+              borderColor: '#E2E8F0',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.05,
+              shadowRadius: 3,
+              elevation: 1,
+            }}
+          >
+            {/* Header: SBITM Central Library */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingBottom: 6, marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="school" size={14} color="#6B21A8" />
+                <Text style={{ fontSize: 11, fontWeight: '800', color: '#1E293B', letterSpacing: 0.5 }}>
+                  SBITM CENTRAL LIBRARY
+                </Text>
+              </View>
+              <View style={{ backgroundColor: '#F3E8FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                <Text style={{ fontSize: 9, fontWeight: '800', color: '#7C3AED' }}>STICKER #{idx + 1}</Text>
+              </View>
+            </View>
+
+            {/* Visual Code128 Barcode Simulation */}
+            <View style={{ alignItems: 'center', paddingVertical: 8, backgroundColor: '#FAFAFA', borderRadius: 8, borderWidth: 1, borderColor: '#F1F5F9' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', height: 42, paddingHorizontal: 10, gap: 2 }}>
+                {[3, 1, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3, 1, 2, 4, 1, 2, 3, 4, 1, 2, 1, 3, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3].map((w, bi) => (
+                  <View
+                    key={bi}
+                    style={{
+                      width: w,
+                      height: '100%',
+                      backgroundColor: bi % 2 === 0 ? '#0F172A' : '#FFFFFF',
+                    }}
+                  />
+                ))}
+              </View>
+              <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 3, color: '#0F172A', marginTop: 4, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+                *{item.barcode || item.accession_no}*
+              </Text>
+            </View>
+
+            {/* Details & Actions */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+              <View>
+                <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '600' }}>ACCESSION NO.</Text>
+                <Text style={{ fontSize: 12, fontWeight: '800', color: '#0F172A' }}>{item.accession_no || item.barcode}</Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    Alert.alert('Barcode Copied', `Accession Code ${item.barcode || item.accession_no} ready to use.`);
+                  }}
+                  style={{ backgroundColor: '#F1F5F9', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569' }}>Copy Code</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    setNewBookBarcode(item.barcode || item.accession_no);
+                    setNewBookTitle('');
+                    setNewBookAuthor('');
+                    setNewBookISBN('');
+                    setNewBookPublisher('');
+                    setNewBookDept('CSE');
+                    setNewBookShelf('Shelf A1');
+                    setNewBookRack('Rack 1');
+                    setNewBookPrice('500');
+                    setNewBookCopies('1');
+                    setAddBookModalVisible(true);
+                  }}
+                  style={{ backgroundColor: '#10B981', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                >
+                  <Ionicons name="add-circle" size={13} color="#FFF" />
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#FFF' }}>Register Book</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        ))
+      )}
+    </View>
+  );
+
+  // --- 3. LIBRARIAN COUNTER DESK (ISSUE / RETURN / RENEW) ---
   const renderCounterTab = () => (
     <View style={styles.sectionContainer}>
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -1827,6 +2027,7 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
         ) : (
           <>
             {activeTab === 'dashboard' || activeTab === 'overview' ? renderDashboardTab() : null}
+            {activeTab === 'barcodes' ? renderBarcodesTab() : null}
             {activeTab === 'counter' ? renderCounterTab() : null}
             {activeTab === 'catalog' || activeTab === 'browse' ? renderCatalogTab() : null}
             {activeTab === 'members' ? renderMembersTab() : null}
@@ -2769,161 +2970,47 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
         </View>
       </Modal>
 
-      {/* 9. Live Optical Barcode / QR Camera Scanner Modal */}
-      <Modal
+      {/* 9. Live Optical Barcode / QR Real Camera Scanner */}
+      <RealCameraScanner
         visible={scannerVisible}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => setScannerVisible(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: '#0B0F19', paddingTop: insets.top }}>
-          {/* Scanner Header */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' }}>
-            <TouchableOpacity
-              onPress={() => setScannerVisible(false)}
-              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Ionicons name="close" size={24} color="#FFF" />
-            </TouchableOpacity>
-            <View style={{ flex: 1, alignItems: 'center' }}>
-              <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '800' }}>
-                {scannerTarget === 'counter_member' ? 'Scan Student QR / Roll ID' : (scannerTarget === 'counter_copy' ? 'Scan Book Barcode Sticker' : 'Library Optical Scanner')}
-              </Text>
-              <Text style={{ color: '#94A3B8', fontSize: 11, marginTop: 2 }}>
-                {scannerTarget === 'counter_member' ? 'Align Student ID Card within frame' : 'Align Book Accession Barcode within frame'}
-              </Text>
-            </View>
-            <TouchableOpacity
-              onPress={() => setScannerFlashlight(!scannerFlashlight)}
-              style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: scannerFlashlight ? '#F59E0B' : 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Ionicons name={scannerFlashlight ? 'flashlight' : 'flashlight-outline'} size={20} color={scannerFlashlight ? '#000' : '#FFF'} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Viewfinder Area */}
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 }}>
-            <View
-              style={{
-                width: 280,
-                height: 220,
-                borderRadius: 16,
-                backgroundColor: 'rgba(15,23,42,0.6)',
-                borderWidth: 1,
-                borderColor: 'rgba(255,255,255,0.15)',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-                position: 'relative',
-              }}
-            >
-              {/* Corner brackets */}
-              <View style={{ position: 'absolute', top: 0, left: 0, width: 24, height: 24, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: 12, borderColor: '#38BDF8' }} />
-              <View style={{ position: 'absolute', top: 0, right: 0, width: 24, height: 24, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 12, borderColor: '#38BDF8' }} />
-              <View style={{ position: 'absolute', bottom: 0, left: 0, width: 24, height: 24, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 12, borderColor: '#38BDF8' }} />
-              <View style={{ position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: 12, borderColor: '#38BDF8' }} />
-
-              {/* Laser beam */}
-              <Animated.View
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 12,
-                  right: 12,
-                  height: 3,
-                  backgroundColor: '#EF4444',
-                  borderRadius: 2,
-                  shadowColor: '#EF4444',
-                  shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 1,
-                  shadowRadius: 8,
-                  transform: [
-                    {
-                      translateY: scanAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [10, 190],
-                      }),
-                    },
-                  ],
-                }}
-              />
-
-              <MaterialCommunityIcons
-                name={scannerTarget === 'counter_member' ? 'qrcode-scan' : 'barcode-scan'}
-                size={54}
-                color="rgba(255,255,255,0.25)"
-              />
-              <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '800', letterSpacing: 2, marginTop: 8 }}>
-                {scannerTarget === 'counter_member' ? 'ALIGN STUDENT ID QR' : 'ALIGN BOOK BARCODE'}
-              </Text>
-            </View>
-
-            {/* Quick manual entry within camera */}
-            <View style={{ width: '100%', marginTop: 24, paddingHorizontal: 10 }}>
-              <View style={{ flexDirection: 'row', backgroundColor: '#1E293B', borderRadius: 12, paddingHorizontal: 12, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}>
-                <TextInput
-                  placeholder={scannerTarget === 'counter_member' ? 'Type Student Roll or paste code...' : 'Type Barcode / Accession No...'}
-                  placeholderTextColor="#64748B"
-                  value={customScanInput}
-                  onChangeText={setCustomScanInput}
-                  style={{ flex: 1, color: '#FFF', paddingVertical: 10, fontSize: 13 }}
-                  autoCapitalize="characters"
-                />
-                {customScanInput ? (
-                  <TouchableOpacity
-                    onPress={() => handleScanResult(customScanInput)}
-                    style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
-                  >
-                    <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 12 }}>USE</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            </View>
-          </View>
-
-          {/* Quick presets strip below camera */}
-          <View style={{ backgroundColor: '#0F172A', paddingVertical: 14, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' }}>
-            <Text style={{ color: '#94A3B8', fontSize: 10, fontWeight: '800', letterSpacing: 0.5, paddingHorizontal: 16, marginBottom: 8 }}>
-              {scannerTarget === 'counter_member' ? 'TAP SAMPLE REGISTERED STUDENT:' : 'TAP SAMPLE BOOK ACCESSION / BARCODE:'}
-            </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
-              {scannerTarget === 'counter_member' ? (
-                [
-                  { code: '0545CS231001', name: 'Ravi Kumar (CSE)' },
-                  { code: '0545CS231002', name: 'Priya Sharma (CSE)' },
-                  { code: '0545AD231005', name: 'Aman Verma (AD)' },
-                  { code: '0545EC231003', name: 'Anjali Patel (EC)' },
-                ].map((s) => (
-                  <TouchableOpacity
-                    key={s.code}
-                    onPress={() => handleScanResult(s.code)}
-                    style={{ backgroundColor: '#1E293B', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#38BDF8', alignItems: 'center' }}
-                  >
-                    <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>{s.name}</Text>
-                    <Text style={{ color: '#38BDF8', fontSize: 10, marginTop: 2 }}>{s.code}</Text>
-                  </TouchableOpacity>
-                ))
-              ) : (
-                [
-                  { code: 'LIB-BC-2026-0001', name: 'Database Management Systems' },
-                  { code: 'LIB-BC-2026-0002', name: 'Computer Networks (Tanenbaum)' },
-                  { code: 'LIB-BC-2026-0003', name: 'Operating System Concepts' },
-                  { code: 'LIB-BC-2026-0004', name: 'Let Us C (Kanetkar)' },
-                ].map((b) => (
-                  <TouchableOpacity
-                    key={b.code}
-                    onPress={() => handleScanResult(b.code)}
-                    style={{ backgroundColor: '#1E293B', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#10B981', alignItems: 'center' }}
-                  >
-                    <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>{b.name}</Text>
-                    <Text style={{ color: '#10B981', fontSize: 10, marginTop: 2 }}>*{b.code}*</Text>
-                  </TouchableOpacity>
-                ))
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setScannerVisible(false)}
+        title={
+          scannerTarget === 'counter_member'
+            ? 'Scan Student QR / Roll ID'
+            : (scannerTarget === 'counter_copy' ? 'Scan Book Barcode Sticker' : 'Library Optical Scanner')
+        }
+        subtitle={
+          scannerTarget === 'counter_member'
+            ? 'Align Student ID Card within frame'
+            : 'Align Book Accession Barcode within frame'
+        }
+        targetHint={scannerTarget === 'counter_member' ? 'ALIGN STUDENT ID QR' : 'ALIGN BOOK BARCODE'}
+        mode={scannerTarget === 'counter_member' ? 'qr' : 'barcode'}
+        realtimeItemsTitle={
+          scannerTarget === 'counter_member'
+            ? 'LIVE REGISTERED LIBRARY STUDENTS'
+            : 'LIVE CATALOG BOOKS & ACCESSION'
+        }
+        realtimeItems={
+          scannerTarget === 'counter_member'
+            ? membersList.slice(0, 30).map((m: any) => ({
+                id: m.id || m.member_code || m.roll,
+                title: m.name || 'Student Member',
+                subtitle: `${m.roll || m.member_code} • ${m.branch || 'CSE'}`,
+                code: m.roll || m.member_code,
+              }))
+            : booksList.slice(0, 30).map((b: any) => ({
+                id: b.id || b.accession_no || b.barcode,
+                title: b.title,
+                subtitle: `${b.author || ''} • Shelf: ${b.shelf_location || b.shelf || 'A1'}`,
+                code: b.accession_no || b.barcode || b.isbn || `LIB-BC-2026-${String(b.id).padStart(4, '0')}`,
+              }))
+        }
+        onScan={(code) => {
+          setScannerVisible(false);
+          handleScanResult(code);
+        }}
+      />
     </View>
   );
 };

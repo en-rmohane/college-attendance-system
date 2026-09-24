@@ -1160,31 +1160,58 @@ export const HomeScreen = ({ navigation }: any) => {
               </View>
             </View>
 
-            {/* Librarian Fast Counter Bar */}
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Library', { initialTab: 'counter' })}
-              activeOpacity={0.88}
-              style={[styles.counterQuickBanner, { backgroundColor: colors.primary }]}
-            >
-              <Ionicons name="barcode-outline" size={22} color="#FFFFFF" style={{ marginRight: 10 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.counterBannerTitle}>Open Circulation Counter Desk</Text>
-                <Text style={styles.counterBannerSub}>Issue, return, or renew books in 1-tap</Text>
-              </View>
-              <Feather name="arrow-right" size={18} color="#FFFFFF" />
-            </TouchableOpacity>
+            {/* Librarian Fast Action Banners */}
+            <View style={{ gap: 8, marginBottom: 14 }}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Library', { initialTab: 'barcodes' })}
+                activeOpacity={0.88}
+                style={[styles.counterQuickBanner, { backgroundColor: colors.purple }]}
+              >
+                <Ionicons name="barcode" size={24} color="#FFFFFF" style={{ marginRight: 10 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.counterBannerTitle}>Generate Book Barcode Stickers 🏷️</Text>
+                  <Text style={styles.counterBannerSub}>Generate printable batch barcodes (5, 10, 25, 50, 100) for physical books</Text>
+                </View>
+                <Feather name="arrow-right" size={18} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Library', { initialTab: 'counter' })}
+                activeOpacity={0.88}
+                style={[styles.counterQuickBanner, { backgroundColor: colors.primary }]}
+              >
+                <Ionicons name="swap-horizontal" size={22} color="#FFFFFF" style={{ marginRight: 10 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.counterBannerTitle}>Open Circulation Counter Desk</Text>
+                  <Text style={styles.counterBannerSub}>Issue, return, or renew books with live barcode scanner</Text>
+                </View>
+                <Feather name="arrow-right" size={18} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
 
             {/* Librarian Operations 6-Grid */}
             <View style={styles.sectionHeaderRow}>
               <View>
                 <Text style={[styles.sectionHeading, { color: colors.text }]}>Library Circulation & Inventory</Text>
                 <Text style={[styles.sectionSubHeading, { color: colors.textSecondary }]}>
-                  Counter desk, accession register, fines waiver & reports
+                  Counter desk, barcode generator, accession register & fine waivers
                 </Text>
               </View>
             </View>
 
             <View style={styles.actionThreeGrid}>
+              <AnimatedCard
+                containerStyle={styles.actionCol}
+                style={[styles.deskBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => navigation.navigate('Library', { initialTab: 'barcodes' })}
+              >
+                <View style={[styles.deskIconCircle, { backgroundColor: colors.softLavender }]}>
+                  <Ionicons name="barcode-outline" size={18} color={colors.purple} />
+                </View>
+                <Text style={[styles.deskTitle, { color: colors.purple }]} numberOfLines={1}>Barcodes</Text>
+                <Text style={[styles.deskSub, { color: colors.textSecondary }]} numberOfLines={1}>Generate Stickers</Text>
+              </AnimatedCard>
+
               <AnimatedCard
                 containerStyle={styles.actionCol}
                 style={[styles.deskBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -1214,11 +1241,11 @@ export const HomeScreen = ({ navigation }: any) => {
                 style={[styles.deskBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => navigation.navigate('Library', { initialTab: 'members' })}
               >
-                <View style={[styles.deskIconCircle, { backgroundColor: colors.softLavender }]}>
-                  <Ionicons name="people-outline" size={16} color={colors.purple} />
+                <View style={[styles.deskIconCircle, { backgroundColor: colors.softCyan }]}>
+                  <Ionicons name="people-outline" size={16} color={colors.teal} />
                 </View>
-                <Text style={[styles.deskTitle, { color: colors.purple }]} numberOfLines={1}>Members</Text>
-                <Text style={[styles.deskSub, { color: colors.textSecondary }]} numberOfLines={1}>Roster & Cards</Text>
+                <Text style={[styles.deskTitle, { color: colors.teal }]} numberOfLines={1}>Members</Text>
+                <Text style={[styles.deskSub, { color: colors.textSecondary }]} numberOfLines={1}>Roster & Dues</Text>
               </AnimatedCard>
 
               <AnimatedCard
@@ -1236,19 +1263,7 @@ export const HomeScreen = ({ navigation }: any) => {
               <AnimatedCard
                 containerStyle={styles.actionCol}
                 style={[styles.deskBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => navigation.navigate('Library', { initialTab: 'reports_audit' })}
-              >
-                <View style={[styles.deskIconCircle, { backgroundColor: colors.softCyan }]}>
-                  <Ionicons name="bar-chart-outline" size={16} color={colors.teal} />
-                </View>
-                <Text style={[styles.deskTitle, { color: colors.teal }]} numberOfLines={1}>Reports</Text>
-                <Text style={[styles.deskSub, { color: colors.textSecondary }]} numberOfLines={1}>Audit Logs</Text>
-              </AnimatedCard>
-
-              <AnimatedCard
-                containerStyle={styles.actionCol}
-                style={[styles.deskBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => navigation.navigate('Library', { initialTab: 'catalog' })}
+                onPress={() => navigation.navigate('Library', { initialTab: 'add_book' })}
               >
                 <View style={[styles.deskIconCircle, { backgroundColor: colors.softYellow }]}>
                   <Ionicons name="add-circle-outline" size={17} color={colors.amber} />

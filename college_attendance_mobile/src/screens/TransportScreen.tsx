@@ -21,6 +21,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { allBusRoutes, getBusPassForStudent } from '../services/collegeDatabase';
 import { api } from '../services/api';
+import { RealCameraScanner } from '../components/common/RealCameraScanner';
 
 export default function TransportScreen({ navigation, route }: any) {
   const { colors } = useTheme();
@@ -1365,156 +1366,45 @@ export default function TransportScreen({ navigation, route }: any) {
       </ScrollView>
 
       {/* =========================================================================
-          FULL-SCREEN OPTICAL CAMERA BARCODE / PASS SCANNER MODAL
+          FULL-SCREEN OPTICAL REAL CAMERA BARCODE / PASS SCANNER
           ========================================================================= */}
-      <Modal
+      <RealCameraScanner
         visible={showCameraScanner}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => setShowCameraScanner(false)}
-      >
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#0B0F19' }}>
-          {/* Top Camera Header Bar */}
-          <View style={styles.camTopBar}>
-            <TouchableOpacity
-              style={styles.camCloseBtn}
-              onPress={() => setShowCameraScanner(false)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="close" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <View style={{ flex: 1, alignItems: 'center' }}>
-              <Text style={styles.camTitle}>Transit Optical Scanner</Text>
-              <Text style={styles.camSub}>Align Student Barcode / QR within frame</Text>
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.camTorchBtn,
-                { backgroundColor: torchActive ? '#F59E0B' : 'rgba(255,255,255,0.15)' },
-              ]}
-              onPress={() => setTorchActive(!torchActive)}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name={torchActive ? 'flashlight' : 'flashlight-outline'}
-                size={20}
-                color={torchActive ? '#000' : '#FFF'}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* Camera Viewfinder View */}
-          <View style={styles.camViewfinderContainer}>
-            {/* Viewfinder Target Box */}
-            <View style={styles.targetFrame}>
-              {/* Corner Reticles */}
-              <View style={[styles.cornerBracket, styles.cornerTL]} />
-              <View style={[styles.cornerBracket, styles.cornerTR]} />
-              <View style={[styles.cornerBracket, styles.cornerBL]} />
-              <View style={[styles.cornerBracket, styles.cornerBR]} />
-
-              {/* Animated Laser Scanning Line */}
-              <Animated.View
-                style={[
-                  styles.laserLine,
-                  {
-                    transform: [
-                      {
-                        translateY: scanLineAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [10, 190],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              />
-
-              {/* Central Target Reticle */}
-              <View style={styles.centerAim}>
-                <MaterialCommunityIcons name="barcode-scan" size={48} color="rgba(255,255,255,0.3)" />
-                <Text style={styles.centerAimText}>AIM BARCODE HERE</Text>
-              </View>
-            </View>
-
-            {/* Instruction Banner */}
-            <View style={styles.camInstructionBox}>
-              <Feather name="info" size={14} color="#60A5FA" />
-              <Text style={styles.camInstructionText}>
-                Autofocus active • Point directly at student pass to authorize boarding
-              </Text>
-            </View>
-          </View>
-
-          {/* Bottom Live Scan Action Bar with Student Barcode Simulator */}
-          <View style={styles.camBottomBar}>
-            <Text style={styles.camRosterHeader}>
-              SELECT STUDENT TO SCAN FROM LIVE BUS ROSTER ({issuedPasses.length} REGISTERED):
-            </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.camRosterList}
-            >
-              {issuedPasses.map((p) => (
-                <TouchableOpacity
-                  key={p.id}
-                  style={styles.camStudentCard}
-                  onPress={() => {
-                    setShowCameraScanner(false);
-                    setVerifyToken(p.pass_number);
-                    setVerifying(true);
-                    setTimeout(async () => {
-                      try {
-                        const res = await api.verifyTransportPass(p.pass_number);
-                        if (res?.valid) {
-                          setVerifyResult(res);
-                          Alert.alert(
-                            'BOARDING APPROVED ✅',
-                            `Student: ${p.student_name} (${p.student_roll})\nRoute: ${p.route_name} • Stop: ${p.stop_name}\nBus: ${p.bus_number}\nPass: ACTIVE & VERIFIED`
-                          );
-                        } else {
-                          setVerifyResult({
-                            valid: true,
-                            pass: {
-                              student_name: p.student_name,
-                              student_roll: p.student_roll,
-                              route_name: p.route_name,
-                              bus_number: p.bus_number,
-                              stop_name: p.stop_name,
-                              valid_upto: p.valid_upto,
-                            },
-                          });
-                          Alert.alert(
-                            'BOARDING APPROVED ✅',
-                            `Student: ${p.student_name} (${p.student_roll})\nRoute: ${p.route_name} • Stop: ${p.stop_name}\nBus: ${p.bus_number}\nPass: ACTIVE & VERIFIED`
-                          );
-                        }
-                      } finally {
-                        setVerifying(false);
-                      }
-                    }, 400);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.camStudentAvatar}>
-                    <Text style={styles.camStudentInit}>{p.student_name.charAt(0)}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.camStudentName}>{p.student_name}</Text>
-                    <Text style={styles.camStudentRoll}>{p.student_roll} • {p.route_name}</Text>
-                    <Text style={styles.camStudentCode}>*{p.pass_number}*</Text>
-                  </View>
-                  <View style={styles.camScanPill}>
-                    <Feather name="check" size={12} color="#FFF" />
-                    <Text style={styles.camScanPillText}>SCAN</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </SafeAreaView>
-      </Modal>
+        onClose={() => setShowCameraScanner(false)}
+        title="Transit Optical Scanner"
+        subtitle="Align Student Barcode / QR within frame"
+        targetHint="AIM BARCODE / QR HERE"
+        mode="barcode"
+        realtimeItemsTitle="LIVE REGISTERED BUS PASS ROSTER"
+        realtimeItems={issuedPasses.map((p) => ({
+          id: p.id,
+          title: p.student_name,
+          subtitle: `${p.student_roll} • ${p.route_name}`,
+          code: p.pass_number,
+        }))}
+        onScan={async (scannedCode) => {
+          setShowCameraScanner(false);
+          setVerifyToken(scannedCode);
+          setVerifying(true);
+          try {
+            const res = await api.verifyTransportPass(scannedCode);
+            if (res?.valid) {
+              setVerifyResult(res);
+              Alert.alert(
+                'BOARDING APPROVED ✅',
+                `Student: ${res.pass?.student_name || 'Student'}\nRoll: ${res.pass?.student_roll || ''}\nRoute: ${res.pass?.route_name || ''}\nBus: ${res.pass?.bus_number || ''}\nPass: ACTIVE & VERIFIED`
+              );
+            } else {
+              setVerifyResult(res);
+              Alert.alert('Verification Notice', res?.error || 'Invalid or Expired Bus Pass Code');
+            }
+          } catch (e: any) {
+            Alert.alert('Error', e.message || 'Pass verification failed');
+          } finally {
+            setVerifying(false);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }
