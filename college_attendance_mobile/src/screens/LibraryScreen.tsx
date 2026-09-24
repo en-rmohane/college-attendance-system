@@ -558,41 +558,6 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
     ]);
   };
 
-  const handleAddBookSubmit = async () => {
-    if (!newBookTitle.trim() || !newBookAuthor.trim()) {
-      Alert.alert('Required', 'Title and Author are required');
-      return;
-    }
-    try {
-      const res = await api.addLibraryBook({
-        title: newBookTitle.trim(),
-        author: newBookAuthor.trim(),
-        isbn: newBookISBN.trim() || undefined,
-        publisher: newBookPublisher.trim() || undefined,
-        department: newBookDept,
-        shelf: newBookShelf,
-        rack: newBookRack,
-        price: parseFloat(newBookPrice) || 500,
-        copies_count: parseInt(newBookCopies, 10) || 1,
-        category_id: newBookCategory?.id || (categories[0]?.id || 1),
-        user_id: user?.id,
-      });
-
-      if (res?.success) {
-        Alert.alert('Success', res.message || 'Book added with copies');
-        setAddBookModalVisible(false);
-        setNewBookTitle('');
-        setNewBookAuthor('');
-        setNewBookISBN('');
-        loadData();
-      } else {
-        Alert.alert('Failed', res?.error || 'Could not add book');
-      }
-    } catch (e: any) {
-      Alert.alert('Error', e.message);
-    }
-  };
-
   const handleAddExtraCopies = async () => {
     if (!selectedBook) return;
     const count = parseInt(extraCopiesCount, 10) || 1;
