@@ -877,9 +877,9 @@ class ApiService {
     return {
       success: true,
       metrics: {
-        total_books: 21,
-        total_copies: 119,
-        available_copies: 119 - relevantIssues.length,
+        total_books: 0,
+        total_copies: 0,
+        available_copies: 0,
         issued_copies: relevantIssues.length,
         reserved_copies: 0,
         overdue_issues: 0,
@@ -887,7 +887,7 @@ class ApiService {
         issued_today: relevantIssues.length,
         returned_today: 0,
         total_outstanding_fines: 0,
-        active_members: 281,
+        active_members: 0,
       },
       categories: [],
       my_library: roll ? {

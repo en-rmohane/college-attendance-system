@@ -47,26 +47,26 @@ export const HomeScreen = ({ navigation }: any) => {
 
   // Accountant Fee State
   const [feeStats, setFeeStats] = useState({
-    total_expected: 30853000,
-    total_collected: 640100,
-    total_pending: 30212900,
-    today_collection: 20000,
-    defaulters_count: 53,
-    collection_rate: 66.5,
+    total_expected: 0,
+    total_collected: 0,
+    total_pending: 0,
+    today_collection: 0,
+    defaulters_count: 0,
+    collection_rate: 0,
   });
 
   // Librarian LMS State
   const [libraryStats, setLibraryStats] = useState({
-    total_books: 6,
-    total_copies: 45,
-    available_copies: 40,
-    issued_copies: 5,
-    overdue_issues: 2,
-    issued_today: 3,
-    returned_today: 2,
-    renewed_today: 1,
-    total_outstanding_fines: 120,
-    active_members: 185,
+    total_books: 0,
+    total_copies: 0,
+    available_copies: 0,
+    issued_copies: 0,
+    overdue_issues: 0,
+    issued_today: 0,
+    returned_today: 0,
+    renewed_today: 0,
+    total_outstanding_fines: 0,
+    active_members: 0,
   });
 
   // Staggered Entrance animation values (0ms, 80ms, 160ms, 240ms, 320ms)
