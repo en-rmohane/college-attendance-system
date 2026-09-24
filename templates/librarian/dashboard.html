@@ -256,6 +256,7 @@
                                         <th>Issue Date</th>
                                         <th>Due Date</th>
                                         <th>Status</th>
+                                        <th class="text-end">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -275,6 +276,16 @@
                                             {% else %}
                                                 <span class="badge bg-success">{{ b.days_remaining }}d Active</span>
                                             {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <form method="POST" action="{{ url_for('librarian_return_book') }}" class="d-inline" onsubmit="return confirm('Confirm receiving return for {{ b.title }} ({{ b.accession_no }})?');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+                                                <input type="hidden" name="copy_identifier" value="{{ b.accession_no }}">
+                                                <input type="hidden" name="roll" value="{{ searched_roll }}">
+                                                <button type="submit" class="btn btn-sm btn-success fw-bold px-3 shadow-sm">
+                                                    <i class="bi bi-box-arrow-in-down me-1"></i> Receive Return
+                                                </button>
+                                            </form>
                                         </td>
                                     </tr>
                                     {% endfor %}

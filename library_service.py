@@ -326,7 +326,10 @@ class LibraryMemberService:
         if not member:
             return
         try:
-            actual_count = LibraryIssue.query.filter_by(member_id=member.id, status='Issued').count()
+            actual_count = LibraryIssue.query.filter(
+                LibraryIssue.member_id == member.id,
+                LibraryIssue.status.in_(['Issued', 'Overdue'])
+            ).count()
             if member.current_issued_count != actual_count:
                 member.current_issued_count = actual_count
                 db.session.commit()
@@ -763,37 +766,102 @@ class LibraryCirculationService:
     @classmethod
     def return_book(cls, copy_identifier, receiver_user_id=None, condition="Good", remarks=None, waive_late_fine=False, fine_payment_mode="Cash"):
         """
-        Atomic Book Return Workflow:
-        1. Find Active Issue for copy
+        Atomic & Resilient Book Return Workflow:
+        1. Resolve active issue by Issue ID, Issue Code, Accession No, Barcode, Copy ID, or Member Roll
         2. Calculate Late Days & Fine (₹5/day after grace period)
-        3. Update Issue -> Status 'Returned', condition_on_return
+        3. Update Issue -> Status 'Returned', return_date, condition_on_return
         4. Record LibraryReturn
         5. If Fine > 0, create LibraryFine or mark Waived/Paid
         6. Update Copy status -> 'Available' (or 'Damaged' / 'Under Repair')
         7. Update Book Available Copies
-        8. Update Member current_issued_count
+        8. Accurately recalculate Member current_issued_count
         9. Trigger next reservation in queue if any
         10. Audit Log & Return Receipt
         """
         try:
+            issue = None
             copy = None
-            if isinstance(copy_identifier, int) or (isinstance(copy_identifier, str) and copy_identifier.isdigit()):
-                copy = LibraryBookCopy.query.get(int(copy_identifier))
+            code_str = str(copy_identifier).strip() if copy_identifier is not None else ""
+
+            if not code_str:
+                return False, "Book or Issue identifier is required to process return.", None
+
+            # 1. Try resolving directly by Issue ID (if integer)
+            if code_str.isdigit():
+                num_val = int(code_str)
+                issue_candidate = LibraryIssue.query.get(num_val)
+                if issue_candidate and issue_candidate.status in ["Issued", "Overdue"]:
+                    issue = issue_candidate
+                    copy = issue.copy or LibraryBookCopy.query.get(issue.copy_id)
+
+            # 2. Try resolving directly by Issue Code (e.g. ISS-2026...)
+            if not issue:
+                issue_candidate = LibraryIssue.query.filter(
+                    LibraryIssue.issue_code.ilike(code_str),
+                    LibraryIssue.status.in_(["Issued", "Overdue"])
+                ).order_by(LibraryIssue.id.desc()).first()
+                if issue_candidate:
+                    issue = issue_candidate
+                    copy = issue.copy or LibraryBookCopy.query.get(issue.copy_id)
+
+            # 3. Try resolving by Accession Number in LibraryIssue table directly
+            if not issue:
+                issue_candidate = LibraryIssue.query.filter(
+                    LibraryIssue.accession_no.ilike(code_str),
+                    LibraryIssue.status.in_(["Issued", "Overdue"])
+                ).order_by(LibraryIssue.id.desc()).first()
+                if issue_candidate:
+                    issue = issue_candidate
+                    copy = issue.copy or LibraryBookCopy.query.get(issue.copy_id)
+
+            # 4. Try resolving by Copy Accession No / Barcode / QR Code
             if not copy:
-                copy = LibraryCatalogService.find_copy_by_scan(copy_identifier)
+                copy = LibraryBookCopy.query.filter(
+                    or_(
+                        LibraryBookCopy.accession_no.ilike(code_str),
+                        LibraryBookCopy.barcode.ilike(code_str),
+                        LibraryBookCopy.qr_code.ilike(code_str)
+                    )
+                ).first()
+
+            if not copy and code_str.isdigit():
+                copy = LibraryBookCopy.query.get(int(code_str))
 
             if not copy:
-                return False, f"Book copy not found for identifier '{copy_identifier}'", None
+                copy = LibraryCatalogService.find_copy_by_scan(code_str)
 
-            issue = LibraryIssue.query.filter_by(copy_id=copy.id, status="Issued").order_by(LibraryIssue.id.desc()).first()
+            # 5. If copy found, find its active issue
+            if not issue and copy:
+                issue = LibraryIssue.query.filter(
+                    LibraryIssue.copy_id == copy.id,
+                    LibraryIssue.status.in_(["Issued", "Overdue"])
+                ).order_by(LibraryIssue.id.desc()).first()
+
+            # 6. If still no issue found, check if code_str is a Member Roll / Member Code with active issues
             if not issue:
-                # Check overdue status
-                issue = LibraryIssue.query.filter_by(copy_id=copy.id, status="Overdue").order_by(LibraryIssue.id.desc()).first()
+                member_candidate = LibraryMemberService.get_member_by_code_or_roll(code_str)
+                if member_candidate:
+                    issue = LibraryIssue.query.filter(
+                        LibraryIssue.member_id == member_candidate.id,
+                        LibraryIssue.status.in_(["Issued", "Overdue"])
+                    ).order_by(LibraryIssue.id.desc()).first()
+                    if issue:
+                        copy = issue.copy or LibraryBookCopy.query.get(issue.copy_id)
+
             if not issue:
-                return False, f"No active issue record found for copy '{copy.accession_no}'. Copy status is currently '{copy.status}'.", None
+                # Check if this copy or issue was already returned
+                if copy:
+                    past_ret = LibraryIssue.query.filter_by(copy_id=copy.id, status="Returned").order_by(LibraryIssue.id.desc()).first()
+                    if past_ret:
+                        return False, f"Book copy '{copy.accession_no}' has already been returned on {past_ret.return_date.strftime('%d-%b-%Y') if past_ret.return_date else 'earlier date'}.", None
+                    return False, f"No active issue record found for copy '{copy.accession_no}'. Copy status is currently '{copy.status}'.", None
+                return False, f"No active book issue record found for identifier '{code_str}'.", None
+
+            if not copy:
+                copy = issue.copy or LibraryBookCopy.query.get(issue.copy_id)
 
             member = issue.member
-            book = copy.book
+            book = copy.book if copy else issue.book
             today = date.today()
             due_date = issue.due_date
 
@@ -811,7 +879,7 @@ class LibraryCirculationService:
             # Record Return
             ret = LibraryReturn(
                 issue_id=issue.id,
-                copy_id=copy.id,
+                copy_id=copy.id if copy else issue.copy_id,
                 member_id=member.id,
                 return_date=today,
                 days_late=late_days,
@@ -823,7 +891,7 @@ class LibraryCirculationService:
             )
             db.session.add(ret)
 
-            # Update Issue
+            # Update Issue to Returned
             issue.status = "Returned"
             issue.return_date = today
             issue.returned_by = receiver_user_id
@@ -864,18 +932,27 @@ class LibraryCirculationService:
                     member.outstanding_fine += fine_amount
                 db.session.add(fine_record)
 
-            # Update copy condition & status
-            copy.condition = condition
-            if condition in ['Damaged', 'Poor']:
-                copy.status = "Damaged"
-            else:
-                copy.status = "Available"
-                book.available_copies = min(book.total_copies, book.available_copies + 1)
+            # Update physical copy condition & status
+            if copy:
+                copy.condition = condition
+                if condition in ['Damaged', 'Poor']:
+                    copy.status = "Damaged"
+                else:
+                    copy.status = "Available"
 
-            member.current_issued_count = max(0, member.current_issued_count - 1)
+            # Recalculate book available copies
+            if book:
+                book.available_copies = LibraryBookCopy.query.filter_by(book_id=book.id, status='Available', is_active=True).count()
+
+            # Recalculate member active issued count exactly from active issues
+            active_count = LibraryIssue.query.filter(
+                LibraryIssue.member_id == member.id,
+                LibraryIssue.status.in_(["Issued", "Overdue"])
+            ).count()
+            member.current_issued_count = active_count
 
             # Check next in reservation queue
-            if copy.status == "Available":
+            if copy and copy.status == "Available" and book:
                 next_res = LibraryReservation.query.filter_by(
                     book_id=book.id,
                     status="Pending"
@@ -893,15 +970,15 @@ class LibraryCirculationService:
 
             LibraryAuditService.log(
                 "BOOK_RETURNED", "LibraryReturn", entity_id=ret.id,
-                details=f"Returned '{book.title}' (Copy: {copy.accession_no}) by {member.member_code}. Late: {late_days}d, Fine: ₹{fine_amount}",
+                details=f"Returned '{book.title if book else issue.accession_no}' (Copy: {issue.accession_no}) by {member.member_code}. Late: {late_days}d, Fine: ₹{fine_amount}",
                 user_id=receiver_user_id
             )
 
             receipt = {
                 "return_id": ret.id,
                 "issue_code": issue.issue_code,
-                "book_title": book.title,
-                "accession_no": copy.accession_no,
+                "book_title": book.title if book else "Library Book",
+                "accession_no": issue.accession_no,
                 "member_code": member.member_code,
                 "member_name": member.student.name if member.student else (member.faculty.name if member.faculty else "Member"),
                 "issue_date": issue.issue_date.strftime('%d-%b-%Y'),
@@ -913,7 +990,7 @@ class LibraryCirculationService:
                 "condition": condition
             }
 
-            msg = f"Book '{book.title}' returned successfully."
+            msg = f"Book '{book.title if book else issue.accession_no}' returned successfully and archived to student history."
             if fine_amount > 0:
                 msg += f" Late: {late_days} days. Fine assessed: ₹{fine_amount:.2f} ({ret.fine_status})."
             return True, msg, receipt
@@ -1325,23 +1402,28 @@ class LibraryReportService:
                 "reservation_date": r.reservation_date.strftime('%Y-%m-%d')
             })
 
-        # History
+        # History (Completed returned issues)
         history = []
         hist_issues = LibraryIssue.query.filter_by(
             member_id=member.id,
             status="Returned"
-        ).order_by(LibraryIssue.return_date.desc()).limit(20).all()
+        ).order_by(LibraryIssue.return_date.desc()).limit(50).all()
 
         for h in hist_issues:
             history.append({
                 "issue_id": h.id,
-                "title": h.book.title,
-                "author": h.book.author,
+                "issue_code": h.issue_code,
+                "book_id": h.book_id,
+                "title": h.book.title if h.book else "Library Book",
+                "author": h.book.author if h.book else "Author",
                 "accession_no": h.accession_no,
-                "issue_date": h.issue_date.strftime('%Y-%m-%d'),
-                "due_date": h.due_date.strftime('%Y-%m-%d'),
+                "issue_date": h.issue_date.strftime('%Y-%m-%d') if h.issue_date else "N/A",
+                "due_date": h.due_date.strftime('%Y-%m-%d') if h.due_date else "N/A",
                 "return_date": h.return_date.strftime('%Y-%m-%d') if h.return_date else "N/A",
-                "fine_paid": h.fine_paid
+                "fine_paid": h.fine_paid or 0.0,
+                "fine_accrued": h.fine_accrued or 0.0,
+                "condition_on_return": h.condition_on_return or "Good",
+                "status": "Returned"
             })
 
         return {

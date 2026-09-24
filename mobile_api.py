@@ -2015,16 +2015,24 @@ def issue_library_book():
 
 @api_bp.route('/library/return', methods=['POST'])
 def return_library_book():
-    """Return book copy, assess late fines, and update physical copy status"""
+    """Return book copy, assess late fines, update physical copy status, and archive to student history"""
     data = request.get_json() or {}
-    copy_identifier = str(data.get('copy_identifier') or '').strip()
+    copy_identifier = (
+        data.get('copy_identifier') or
+        data.get('accession_no') or
+        data.get('issue_code') or
+        data.get('issue_id') or
+        data.get('barcode') or
+        ''
+    )
+    copy_identifier = str(copy_identifier).strip()
     condition = data.get('condition', 'Good')
     remarks = data.get('remarks')
     waive_fine = data.get('waive_late_fine', False)
     receiver_user_id = data.get('user_id')
 
     if not copy_identifier:
-        return jsonify({"success": False, "error": "Book Accession Number or Barcode required"}), 400
+        return jsonify({"success": False, "error": "Book Accession Number, Barcode, or Issue ID is required"}), 400
 
     success, msg, receipt = LibraryCirculationService.return_book(
         copy_identifier=copy_identifier,

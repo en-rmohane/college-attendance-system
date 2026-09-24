@@ -7182,10 +7182,10 @@ def librarian_dashboard():
     total_books = LibraryBook.query.count()
     total_copies = LibraryBookCopy.query.count()
     available_copies = LibraryBookCopy.query.filter_by(status='Available').count()
-    issued_copies = LibraryBookCopy.query.filter_by(status='Issued').count()
+    issued_copies = LibraryBookCopy.query.filter(LibraryBookCopy.status.in_(['Issued', 'Overdue'])).count()
 
     today = date.today()
-    active_issues = LibraryIssue.query.filter_by(status='Issued').all()
+    active_issues = LibraryIssue.query.filter(LibraryIssue.status.in_(['Issued', 'Overdue'])).all()
     overdue_count = sum(1 for iss in active_issues if iss.due_date and iss.due_date < today)
     
     total_members = LibraryMember.query.count()
@@ -7237,6 +7237,35 @@ def librarian_dashboard():
         searched_member_data=searched_member_data,
         all_students=all_students
     )
+
+
+@app.route('/librarian/return_book', methods=['POST'])
+@login_required
+def librarian_return_book():
+    """Web endpoint to process book return and redirect with flash message"""
+    if current_user.role not in ['librarian', 'admin', 'accountant']:
+        flash('Unauthorized access to Library circulation desk.', 'danger')
+        return redirect(url_for('librarian_dashboard'))
+
+    copy_identifier = request.form.get('copy_identifier') or request.form.get('accession_no') or request.form.get('issue_id') or ''
+    roll = request.form.get('roll', '').strip()
+    waive_late_fine = request.form.get('waive_late_fine') == 'on'
+
+    success, msg, receipt = LibraryCirculationService.return_book(
+        copy_identifier=copy_identifier,
+        receiver_user_id=current_user.id,
+        waive_late_fine=waive_late_fine
+    )
+
+    if success:
+        flash(f"Book Return Recorded: {msg}", 'success')
+    else:
+        flash(f"Return Failed: {msg}", 'danger')
+
+    redirect_url = url_for('librarian_dashboard')
+    if roll:
+        redirect_url += f"?roll={roll}#studentLookupSection"
+    return redirect(redirect_url)
 
 
 @app.route('/librarian/ajax-student-dossier/<string:roll>')

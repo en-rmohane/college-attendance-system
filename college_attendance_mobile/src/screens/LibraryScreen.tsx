@@ -290,6 +290,61 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
     }
   };
 
+  const handleDirectReturn = (item: { issue_id?: number; accession_no?: string; title?: string; member_roll?: string }) => {
+    const identifier = item.accession_no || (item.issue_id ? String(item.issue_id) : '');
+    const title = item.title || item.accession_no || 'this book';
+
+    Alert.alert(
+      'Confirm Book Return',
+      `Return "${title}" (Acc: ${item.accession_no || item.issue_id})?\n\nThe book will be cleared from active borrowings and archived to student history.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm Return',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              const res = await api.returnLibraryBook({
+                copy_identifier: identifier,
+                user_id: user?.id,
+                condition: 'Good',
+              });
+
+              if (res?.success) {
+                setReceiptData(res.receipt);
+                setReceiptType('return');
+                setReceiptModalVisible(true);
+
+                // Reload all system data
+                await loadData();
+
+                // If counter student lookup is active, refresh it immediately
+                if (counterMemberInput.trim()) {
+                  await handleCounterLookup(counterMemberInput.trim());
+                } else if (item.member_roll) {
+                  await handleCounterLookup(item.member_roll);
+                }
+
+                // If dossier modal is open, refresh it immediately
+                const targetRoll = item.member_roll || selectedMemberDossier?.member?.roll || selectedMemberDossier?.member?.member_code;
+                if (targetRoll && memberModalVisible) {
+                  const dosRes = await api.getLibraryMemberProfile(targetRoll);
+                  if (dosRes?.success) setSelectedMemberDossier(dosRes);
+                }
+              } else {
+                Alert.alert('Return Failed', res?.error || 'Could not return book');
+              }
+            } catch (e: any) {
+              Alert.alert('Error', e.message || 'Return failed');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleReturnBook = async () => {
     if (!counterCopyInput.trim()) {
       Alert.alert('Required', 'Please enter or scan Book Accession Number or Barcode to return');
@@ -312,7 +367,12 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
         setCounterCopyInput('');
         setCounterRemarks('');
         setCounterWaiveFine(false);
-        loadData();
+
+        // Instant refresh of library state & counter student snapshot
+        await loadData();
+        if (counterMemberInput.trim()) {
+          await handleCounterLookup(counterMemberInput.trim());
+        }
       } else {
         Alert.alert('Return Failed', res?.error || 'Could not return book');
       }
@@ -793,14 +853,16 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
 
                       <View style={{ gap: 4, alignItems: 'flex-end' }}>
                         <TouchableOpacity
-                          onPress={() => {
-                            setCounterCopyInput(b.accession_no);
-                            Alert.alert('Acc No Selected', `Accession ${b.accession_no} filled in return field.`);
-                          }}
+                          onPress={() => handleDirectReturn({
+                            issue_id: b.issue_id,
+                            accession_no: b.accession_no,
+                            title: b.title,
+                            member_roll: counterStudentSnapshot?.member?.roll || counterStudentSnapshot?.member?.member_code || counterMemberInput,
+                          })}
                           style={[styles.snapshotReturnBtn, { backgroundColor: colors.green }]}
                         >
                           <Ionicons name="arrow-down-circle-outline" size={12} color="#FFF" style={{ marginRight: 2 }} />
-                          <Text style={styles.snapshotBtnText}>Select Return</Text>
+                          <Text style={styles.snapshotBtnText}>Return Now</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -1166,15 +1228,30 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
                   <Text style={[styles.renewCountText, { color: colors.textMuted }]}>
                     Renewals: {item.renew_count}/{item.max_renewals}
                   </Text>
-                  {item.renew_count < item.max_renewals && (
+                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                     <TouchableOpacity
-                      onPress={() => handleRenewBook(item.issue_id)}
-                      style={[styles.renewBtn, { backgroundColor: colors.primarySubtle }]}
+                      onPress={() => handleDirectReturn({
+                        issue_id: item.issue_id,
+                        accession_no: item.accession_no,
+                        title: item.title,
+                        member_roll: user?.roll || user?.student_roll || user?.username,
+                      })}
+                      style={[styles.renewBtn, { backgroundColor: colors.softGreen, borderColor: colors.green, borderWidth: 1 }]}
                     >
-                      <Ionicons name="refresh-outline" size={14} color={colors.primary} style={{ marginRight: 4 }} />
-                      <Text style={[styles.renewBtnText, { color: colors.primary }]}>Request Renewal</Text>
+                      <Ionicons name="arrow-down-circle-outline" size={14} color={colors.green} style={{ marginRight: 4 }} />
+                      <Text style={[styles.renewBtnText, { color: colors.green, fontWeight: '700' }]}>Return Book</Text>
                     </TouchableOpacity>
-                  )}
+
+                    {item.renew_count < item.max_renewals && (
+                      <TouchableOpacity
+                        onPress={() => handleRenewBook(item.issue_id)}
+                        style={[styles.renewBtn, { backgroundColor: colors.primarySubtle }]}
+                      >
+                        <Ionicons name="refresh-outline" size={14} color={colors.primary} style={{ marginRight: 4 }} />
+                        <Text style={[styles.renewBtnText, { color: colors.primary }]}>Request Renewal</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               </View>
             );
@@ -1366,11 +1443,12 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
                 {/* Actions */}
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
                   <TouchableOpacity
-                    onPress={() => {
-                      setCounterMemberInput(item.roll || item.member_code);
-                      setCounterCopyInput(item.accession_no);
-                      setActiveTab('counter');
-                    }}
+                    onPress={() => handleDirectReturn({
+                      issue_id: item.issue_id,
+                      accession_no: item.accession_no,
+                      title: item.title,
+                      member_roll: item.roll || item.member_code,
+                    })}
                     style={[styles.smallBtn, { backgroundColor: colors.green, paddingVertical: 6 }]}
                   >
                     <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '700' }}>Receive Return</Text>
@@ -1975,15 +2053,15 @@ export const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation, route 
 
                             <View style={{ gap: 6, justifyContent: 'center' }}>
                               <TouchableOpacity
-                                onPress={() => {
-                                  setMemberModalVisible(false);
-                                  setCounterMemberInput(selectedMemberDossier?.member?.roll || selectedMemberDossier?.member?.member_code);
-                                  setCounterCopyInput(b.accession_no);
-                                  setActiveTab('counter');
-                                }}
+                                onPress={() => handleDirectReturn({
+                                  issue_id: b.issue_id,
+                                  accession_no: b.accession_no,
+                                  title: b.title,
+                                  member_roll: selectedMemberDossier?.member?.roll || selectedMemberDossier?.member?.member_code,
+                                })}
                                 style={[styles.smallBtn, { backgroundColor: colors.green }]}
                               >
-                                <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '700' }}>Return</Text>
+                                <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '700' }}>Return Book</Text>
                               </TouchableOpacity>
 
                               <TouchableOpacity

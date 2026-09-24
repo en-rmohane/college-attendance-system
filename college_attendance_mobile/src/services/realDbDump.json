@@ -42804,6 +42804,23 @@
       "status": "Active",
       "remarks": null,
       "created_at": "2026-09-21 21:43:52.880573"
+    },
+    {
+      "id": 205,
+      "member_code": "LIB-S-0545AD231001",
+      "user_id": 406,
+      "student_id": 187,
+      "faculty_id": null,
+      "member_type": "Student",
+      "max_books": 3,
+      "loan_period_days": 14,
+      "current_issued_count": 0,
+      "outstanding_fine": 0.0,
+      "membership_date": "2026-09-23",
+      "expiry_date": null,
+      "status": "Active",
+      "remarks": null,
+      "created_at": "2026-09-23 20:53:36.699300"
     }
   ],
   "library_settings": [],
@@ -42830,7 +42847,7 @@
       "keywords": null,
       "cover_image": null,
       "total_copies": 6,
-      "available_copies": 6,
+      "available_copies": 3,
       "shelf": "Shelf A1",
       "rack": "Rack 1",
       "row_num": "Row 1",
@@ -42838,7 +42855,7 @@
       "price": 850.0,
       "status": "Available",
       "created_at": "2026-09-21 21:43:52.122344",
-      "updated_at": "2026-09-21 21:43:52.122344"
+      "updated_at": "2026-09-23 20:52:05.904287"
     },
     {
       "id": 2,
