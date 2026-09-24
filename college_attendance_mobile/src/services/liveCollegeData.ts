@@ -10,8 +10,8 @@ export const realFaculties = [
     "phone": "+91 98261 92533",
     "designation": "Professor & HOD",
     "branches": [
-      "CSE",
-      "AD"
+      "AD",
+      "CSE"
     ],
     "department": "Computer Science & Engineering",
     "assignedSubjects": [
@@ -28,8 +28,8 @@ export const realFaculties = [
     "phone": "+91 98261 92644",
     "designation": "Assistant Professor",
     "branches": [
-      "CSE",
-      "AD"
+      "AD",
+      "CSE"
     ],
     "department": "Computer Science & Engineering",
     "assignedSubjects": [
@@ -69,8 +69,8 @@ export const realFaculties = [
     "phone": "+91 98261 92866",
     "designation": "Assistant Professor",
     "branches": [
-      "CSE",
-      "AD"
+      "AD",
+      "CSE"
     ],
     "department": "Computer Science & Engineering",
     "assignedSubjects": [
@@ -92,8 +92,8 @@ export const realFaculties = [
     "phone": "+91 98261 92977",
     "designation": "Assistant Professor",
     "branches": [
-      "CSE",
-      "AD"
+      "AD",
+      "CSE"
     ],
     "department": "Computer Science & Engineering",
     "assignedSubjects": [
@@ -132,8 +132,8 @@ export const realFaculties = [
     "phone": "+91 98261 93199",
     "designation": "Assistant Professor",
     "branches": [
-      "CSE",
-      "AD"
+      "AD",
+      "CSE"
     ],
     "department": "Computer Science & Engineering",
     "assignedSubjects": [
@@ -152,8 +152,8 @@ export const realFaculties = [
     "phone": "+91 98261 93310",
     "designation": "Assistant Professor",
     "branches": [
-      "CSE",
-      "AD"
+      "AD",
+      "CSE"
     ],
     "department": "Computer Science & Engineering",
     "assignedSubjects": [
@@ -169,8 +169,8 @@ export const realFaculties = [
     "phone": "+91 98261 93421",
     "designation": "Assistant Professor",
     "branches": [
-      "CSE",
-      "AD"
+      "AD",
+      "CSE"
     ],
     "department": "Computer Science & Engineering",
     "assignedSubjects": [
@@ -187,8 +187,8 @@ export const realFaculties = [
     "phone": "+91 98261 93532",
     "designation": "Assistant Professor",
     "branches": [
-      "CSE",
-      "AD"
+      "AD",
+      "CSE"
     ],
     "department": "Computer Science & Engineering",
     "assignedSubjects": [
@@ -206,8 +206,8 @@ export const realFaculties = [
     "phone": "+91 98261 93643",
     "designation": "Assistant Professor",
     "branches": [
-      "CSE",
-      "AD"
+      "AD",
+      "CSE"
     ],
     "department": "Computer Science & Engineering",
     "assignedSubjects": [
