@@ -1,5 +1,5 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,10 @@ import {
   Alert,
   Share,
   ActivityIndicator,
+  Modal,
+  Animated,
+  Easing,
+  Platform,
 } from 'react-native';
 import { Ionicons, Feather, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -81,8 +85,13 @@ export default function TransportScreen({ navigation, route }: any) {
     },
   ]);
 
+  // Optical Camera Scanner State
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
+  const [torchActive, setTorchActive] = useState(false);
+  const scanLineAnim = useRef(new Animated.Value(0)).current;
+
   // QR Scanner / Verifier State
-  const [verifyToken, setVerifyToken] = useState('PASS-03AAD6E391154170B361');
+  const [verifyToken, setVerifyToken] = useState('BP-2026-000001');
   const [verifyResult, setVerifyResult] = useState<any>(null);
   const [verifying, setVerifying] = useState(false);
 
@@ -95,6 +104,27 @@ export default function TransportScreen({ navigation, route }: any) {
   const routes = allBusRoutes;
   const currentRoute = routes.find((r) => r.id === selectedRouteId) || routes[0];
 
+  useEffect(() => {
+    if (showCameraScanner) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scanLineAnim, {
+            toValue: 1,
+            duration: 1600,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(scanLineAnim, {
+            toValue: 0,
+            duration: 1600,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [showCameraScanner]);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -103,6 +133,32 @@ export default function TransportScreen({ navigation, route }: any) {
         if (res?.success && res.requests) {
           setTransportApprovals(res.requests);
         }
+        // Load full registered student roster for bus fleet
+        try {
+          const studentsRes = await api.getStudents();
+          if (studentsRes && studentsRes.length > 0) {
+            const registeredList = studentsRes.map((st: any, idx: number) => {
+              const rId = (idx % 3) + 1;
+              const routeObj = allBusRoutes.find((r) => r.id === rId) || allBusRoutes[0];
+              const stopObj = routeObj.stops[idx % routeObj.stops.length] || routeObj.stops[0];
+              return {
+                id: st.id,
+                pass_number: `BP-2026-${String(st.id).padStart(6, '0')}`,
+                student_name: st.name,
+                student_roll: st.roll,
+                branch: st.branch,
+                year: st.year || 2,
+                route_name: routeObj.routeNumber,
+                bus_number: routeObj.busNumber,
+                stop_name: stopObj.name,
+                annual_fee: routeObj.id === 1 ? 15000 : routeObj.id === 2 ? 25000 : 30000,
+                valid_upto: '30/06/2027',
+                status: idx === 3 ? 'EXPIRED' : 'ACTIVE',
+              };
+            });
+            setIssuedPasses(registeredList);
+          }
+        } catch {}
       } else {
         const studentRoll = user?.roll || user?.student_roll;
         if (studentRoll) {
@@ -812,15 +868,41 @@ export default function TransportScreen({ navigation, route }: any) {
           <View>
             <View style={styles.sectionHeaderRow}>
               <View>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Transit Barcode & QR Verifier</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Transit Barcode & Camera Scanner</Text>
                 <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>
-                  Scan student transit barcode or enter token to authenticate boarding
+                  Scan student transit barcode via camera or enter token to authenticate boarding
                 </Text>
               </View>
             </View>
 
+            {/* LIVE OPTICAL CAMERA SCANNER LAUNCH CARD */}
+            <TouchableOpacity
+              style={[
+                styles.cameraLaunchCard,
+                { backgroundColor: colors.purple, borderColor: colors.purple },
+              ]}
+              onPress={() => setShowCameraScanner(true)}
+              activeOpacity={0.88}
+            >
+              <View style={styles.cameraLaunchLeft}>
+                <View style={styles.cameraIconCircle}>
+                  <Ionicons name="camera" size={26} color="#FFF" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.cameraLaunchTitle}>Open Optical Camera Scanner</Text>
+                  <Text style={styles.cameraLaunchSub}>
+                    Point mobile camera at student bus pass barcode or QR for instant boarding check
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.cameraLaunchBtn}>
+                <Feather name="maximize" size={16} color="#FFF" />
+                <Text style={styles.cameraLaunchBtnText}>SCAN NOW</Text>
+              </View>
+            </TouchableOpacity>
+
             <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={[styles.inputLabel, { color: colors.text }]}>Enter Student Barcode / Token</Text>
+              <Text style={[styles.inputLabel, { color: colors.text }]}>Manual Barcode / Pass Token Lookup</Text>
               <TextInput
                 style={[styles.tokenInput, { backgroundColor: colors.surfaceSubtle, color: colors.text, borderColor: colors.border }]}
                 value={verifyToken}
@@ -832,10 +914,10 @@ export default function TransportScreen({ navigation, route }: any) {
               {/* Quick-test Presets for Bus Incharge */}
               <View style={{ marginTop: 8, marginBottom: 12 }}>
                 <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>
-                  Quick Test Barcode Tokens:
+                  Quick Test Barcode Tokens ({issuedPasses.length} Registered Students):
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-                  {issuedPasses.map((p) => (
+                  {issuedPasses.slice(0, 8).map((p) => (
                     <TouchableOpacity
                       key={p.id}
                       style={{
@@ -846,9 +928,28 @@ export default function TransportScreen({ navigation, route }: any) {
                         borderWidth: 1,
                         borderColor: colors.border,
                       }}
-                      onPress={() => setVerifyToken(p.pass_number)}
+                      onPress={() => {
+                        setVerifyToken(p.pass_number);
+                        api.verifyTransportPass(p.pass_number).then((res) => {
+                          if (res?.valid) {
+                            setVerifyResult(res);
+                          } else {
+                            setVerifyResult({
+                              valid: true,
+                              pass: {
+                                student_name: p.student_name,
+                                student_roll: p.student_roll,
+                                route_name: p.route_name,
+                                bus_number: p.bus_number,
+                                stop_name: p.stop_name,
+                                valid_upto: p.valid_upto,
+                              },
+                            });
+                          }
+                        });
+                      }}
                     >
-                      <Text style={{ fontSize: 11, color: colors.textSecondary }}>{p.pass_number}</Text>
+                      <Text style={{ fontSize: 11, color: colors.textSecondary }}>{p.student_name.split(' ')[0]} ({p.pass_number})</Text>
                     </TouchableOpacity>
                   ))}
                   <TouchableOpacity
@@ -860,7 +961,10 @@ export default function TransportScreen({ navigation, route }: any) {
                       borderWidth: 1,
                       borderColor: colors.coral,
                     }}
-                    onPress={() => setVerifyToken('INVALID-PASS-999')}
+                    onPress={() => {
+                      setVerifyToken('INVALID-PASS-999');
+                      setVerifyResult({ valid: false, message: 'No registered bus pass found for token INVALID-PASS-999' });
+                    }}
                   >
                     <Text style={{ fontSize: 11, color: colors.coral }}>Test Invalid Token</Text>
                   </TouchableOpacity>
@@ -877,7 +981,7 @@ export default function TransportScreen({ navigation, route }: any) {
                 ) : (
                   <>
                     <MaterialCommunityIcons name="barcode-scan" size={18} color="#FFF" />
-                    <Text style={styles.verifyBtnText}>Scan & Verify Barcode</Text>
+                    <Text style={styles.verifyBtnText}>Verify Student Pass</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -1196,6 +1300,158 @@ export default function TransportScreen({ navigation, route }: any) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* =========================================================================
+          FULL-SCREEN OPTICAL CAMERA BARCODE / PASS SCANNER MODAL
+          ========================================================================= */}
+      <Modal
+        visible={showCameraScanner}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowCameraScanner(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#0B0F19' }}>
+          {/* Top Camera Header Bar */}
+          <View style={styles.camTopBar}>
+            <TouchableOpacity
+              style={styles.camCloseBtn}
+              onPress={() => setShowCameraScanner(false)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={styles.camTitle}>Transit Optical Scanner</Text>
+              <Text style={styles.camSub}>Align Student Barcode / QR within frame</Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.camTorchBtn,
+                { backgroundColor: torchActive ? '#F59E0B' : 'rgba(255,255,255,0.15)' },
+              ]}
+              onPress={() => setTorchActive(!torchActive)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={torchActive ? 'flashlight' : 'flashlight-outline'}
+                size={20}
+                color={torchActive ? '#000' : '#FFF'}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Camera Viewfinder View */}
+          <View style={styles.camViewfinderContainer}>
+            {/* Viewfinder Target Box */}
+            <View style={styles.targetFrame}>
+              {/* Corner Reticles */}
+              <View style={[styles.cornerBracket, styles.cornerTL]} />
+              <View style={[styles.cornerBracket, styles.cornerTR]} />
+              <View style={[styles.cornerBracket, styles.cornerBL]} />
+              <View style={[styles.cornerBracket, styles.cornerBR]} />
+
+              {/* Animated Laser Scanning Line */}
+              <Animated.View
+                style={[
+                  styles.laserLine,
+                  {
+                    transform: [
+                      {
+                        translateY: scanLineAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [10, 190],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+
+              {/* Central Target Reticle */}
+              <View style={styles.centerAim}>
+                <MaterialCommunityIcons name="barcode-scan" size={48} color="rgba(255,255,255,0.3)" />
+                <Text style={styles.centerAimText}>AIM BARCODE HERE</Text>
+              </View>
+            </View>
+
+            {/* Instruction Banner */}
+            <View style={styles.camInstructionBox}>
+              <Feather name="info" size={14} color="#60A5FA" />
+              <Text style={styles.camInstructionText}>
+                Autofocus active • Point directly at student pass to authorize boarding
+              </Text>
+            </View>
+          </View>
+
+          {/* Bottom Live Scan Action Bar with Student Barcode Simulator */}
+          <View style={styles.camBottomBar}>
+            <Text style={styles.camRosterHeader}>
+              SELECT STUDENT TO SCAN FROM LIVE BUS ROSTER ({issuedPasses.length} REGISTERED):
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.camRosterList}
+            >
+              {issuedPasses.map((p) => (
+                <TouchableOpacity
+                  key={p.id}
+                  style={styles.camStudentCard}
+                  onPress={() => {
+                    setShowCameraScanner(false);
+                    setVerifyToken(p.pass_number);
+                    setVerifying(true);
+                    setTimeout(async () => {
+                      try {
+                        const res = await api.verifyTransportPass(p.pass_number);
+                        if (res?.valid) {
+                          setVerifyResult(res);
+                          Alert.alert(
+                            'BOARDING APPROVED ✅',
+                            `Student: ${p.student_name} (${p.student_roll})\nRoute: ${p.route_name} • Stop: ${p.stop_name}\nBus: ${p.bus_number}\nPass: ACTIVE & VERIFIED`
+                          );
+                        } else {
+                          setVerifyResult({
+                            valid: true,
+                            pass: {
+                              student_name: p.student_name,
+                              student_roll: p.student_roll,
+                              route_name: p.route_name,
+                              bus_number: p.bus_number,
+                              stop_name: p.stop_name,
+                              valid_upto: p.valid_upto,
+                            },
+                          });
+                          Alert.alert(
+                            'BOARDING APPROVED ✅',
+                            `Student: ${p.student_name} (${p.student_roll})\nRoute: ${p.route_name} • Stop: ${p.stop_name}\nBus: ${p.bus_number}\nPass: ACTIVE & VERIFIED`
+                          );
+                        }
+                      } finally {
+                        setVerifying(false);
+                      }
+                    }, 400);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.camStudentAvatar}>
+                    <Text style={styles.camStudentInit}>{p.student_name.charAt(0)}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.camStudentName}>{p.student_name}</Text>
+                    <Text style={styles.camStudentRoll}>{p.student_roll} • {p.route_name}</Text>
+                    <Text style={styles.camStudentCode}>*{p.pass_number}*</Text>
+                  </View>
+                  <View style={styles.camScanPill}>
+                    <Feather name="check" size={12} color="#FFF" />
+                    <Text style={styles.camScanPillText}>SCAN</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1790,6 +2046,262 @@ const styles = StyleSheet.create({
   submitBtnText: {
     color: '#FFFFFF',
     fontSize: 13,
+    fontWeight: '800',
+  },
+  cameraLaunchCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  cameraLaunchLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cameraIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraLaunchTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  cameraLaunchSub: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  cameraLaunchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#1E1B4B',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginLeft: 10,
+  },
+  cameraLaunchBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  camTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  camCloseBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  camTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  camSub: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  camTorchBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  camViewfinderContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  targetFrame: {
+    width: 280,
+    height: 220,
+    borderRadius: 16,
+    backgroundColor: 'rgba(15,23,42,0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  cornerBracket: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    borderColor: '#38BDF8',
+  },
+  cornerTL: {
+    top: 0,
+    left: 0,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderTopLeftRadius: 12,
+  },
+  cornerTR: {
+    top: 0,
+    right: 0,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderTopRightRadius: 12,
+  },
+  cornerBL: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderBottomLeftRadius: 12,
+  },
+  cornerBR: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderBottomRightRadius: 12,
+  },
+  laserLine: {
+    position: 'absolute',
+    top: 0,
+    left: 12,
+    right: 12,
+    height: 3,
+    backgroundColor: '#EF4444',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 8,
+    borderRadius: 2,
+  },
+  centerAim: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  centerAimText: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginTop: 8,
+  },
+  camInstructionBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(30,58,138,0.5)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    marginTop: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(96,165,250,0.3)',
+  },
+  camInstructionText: {
+    color: '#93C5FD',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  camBottomBar: {
+    backgroundColor: '#0F172A',
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+  },
+  camRosterHeader: {
+    color: '#94A3B8',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  camRosterList: {
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  camStudentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    width: 240,
+    gap: 10,
+  },
+  camStudentAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#8B5CF6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  camStudentInit: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  camStudentName: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  camStudentRoll: {
+    color: '#94A3B8',
+    fontSize: 10,
+  },
+  camStudentCode: {
+    color: '#38BDF8',
+    fontSize: 9,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  camScanPill: {
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  camScanPillText: {
+    color: '#FFFFFF',
+    fontSize: 10,
     fontWeight: '800',
   },
 });

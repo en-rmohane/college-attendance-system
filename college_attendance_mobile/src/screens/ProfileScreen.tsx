@@ -37,7 +37,9 @@ export const ProfileScreen = ({ navigation }: any) => {
   const isAdmin = role === 'admin';
   const isAccountant = role === 'accountant';
   const isProf = role === 'professor';
-  const isStudent = role === 'student';
+  const isLibrarian = role === 'librarian' || role === 'assistant_librarian';
+  const isBusIncharge = role === 'bus_incharge' || role === 'transport_manager' || role === 'transport_incharge' || role === 'driver';
+  const isStudent = !isAdmin && !isAccountant && !isProf && !isLibrarian && !isBusIncharge;
 
   const handleLogout = () => {
     setShowLogoutModal(true);
@@ -63,12 +65,17 @@ export const ProfileScreen = ({ navigation }: any) => {
     ? 'SYSTEM ADMINISTRATOR'
     : isAccountant
     ? 'CHIEF ACCOUNTANT / FEE OFFICER'
+    : isLibrarian
+    ? 'CENTRAL LIBRARIAN'
+    : isBusIncharge
+    ? 'TRANSIT & BUS INCHARGE'
     : isProf
     ? 'FACULTY MEMBER'
     : 'STUDENT ENROLLMENT';
+
   const userInitial = user?.name
     ? user.name.replace(/(pro\.|dr\.|prof\.)/gi, '').trim().charAt(0).toUpperCase()
-    : (isAccountant ? 'A' : 'U');
+    : (isAccountant ? 'A' : (isLibrarian ? 'L' : (isBusIncharge ? 'B' : 'U')));
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: colors.background }}>
@@ -80,13 +87,27 @@ export const ProfileScreen = ({ navigation }: any) => {
         ]}
       >
         <Text style={[styles.pageTitle, { color: colors.text }]}>
-          {isAdmin ? 'Administrator Profile' : isAccountant ? 'Finance Officer Profile' : isProf ? 'Faculty Profile' : 'Student Profile'}
+          {isAdmin
+            ? 'Administrator Profile'
+            : isAccountant
+            ? 'Finance Officer Profile'
+            : isLibrarian
+            ? 'Central Librarian Profile'
+            : isBusIncharge
+            ? 'Transit Incharge Profile'
+            : isProf
+            ? 'Faculty Profile'
+            : 'Student Profile'}
         </Text>
         <Text style={[styles.pageSubtitle, { color: colors.textSecondary }]}>
           {isAdmin
             ? 'Central Administration & Campus Management'
             : isAccountant
             ? 'Fee Collection, Ledger & Financial Clearance Desk'
+            : isLibrarian
+            ? 'Central Library, OPAC Catalog & LMS Circulation Desk'
+            : isBusIncharge
+            ? 'Fleet Management, Transit Barcodes & Student Transport Desk'
             : isProf
             ? 'Department Faculty & Teaching Records'
             : 'Academic Information & Institutional Records'}
@@ -107,15 +128,53 @@ export const ProfileScreen = ({ navigation }: any) => {
           </View>
 
           <Text style={[styles.studentName, { color: colors.text }]}>
-            {user?.name || (isAccountant ? 'Chief Accountant / Fee Officer' : (isAdmin ? 'SYSTEM ADMIN' : 'STUDENT'))}
+            {user?.name || (isAccountant ? 'Chief Accountant / Fee Officer' : (isLibrarian ? 'Rajesh Kumar (Central Librarian)' : (isBusIncharge ? 'Rameshwar Yadav (Bus Incharge)' : (isAdmin ? 'SYSTEM ADMIN' : 'STUDENT'))))}
           </Text>
 
-          <View style={[styles.rollBadge, { backgroundColor: isAccountant ? colors.softLavender : (isAdmin ? colors.softPeach : (isProf ? colors.softCyan : colors.softYellow)) }]}>
-            <Text style={[styles.rollText, { color: isAccountant ? colors.purple : (isAdmin ? colors.coral : (isProf ? colors.teal : colors.amber)) }]}>
+          <View
+            style={[
+              styles.rollBadge,
+              {
+                backgroundColor: isAccountant
+                  ? colors.softLavender
+                  : isLibrarian
+                  ? colors.softCyan
+                  : isBusIncharge
+                  ? colors.softPeach
+                  : isAdmin
+                  ? colors.softPeach
+                  : isProf
+                  ? colors.softCyan
+                  : colors.softYellow,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.rollText,
+                {
+                  color: isAccountant
+                    ? colors.purple
+                    : isLibrarian
+                    ? colors.teal
+                    : isBusIncharge
+                    ? colors.coral
+                    : isAdmin
+                    ? colors.coral
+                    : isProf
+                    ? colors.teal
+                    : colors.amber,
+                },
+              ]}
+            >
               {isAdmin
                 ? 'CENTRAL ADMIN CONTROL'
                 : isAccountant
                 ? 'ACCOUNTS & FEE DESK'
+                : isLibrarian
+                ? 'STAFF ID: LIB-2026'
+                : isBusIncharge
+                ? 'STAFF ID: TRANS-205'
                 : isProf
                 ? `FACULTY ID: PROF-${user?.id || '01'}`
                 : `ENROLLMENT: ${user?.roll || '0545CS231001'}`}
@@ -123,14 +182,20 @@ export const ProfileScreen = ({ navigation }: any) => {
           </View>
 
           <Text style={[styles.deptText, { color: colors.textSecondary }]}>
-            {isAccountant ? 'Finance & Accounts Department' : (user?.department || user?.branch || 'Computer Science & Engineering')}
+            {isAccountant
+              ? 'Finance & Accounts Department'
+              : isLibrarian
+              ? 'Central Library LMS Section'
+              : isBusIncharge
+              ? 'Campus Fleet & Transit Section'
+              : (user?.department || user?.branch || 'Computer Science & Engineering')}
           </Text>
 
           <View style={[styles.contactRow, { borderTopColor: colors.border }]}>
             <View style={styles.contactItem}>
               <Feather name="mail" size={12} color={colors.primary} />
               <Text style={[styles.contactText, { color: colors.textSecondary }]}>
-                {user?.email || (isAccountant ? 'accountant@college.com' : 'user@college.com')}
+                {user?.email || (isAccountant ? 'accountant@sbitm.edu.in' : isLibrarian ? 'librarian@sbitm.edu.in' : isBusIncharge ? 'transport@sbitm.edu.in' : 'user@college.com')}
               </Text>
             </View>
             <View style={styles.contactItem}>
@@ -145,17 +210,37 @@ export const ProfileScreen = ({ navigation }: any) => {
         {/* 2. Role-Specific Personal & Professional Details Card */}
         <View style={styles.sectionWrapper}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {isAccountant ? 'Finance Officer Details' : (isProf ? 'Faculty Profile & Details' : (isAdmin ? 'Administrator Details' : 'Personal Information'))}
+            {isAccountant
+              ? 'Finance Officer Details'
+              : isLibrarian
+              ? 'Librarian Credentials & Desk'
+              : isBusIncharge
+              ? 'Transit Incharge Details'
+              : isProf
+              ? 'Faculty Profile & Details'
+              : isAdmin
+              ? 'Administrator Details'
+              : 'Personal Information'}
           </Text>
           <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.infoGridRow}>
               <View style={styles.infoCol}>
                 <Text style={[styles.infoColLabel, { color: colors.textSecondary }]}>Full Legal Name</Text>
-                <Text style={[styles.infoColVal, { color: colors.text }]}>{user?.name || (isAccountant ? 'Accountant / Fee Officer' : (isAdmin ? 'Admin' : 'User'))}</Text>
+                <Text style={[styles.infoColVal, { color: colors.text }]}>
+                  {user?.name || (isAccountant ? 'Accountant / Fee Officer' : isLibrarian ? 'Rajesh Kumar' : isBusIncharge ? 'Rameshwar Yadav' : (isAdmin ? 'Admin' : 'User'))}
+                </Text>
               </View>
               <View style={styles.infoCol}>
                 <Text style={[styles.infoColLabel, { color: colors.textSecondary }]}>Department / Cell</Text>
-                <Text style={[styles.infoColVal, { color: colors.text }]}>{isAccountant ? 'Finance & Accounts' : 'Academic Cell'}</Text>
+                <Text style={[styles.infoColVal, { color: colors.text }]}>
+                  {isAccountant
+                    ? 'Finance & Accounts'
+                    : isLibrarian
+                    ? 'Central Library Section'
+                    : isBusIncharge
+                    ? 'Campus Fleet & Transit'
+                    : 'Academic Cell'}
+                </Text>
               </View>
             </View>
 
@@ -164,18 +249,58 @@ export const ProfileScreen = ({ navigation }: any) => {
             <View style={styles.infoGridRow}>
               <View style={styles.infoCol}>
                 <Text style={[styles.infoColLabel, { color: colors.textSecondary }]}>
-                  {isAccountant ? 'Designation' : (isProf ? 'Date of Joining' : (isAdmin ? 'System Role' : 'Date of Birth'))}
+                  {isAccountant
+                    ? 'Designation'
+                    : isLibrarian
+                    ? 'Designation'
+                    : isBusIncharge
+                    ? 'Designation'
+                    : isProf
+                    ? 'Date of Joining'
+                    : isAdmin
+                    ? 'System Role'
+                    : 'Date of Birth'}
                 </Text>
                 <Text style={[styles.infoColVal, { color: colors.text }]}>
-                  {isAccountant ? 'Fee Manager & Cashier' : (isProf ? '15 Jul 2018' : (isAdmin ? 'Super Administrator' : '15 Aug 2005'))}
+                  {isAccountant
+                    ? 'Fee Manager & Cashier'
+                    : isLibrarian
+                    ? 'Head Librarian & LMS Admin'
+                    : isBusIncharge
+                    ? 'Transit Incharge & Route Head'
+                    : isProf
+                    ? '15 Jul 2018'
+                    : isAdmin
+                    ? 'Super Administrator'
+                    : '15 Aug 2005'}
                 </Text>
               </View>
               <View style={styles.infoCol}>
                 <Text style={[styles.infoColLabel, { color: colors.textSecondary }]}>
-                  {isAccountant ? 'Desk Node' : (isProf ? 'Employee Status' : (isAdmin ? 'Campus Node' : 'Admission Session'))}
+                  {isAccountant
+                    ? 'Desk Node'
+                    : isLibrarian
+                    ? 'Desk Node'
+                    : isBusIncharge
+                    ? 'Operational Hub'
+                    : isProf
+                    ? 'Employee Status'
+                    : isAdmin
+                    ? 'Campus Node'
+                    : 'Admission Session'}
                 </Text>
                 <Text style={[styles.infoColVal, { color: colors.primary }]}>
-                  {isAccountant ? 'Central Accounts Desk' : (isProf ? 'Regular Faculty' : (isAdmin ? 'SBITM Betul Campus' : '2023-2027'))}
+                  {isAccountant
+                    ? 'Central Accounts Desk'
+                    : isLibrarian
+                    ? 'Central Library Counter'
+                    : isBusIncharge
+                    ? 'Campus Transport Terminal'
+                    : isProf
+                    ? 'Regular Faculty'
+                    : isAdmin
+                    ? 'SBITM Betul Campus'
+                    : '2023-2027'}
                 </Text>
               </View>
             </View>
@@ -185,24 +310,74 @@ export const ProfileScreen = ({ navigation }: any) => {
         {/* 3. Role-Specific Access Matrix */}
         <View style={styles.sectionWrapper}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {isAccountant ? 'Fee & Financial Permissions' : (isProf ? 'Teaching & Department Records' : (isAdmin ? 'Access & Control Matrix' : 'Academic Details'))}
+            {isAccountant
+              ? 'Fee & Financial Permissions'
+              : isLibrarian
+              ? 'Library Administration & LMS Matrix'
+              : isBusIncharge
+              ? 'Fleet & Transit Verification Matrix'
+              : isProf
+              ? 'Teaching & Department Records'
+              : isAdmin
+              ? 'Access & Control Matrix'
+              : 'Academic Details'}
           </Text>
           <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.infoGridRow}>
               <View style={styles.infoCol}>
                 <Text style={[styles.infoColLabel, { color: colors.textSecondary }]}>
-                  {isAccountant ? 'Counter Authorization' : (isProf ? 'Designation' : (isAdmin ? 'Privilege Level' : 'Degree / Course'))}
+                  {isAccountant
+                    ? 'Counter Authorization'
+                    : isLibrarian
+                    ? 'Circulation Privilege'
+                    : isBusIncharge
+                    ? 'Pass Authentication'
+                    : isProf
+                    ? 'Designation'
+                    : isAdmin
+                    ? 'Privilege Level'
+                    : 'Degree / Course'}
                 </Text>
                 <Text style={[styles.infoColVal, { color: colors.text }]}>
-                  {isAccountant ? 'Fee Collection & Receipts' : (isProf ? 'Associate Professor' : (isAdmin ? 'Full Control (Root)' : 'B.Tech (CSE)'))}
+                  {isAccountant
+                    ? 'Fee Collection & Receipts'
+                    : isLibrarian
+                    ? 'Full LMS & Barcode Circulation'
+                    : isBusIncharge
+                    ? 'Barcode & QR Scanner Terminal'
+                    : isProf
+                    ? 'Associate Professor'
+                    : isAdmin
+                    ? 'Full Control (Root)'
+                    : 'B.Tech (CSE)'}
                 </Text>
               </View>
               <View style={styles.infoCol}>
                 <Text style={[styles.infoColLabel, { color: colors.textSecondary }]}>
-                  {isAccountant ? 'Ledger Reconciliation' : (isProf ? 'Department' : (isAdmin ? 'Assigned Portal' : 'Current Term'))}
+                  {isAccountant
+                    ? 'Ledger Reconciliation'
+                    : isLibrarian
+                    ? 'Catalog Management'
+                    : isBusIncharge
+                    ? 'Fleet Coverage'
+                    : isProf
+                    ? 'Department'
+                    : isAdmin
+                    ? 'Assigned Portal'
+                    : 'Current Term'}
                 </Text>
                 <Text style={[styles.infoColVal, { color: colors.text }]}>
-                  {isAccountant ? 'Double-Entry Verified' : (isProf ? 'Computer Science & Engg' : (isAdmin ? 'Central Management' : 'Semester 3 (Odd)'))}
+                  {isAccountant
+                    ? 'Double-Entry Verified'
+                    : isLibrarian
+                    ? 'DDC / ISBN Barcode Generator'
+                    : isBusIncharge
+                    ? 'Betul, Multai & Pandhurna'
+                    : isProf
+                    ? 'Computer Science & Engg'
+                    : isAdmin
+                    ? 'Central Management'
+                    : 'Semester 3 (Odd)'}
                 </Text>
               </View>
             </View>
@@ -212,18 +387,58 @@ export const ProfileScreen = ({ navigation }: any) => {
             <View style={styles.infoGridRow}>
               <View style={styles.infoCol}>
                 <Text style={[styles.infoColLabel, { color: colors.textSecondary }]}>
-                  {isAccountant ? 'Security Protocol' : (isProf ? 'Teaching Experience' : (isAdmin ? 'Security Protocol' : 'University Affiliation'))}
+                  {isAccountant
+                    ? 'Security Protocol'
+                    : isLibrarian
+                    ? 'Fine Policy'
+                    : isBusIncharge
+                    ? 'Boarding Validation'
+                    : isProf
+                    ? 'Teaching Experience'
+                    : isAdmin
+                    ? 'Security Protocol'
+                    : 'University Affiliation'}
                 </Text>
                 <Text style={[styles.infoColVal, { color: colors.text }]}>
-                  {isAccountant ? 'Financial Audit Trace' : (isProf ? '8+ Years (UG / PG)' : (isAdmin ? '2FA Enabled' : 'RGPV Bhopal'))}
+                  {isAccountant
+                    ? 'Financial Audit Trace'
+                    : isLibrarian
+                    ? 'Automated Overdue & Dues Clear'
+                    : isBusIncharge
+                    ? 'Live Transit Roster Verified'
+                    : isProf
+                    ? '8+ Years (UG / PG)'
+                    : isAdmin
+                    ? '2FA Enabled'
+                    : 'RGPV Bhopal'}
                 </Text>
               </View>
               <View style={styles.infoCol}>
                 <Text style={[styles.infoColLabel, { color: colors.textSecondary }]}>
-                  {isAccountant ? 'Account Status' : (isProf ? 'Qualification / Approval' : (isAdmin ? 'Status' : 'Cumulative CGPA'))}
+                  {isAccountant
+                    ? 'Account Status'
+                    : isLibrarian
+                    ? 'Terminal Status'
+                    : isBusIncharge
+                    ? 'Operational Status'
+                    : isProf
+                    ? 'Qualification / Approval'
+                    : isAdmin
+                    ? 'Status'
+                    : 'Cumulative CGPA'}
                 </Text>
                 <Text style={[styles.infoColVal, { color: colors.green }]}>
-                  {isAccountant ? 'Active Fee Officer' : (isProf ? 'M.Tech, Ph.D (CSE)' : (isAdmin ? 'Active' : '8.65 (Grade A+)'))}
+                  {isAccountant
+                    ? 'Active Fee Officer'
+                    : isLibrarian
+                    ? 'Active Librarian Node'
+                    : isBusIncharge
+                    ? 'Active Transit Incharge'
+                    : isProf
+                    ? 'M.Tech, Ph.D (CSE)'
+                    : isAdmin
+                    ? 'Active'
+                    : '8.65 (Grade A+)'}
                 </Text>
               </View>
             </View>

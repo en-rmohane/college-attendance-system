@@ -494,6 +494,88 @@ const LibrarianTabs = () => {
   );
 };
 
+// 6. Dedicated Bus Incharge / Transit Officer Tab Bar
+const BusInchargeTabs = () => {
+  const { colors } = useTheme();
+
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarHideOnKeyboard: true,
+        tabBarStyle: {
+          backgroundColor: colors.card,
+          borderTopColor: colors.border,
+          borderTopWidth: 1,
+          height: Platform.OS === 'ios' ? 88 : 72,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+          paddingTop: 8,
+          elevation: 12,
+          shadowColor: '#172033',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.06,
+          shadowRadius: 10,
+        },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '700', marginTop: 2 },
+      }}
+    >
+      <Tab.Screen
+        name="BusInchargeScanner"
+        component={TransportScreen}
+        initialParams={{ initialTab: 'scanner' }}
+        options={{
+          tabBarLabel: 'Scanner',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.tabIconWrapper, focused && { backgroundColor: colors.softLavender }]}>
+              <Ionicons name={focused ? 'barcode' : 'barcode-outline'} size={21} color={focused ? colors.purple : color} />
+            </View>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="BusInchargeRoster"
+        component={TransportScreen}
+        initialParams={{ initialTab: 'passes' }}
+        options={{
+          tabBarLabel: 'Bus Roster',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.tabIconWrapper, focused && { backgroundColor: colors.softGreen }]}>
+              <Ionicons name={focused ? 'people' : 'people-outline'} size={20} color={focused ? colors.green : color} />
+            </View>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="BusInchargeRoutes"
+        component={TransportScreen}
+        initialParams={{ initialTab: 'routes' }}
+        options={{
+          tabBarLabel: 'Routes',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.tabIconWrapper, focused && { backgroundColor: colors.softCyan }]}>
+              <Ionicons name={focused ? 'bus' : 'bus-outline'} size={19} color={focused ? colors.teal : color} />
+            </View>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="BusInchargeProfile"
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.tabIconWrapper, focused && { backgroundColor: colors.softLavender }]}>
+              <Ionicons name={focused ? 'person' : 'person-outline'} size={19} color={focused ? colors.purple : color} />
+            </View>
+          ),
+        }}
+      />
+    </Tab.Navigator>
+  );
+};
+
 // Root App Navigator
 export const AppNavigator = () => {
   const { user, isLoading } = useAuth();
@@ -527,6 +609,8 @@ export const AppNavigator = () => {
             <Stack.Screen name="AccountantMain" component={AccountantTabs} />
           ) : (role === 'librarian' || role === 'assistant_librarian') ? (
             <Stack.Screen name="LibrarianMain" component={LibrarianTabs} />
+          ) : (role === 'bus_incharge' || role === 'transport_manager' || role === 'transport_incharge' || role === 'driver') ? (
+            <Stack.Screen name="BusInchargeMain" component={BusInchargeTabs} />
           ) : role === 'professor' ? (
             <Stack.Screen name="ProfMain" component={ProfessorTabs} />
           ) : (

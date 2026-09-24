@@ -239,6 +239,7 @@ export const LoginScreen = () => {
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
                 {[
+                  { label: 'Bus Incharge', user: 'busincharge', pass: '123456', bg: colors.softPeach, text: colors.coral },
                   { label: 'Librarian', user: 'librarian', pass: 'librarian123', bg: colors.softCyan, text: colors.teal },
                   { label: 'Fee Officer', user: 'accountant', pass: '123456', bg: colors.softLavender, text: colors.purple },
                   { label: 'Student', user: '0545CS251001', pass: '123456', bg: colors.softYellow, text: colors.amber },
